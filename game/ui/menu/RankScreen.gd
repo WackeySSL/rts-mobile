@@ -3,8 +3,9 @@ extends MenuScreen
 ## The commander's Rank screen (ADR 0052 section 3, plan P664), opened by the main menu's RANK row:
 ## the title COMMANDER, the rank insignia with "RANK n NAME", the XP bar with "x / y XP", then the
 ## section NEXT UNLOCK (the next map or computer opponent and the rank that opens it, from
-## `Progression.next_unlock()`, or "Everything is open."), and BACK at the foot (the web has no back
-## event). Later rows add sections below the rank block with `_add_section`. It hosts no banner.
+## `Progression.next_unlock()`, or "Everything is open."), and the footer bar's back link (P672a:
+## the web has no back event). Later rows add sections below the rank block with `_add_section`.
+## It hosts no banner.
 ## Open it with `stack.push(RankScreen.new())`; `progression` and `catalog` are for tests.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
@@ -19,7 +20,6 @@ var _rank_label: Label
 var _xp_label: Label
 var _xp_bar: ProgressBar
 var _unlock_label: Label
-var _back: Button
 var _progression: ProgressionScript
 
 
@@ -31,14 +31,13 @@ func _ready() -> void:
 	_heading(MainMenuText.CARD, &"CapsTitle")
 	_build_rank_block()
 	_unlock_label = _add_section(MainMenuText.NEXT).get_child(0) as Label
-	_back = add_button(tr(MainMenuText.BACK), _go_back)
-	_back.set_meta(&"ui_cue", &"ui_back")
+	use_footer()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
 
 
 ## A section under the rank block: its heading (a `MenuEyebrow`) and a box to fill, which holds one
-## label to start with. It lands above BACK, which stays last.
+## label to start with. Sections stack in the order they are added.
 func _add_section(heading_key: StringName) -> VBoxContainer:
 	_heading(heading_key, &"MenuEyebrow")
 	var box: VBoxContainer = VBoxContainer.new()
@@ -46,8 +45,6 @@ func _add_section(heading_key: StringName) -> VBoxContainer:
 	var text: Label = Label.new()
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(text)
-	if _back != null:
-		column.move_child(_back, -1)
 	return box
 
 
@@ -113,7 +110,6 @@ func _unlock_text() -> String:
 	return tr(MainMenuText.UNLOCK_OPPONENT) % [level, at]
 
 
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()  # Like the Android Back button.
+## The name the back link of a screen over this one shows.
+func screen_name() -> String:
+	return tr(MainMenuText.RANK_ITEM)

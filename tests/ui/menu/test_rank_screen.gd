@@ -99,27 +99,28 @@ func test_every_target_is_48_dp_and_inside_the_safe_area_at_the_six_sizes() -> v
 		)
 		var column: Rect2 = _screen.column.get_global_rect()
 		assert_float(column.end.x).override_failure_message(str(size)).is_less_equal(safe.end.x)
-		var back: Button = _screen._back
+		var back: Button = _screen.back_link
+		assert_bool(_screen.footer.visible).override_failure_message(str(size)).is_true()
 		assert_float(back.get_global_rect().size.y).is_greater_equal(
 			UiScale.dp(48.0) - TOLERANCE_PX
 		)
 		(
-			assert_int(_screen.column.get_child(_screen.column.get_child_count() - 1).get_index())
-			. is_equal(back.get_index())
+			assert_bool(safe.encloses(back.get_global_rect()))
+			. override_failure_message(str(size))
+			. is_true()
 		)
 		_close()
 		UiScale.clear_override()
 
 
-func test_back_pops_the_stack_and_a_section_lands_above_it() -> void:
+func test_the_back_link_pops_the_stack_and_a_section_lands_below_the_block() -> void:
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	var before: int = _screen.column.get_child_count()
 	_screen._add_section(&"MAIN_NEXT")
-	assert_object(_screen.column.get_child(_screen.column.get_child_count() - 1)).is_same(
-		_screen._back
-	)
-	assert_str(_screen._back.get_meta(&"ui_cue") as String).is_equal("ui_back")
+	assert_int(_screen.column.get_child_count()).is_equal(before + 2)
+	assert_str(_screen.back_link.text).begins_with("\u2039 ")
 	var depth: int = _stack.depth()
-	_screen._back.pressed.emit()
+	_screen.back_link.pressed.emit()
 	assert_int(_stack.depth()).is_equal(depth - 1)
 
 

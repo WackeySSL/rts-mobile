@@ -132,7 +132,7 @@ func test_the_band_lines_up_on_the_start_page_and_the_slot_is_tall_at_the_six_si
 			band.reserved_px(), 1.0
 		)
 		assert_float(_main.slot.size.y).override_failure_message(label).is_greater(0.0)
-		AdBandAsserts.assert_lines_up(self, band, _ads, _main._footer, band.gap_dp(), label)
+		AdBandAsserts.assert_lines_up(self, band, _ads, _main.footer, band.gap_dp(), label)
 		_close()
 		UiScale.clear_override()
 
@@ -348,10 +348,10 @@ func test_the_profile_line_shows_the_rank_and_xp_and_opens_the_rank_screen() -> 
 	_save.call("set_section", &"progress", {"xp": 100})
 	_routes.register(MenuRoutes.RANK, RankScreen.new)
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
-	assert_str(_main._footer.text).is_equal("COMMANDER · RANK 2 · 100 / 250 XP")
-	var rect: Rect2 = _main._footer.get_global_rect()
+	assert_str(_main._profile.text).is_equal("COMMANDER · RANK 2 · 100 / 250 XP")
+	var rect: Rect2 = _main._profile.get_global_rect()
 	assert_float(rect.size.y).is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
 	assert_float(rect.end.y).is_less_equal(_main.slot.get_global_rect().position.y + TOLERANCE_PX)
 	assert_str(_main._rank_item.text).is_equal("RANK · SCOUT")
-	_main._footer.pressed.emit()
+	_main._profile.pressed.emit()
 	assert_object(_stack.current()).is_instanceof(RankScreen)

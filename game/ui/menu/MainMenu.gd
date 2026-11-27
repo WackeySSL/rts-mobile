@@ -7,7 +7,7 @@ extends MenuScreen
 ## orientation), else one. Each item is a number, the word and an arrow: Continue (only while a
 ## resume file exists, so the numbers count the items shown), Skirmish, Tutorial, Rank
 ## (`RankScreen`), How to play and Settings; the first shown is filled amber. The commander is one
-## thin profile line above the banner (`_footer`, a top rule and small caps; a tap opens the Rank
+## thin profile line in the footer bar above the banner (`_profile`; a tap opens the Rank
 ## screen), never a card. Then the version line and, at the foot, the real `AdBannerBand` on the
 ## start page (its 48 dp of air is the band's data). Every item leads through `MenuRoutes`: a
 ## route nobody registered yet leaves the item present and disabled, and enables when the route is
@@ -52,7 +52,7 @@ var _routed: Dictionary[Button, StringName] = {}
 var _numbers: Dictionary[Button, Label] = {}
 var _arrows: Dictionary[Button, TextureRect] = {}
 var _grid: GridContainer
-var _footer: Button
+var _profile: Button
 var _rank_item: Button
 var _progression: ProgressionScript
 var _sides: HBoxContainer
@@ -82,17 +82,20 @@ func _ready() -> void:
 		tr(MainMenuText.VERSION) % version if version != "" else tr(MainMenuText.COPYRIGHT),
 		&"PauseMuted"
 	)
-	_footer = Button.new()  # The profile line, between the scroll and the banner (P664).
-	_footer.theme_type_variation = &"MenuFooter"
-	_footer.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	_footer.clip_text = true
-	_footer.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_profile = Button.new()  # The profile line, in the footer bar (P664).
+	_profile.theme_type_variation = &"MenuProfile"
+	_profile.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_profile.clip_text = true
+	_profile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var floor_dp: DpMinSize = DpMinSize.new()
 	floor_dp.min_dp = BUTTON_DP
-	_footer.add_child(floor_dp)
-	_footer.pressed.connect(_open.bind(MenuRoutes.RANK))
-	slot.get_parent().add_child(_footer)
-	slot.get_parent().move_child(_footer, slot.get_index())
+	_profile.add_child(floor_dp)
+	_profile.pressed.connect(_open.bind(MenuRoutes.RANK))
+	footer.visible = true  # The screen's footer bar (P672a), with the profile line in it.
+	back_link.visible = false  # The root has nothing to go back to.
+	hint_label.visible = false
+	_profile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.get_child(0).add_child(_profile)
 	var band: AdBannerBand = AdBannerBand.new()
 	band.start_page = true
 	band.service = ad_service
@@ -132,7 +135,7 @@ func _refresh() -> void:
 			_arrows[button].modulate = _arrows[button].get_theme_color(
 				&"ground_deep" if first else &"text", TOKENS
 			)
-	_footer.disabled = not routes.has(MenuRoutes.RANK)
+	_profile.disabled = not routes.has(MenuRoutes.RANK)
 	_refresh_profile()
 
 
@@ -146,7 +149,7 @@ func _refresh_profile() -> void:
 		if next_xp <= _progression.rank_floor_xp()
 		else tr(MainMenuText.XP) % [total, next_xp]
 	)
-	_footer.text = tr(MainMenuText.PROFILE) % [rank, xp]
+	_profile.text = tr(MainMenuText.PROFILE) % [rank, xp]
 	_rank_item.text = tr(MainMenuText.RANK_HINT) % _progression.title(rank).to_upper()
 
 
@@ -279,6 +282,11 @@ func _label(text: String, variation: StringName) -> Label:
 	label.theme_type_variation = variation
 	column.add_child(label)
 	return label
+
+
+## The name the footer link of a screen over this one shows.
+func screen_name() -> String:
+	return tr("MAIN MENU")
 
 
 func _version() -> String:

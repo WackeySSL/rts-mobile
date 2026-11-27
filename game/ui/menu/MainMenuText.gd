@@ -17,7 +17,6 @@ const RANK_ITEM: StringName = &"MAIN_RANK_ITEM"
 const RANK_HINT: StringName = &"MAIN_RANK_HINT"
 const RANK: StringName = &"MAIN_RANK"
 const PROFILE: StringName = &"MAIN_PROFILE"
-const BACK: StringName = &"MAIN_BACK"
 const CARD: StringName = &"MAIN_CARD"
 const NEXT: StringName = &"MAIN_NEXT"
 const UNLOCK_MAP: StringName = &"MAIN_UNLOCK_MAP"
@@ -46,7 +45,6 @@ const ENGLISH: Dictionary[StringName, String] = {
 	RANK_HINT: "RANK · %s",
 	RANK: "RANK %d  %s",
 	PROFILE: "COMMANDER · RANK %d · %s",
-	BACK: "BACK",
 	CARD: "COMMANDER",
 	NEXT: "NEXT UNLOCK",
 	UNLOCK_MAP: "%s at rank %d",

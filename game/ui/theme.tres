@@ -965,23 +965,19 @@ border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_profile"]
 content_margin_left = 12.0
 content_margin_top = 10.0
 content_margin_right = 12.0
 content_margin_bottom = 10.0
 bg_color = Color(0, 0, 0, 0)
-border_width_top = 1
-border_color = Color(0.2, 0.2627451, 0.29019608, 1)
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_down"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_profile_down"]
 content_margin_left = 12.0
 content_margin_top = 10.0
 content_margin_right = 12.0
 content_margin_bottom = 10.0
 bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
-border_width_top = 1
-border_color = Color(0.2, 0.2627451, 0.29019608, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_primary"]
 content_margin_left = 8.0
@@ -1006,6 +1002,25 @@ border_width_top = 1
 border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.97647059, 0.8, 0.52156863, 1)
+
+; The menu footer bar (P672a, Michael's Figma of 2026-11-27): a thin top rule over the ground, the
+; back link (text, no plate; the touch target is the button's 48 dp floor) and the hint.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0.03137255, 0.05490196, 0.07058824, 0.9)
+border_width_top = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_link"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_link_down"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
 
 ; The backdrop reading shade (the file's "Laeseskygge", left to right: ground at 96 percent, 65 percent
 ; at the middle, clear). Not used yet: the MenuScrim type's `shade` icon is for the backdrop rows (P663).
@@ -1549,29 +1564,46 @@ MenuItem/styles/hover = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_down")
 MenuItem/styles/normal = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/pressed = SubResource("StyleBoxFlat_menu_item_down")
+MenuFooter/base_type = &"PanelContainer"
+MenuFooter/styles/panel = SubResource("StyleBoxFlat_menu_footer")
+MenuFooterLink/base_type = &"CapsButton"
+MenuFooterLink/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuFooterLink/colors/font_focus_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuFooterLink/colors/font_hover_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/colors/font_hover_pressed_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/colors/font_pressed_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/font_sizes/font_size = 16
+MenuFooterLink/styles/focus = SubResource("StyleBoxFlat_pause_focus")
+MenuFooterLink/styles/hover = SubResource("StyleBoxFlat_menu_footer_link")
+MenuFooterLink/styles/hover_pressed = SubResource("StyleBoxFlat_menu_footer_link_down")
+MenuFooterLink/styles/normal = SubResource("StyleBoxFlat_menu_footer_link")
+MenuFooterLink/styles/pressed = SubResource("StyleBoxFlat_menu_footer_link_down")
+MenuFooterHint/base_type = &"Label"
+MenuFooterHint/colors/font_color = Color(0.45, 0.5, 0.55, 1)
+MenuFooterHint/font_sizes/font_size = 14
 MenuItemOn/base_type = &"MenuItem"
 MenuItemOn/styles/hover = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/normal = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/pressed = SubResource("StyleBoxFlat_menu_item_on")
 ; MenuNumber (P664): the item number of the main menu, text_mute.
-; MenuNumberOn: the number on the amber first item, ground_deep. MenuFooter: the main menu's profile line, a flat button with a top rule, small text_dim caps.
+; MenuNumberOn: the number on the amber first item, ground_deep. MenuProfile: the main menu's profile line, a flat button with a top rule, small text_dim caps.
 MenuNumberOn/base_type = &"MenuNumber"
 MenuNumberOn/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
-MenuFooter/base_type = &"Button"
-MenuFooter/colors/font_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
-MenuFooter/colors/font_focus_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
-MenuFooter/colors/font_hover_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
-MenuFooter/colors/font_hover_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
-MenuFooter/colors/font_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
-MenuFooter/colors/font_disabled_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
-MenuFooter/font_sizes/font_size = 14
-MenuFooter/styles/disabled = SubResource("StyleBoxFlat_menu_footer")
-MenuFooter/styles/focus = SubResource("StyleBoxFlat_pause_focus")
-MenuFooter/styles/hover = SubResource("StyleBoxFlat_menu_footer")
-MenuFooter/styles/hover_pressed = SubResource("StyleBoxFlat_menu_footer_down")
-MenuFooter/styles/normal = SubResource("StyleBoxFlat_menu_footer")
-MenuFooter/styles/pressed = SubResource("StyleBoxFlat_menu_footer_down")
+MenuProfile/base_type = &"Button"
+MenuProfile/colors/font_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_focus_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_hover_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_hover_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_disabled_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
+MenuProfile/font_sizes/font_size = 14
+MenuProfile/styles/disabled = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/focus = SubResource("StyleBoxFlat_pause_focus")
+MenuProfile/styles/hover = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/hover_pressed = SubResource("StyleBoxFlat_menu_profile_down")
+MenuProfile/styles/normal = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/pressed = SubResource("StyleBoxFlat_menu_profile_down")
 MenuNumber/base_type = &"Label"
 MenuNumber/colors/font_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
 ; MenuRow and MenuRowOn (P664): MenuItem and MenuItemOn with a 52 dp left margin, which the number of a main menu item stands in.
