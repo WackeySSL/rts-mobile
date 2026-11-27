@@ -14,6 +14,7 @@ signal xp_changed
 const SaveServiceScript: GDScript = preload("res://game/meta/save_service.gd")
 const SECTION: StringName = &"progress"
 const DEF_PATH: String = "res://data/meta/progression.tres"
+const TUTORIAL_SECTION: StringName = &"tutorial"
 ## A unit, not a balance number: `level_percent` is in percent.
 const PERCENT: int = 100
 const SECONDS_PER_MINUTE: int = 60
@@ -24,15 +25,18 @@ var error_sink: Callable = Callable()
 var _def: ProgressionDef = null
 var _save: SaveServiceScript = null
 var _live: Dictionary = {}  # String id -> WeakRef of the XpAward handed out
+var _catalog: TrophyCatalog = null
 
 
 func _ready() -> void:
 	bind(SaveService, null)
 
 
-## Uses `save` (the autoload by default; a test's own instance) and the tuning from `def` (null:
-## `DEF_PATH`). False, with an error and no change, when the tuning is unusable.
-func bind(save: SaveServiceScript, def: ProgressionDef) -> bool:
+## Uses `save` (the autoload by default; a test's own instance), the tuning from `def` (null:
+## `DEF_PATH`) and the trophies from `catalog` (null: the shipped one). False, with an error and no
+## change, when the tuning is unusable. An unusable catalog is reported and leaves trophies off;
+## it never blocks an award.
+func bind(save: SaveServiceScript, def: ProgressionDef, catalog: TrophyCatalog = null) -> bool:
 	var candidate: ProgressionDef = def if def != null else (load(DEF_PATH) as ProgressionDef)
 	var problem: String = _def_problem(candidate)
 	if problem != "":
@@ -41,6 +45,11 @@ func bind(save: SaveServiceScript, def: ProgressionDef) -> bool:
 	_save = save
 	_def = candidate
 	_live = {}
+	_catalog = catalog if catalog != null else TrophyCatalog.load_default()
+	var catalog_problem: String = "not loadable" if _catalog == null else _catalog.problem()
+	if catalog_problem != "":
+		_report_error("Progression: unusable TrophyCatalog: %s; no trophies" % catalog_problem)
+		_catalog = null
 	return true
 
 
@@ -120,6 +129,7 @@ func award_match(summary: MatchSummary) -> XpAward:
 	if _def == null or not _writable():
 		return null
 	var section: Dictionary = _read()
+	var career: CareerStats = _read_career(section["next_award_id"])
 	var award: XpAward = XpAward.new()
 	if summary.lesson_id != &"":
 		# ADR 0045 is silent on a lost lesson: a lesson pays on completion (a win) only.
@@ -151,13 +161,56 @@ func award_match(summary: MatchSummary) -> XpAward:
 		awards.append({"id": String(award.id), "base_xp": award.base_xp, "bonus_applied": false})
 		while awards.size() > _def.awards_kept:
 			awards.pop_front()
+		career.record(summary, _report_warning)
 	section["xp"] += award.base_xp
+	# Progress first: a refused write leaves nothing half changed. Both sections flush together.
 	if not _write(section):
 		return null
+	_record_trophies(career, award, summary)
 	if award.id != &"":
 		_live[String(award.id)] = weakref(award)
 	xp_changed.emit()
 	return award
+
+
+## Trophies that saved state now earns (the lessons done, the counters, the wins grid), stamped
+## into `career` and returned in catalog order. The Rank screen calls it each time it opens; it
+## stamps what the back-fill made due. Writes only when something is new, and not at all on a
+## read-only save.
+func refresh_trophies() -> Array[StringName]:
+	var none: Array[StringName] = []
+	if _def == null or _catalog == null or not _writable():
+		return none
+	var career: CareerStats = _read_career(_read()["next_award_id"])
+	var found: Array[StringName] = TrophyRules.newly_earned(_catalog, career, _lessons_done(), null)
+	if found.is_empty() or not _stamp(career, found):
+		return none
+	return found
+
+
+## The shipped trophies, or null when the catalog was unusable.
+func trophy_catalog() -> TrophyCatalog:
+	return _catalog
+
+
+func is_earned(id: StringName) -> bool:
+	return _def != null and _read_career(_read()["next_award_id"]).has_earned(id)
+
+
+## Earned trophies that the catalog lists.
+func earned_count() -> int:
+	if _def == null or _catalog == null:
+		return 0
+	var career: CareerStats = _read_career(_read()["next_award_id"])
+	var total: int = 0
+	for id: StringName in _catalog.ids():
+		total += 1 if career.has_earned(id) else 0
+	return total
+
+
+## A copy of the career section as it would be saved (the back-fill when none is saved yet).
+func career() -> Dictionary:
+	return _read_career(_read()["next_award_id"]).to_section() if _def != null else {}
 
 
 ## Adds `base_xp * (multiplier - 1)` once for one of the last awards and marks it applied (also
@@ -207,6 +260,45 @@ func _read() -> Dictionary:
 	for lesson: Variant in raw.get("lessons", []) as Array:
 		(section["lessons"] as Array).append(str(lesson))
 	return section
+
+
+func _read_career(next_award_id: int) -> CareerStats:
+	return CareerStats.read(_save.get_section(CareerStats.SECTION), next_award_id, _report_warning)
+
+
+func _lessons_done() -> PackedStringArray:
+	var done: PackedStringArray = PackedStringArray()
+	var saved: Variant = _save.get_section(TUTORIAL_SECTION).get("done", [])
+	for lesson: Variant in saved if saved is Array or saved is PackedStringArray else []:
+		done.append(str(lesson))
+	return done
+
+
+## After the XP is written: checks the trophies, saves `career` when a skirmish was recorded or a
+## trophy is new, and puts the new ids on `award`. A refused `career` write costs the trophies,
+## never the XP.
+func _record_trophies(career: CareerStats, award: XpAward, summary: MatchSummary) -> void:
+	var found: Array[StringName] = []
+	if _catalog != null:
+		found = TrophyRules.newly_earned(_catalog, career, _lessons_done(), summary)
+	var changed: bool = (
+		summary.lesson_id == &"" and summary.outcome != MatchSummary.OUTCOME_ABANDONED
+	)
+	if found.is_empty():
+		if changed and not _save.set_section(CareerStats.SECTION, career.to_section()):
+			_report_error("Progression: the save refused section 'career'; no trophies")
+		return
+	if _stamp(career, found):
+		award.trophies = found
+
+
+func _stamp(career: CareerStats, found: Array[StringName]) -> bool:
+	for id: StringName in found:
+		career.earned.append(String(id))
+	if _save.set_section(CareerStats.SECTION, career.to_section()):
+		return true
+	_report_error("Progression: the save refused section 'career'; no trophies")
+	return false
 
 
 func _entry_ok(entry: Variant) -> bool:
