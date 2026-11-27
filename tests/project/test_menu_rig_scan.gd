@@ -23,6 +23,7 @@ const EXCEPTIONS: Dictionary[String, String] = {
 	"res://tests/project/test_project_settings.gd": "reads the scene file as text",
 	"res://tests/project/test_ui_theme_scan.gd": "reads the scene file as text",
 	"res://tests/ui/support/arena_rig.gd": "a rig: the suites that use it are the ones scanned",
+	"res://tests/ui/tutorial/support/chain_rig.gd": "a rig: the suites that use it are scanned",
 	"res://tests/view/test_ghost_memory_layer.gd": "names the scene in a comment only",
 }
 
