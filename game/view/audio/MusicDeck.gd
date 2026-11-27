@@ -75,6 +75,14 @@ func play(id: StringName) -> bool:
 	return true
 
 
+## A playing player keeps its stream and its playback alive to the end of the process, so the engine
+## reports them ("resources still in use at exit"). Stopping and dropping the streams lets them go.
+func _exit_tree() -> void:
+	for player: AudioStreamPlayer in _players:
+		player.stop()
+		player.stream = null
+
+
 ## Silences both players at once. A sting cut short still emits `sting_finished`. The duck ends.
 func stop() -> void:
 	var cut: StringName = _current

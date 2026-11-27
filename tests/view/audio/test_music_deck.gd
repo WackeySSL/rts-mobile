@@ -97,6 +97,18 @@ func test_a_finished_fade_tween_is_freed_not_kept_alive_by_its_own_signal() -> v
 	assert_object(watcher.get_ref()).is_null()
 
 
+func test_leaving_the_tree_stops_the_players_and_lets_go_of_their_streams() -> void:
+	# A player still playing at exit keeps its stream and playback alive: "2 resources still in use at
+	# exit" (menu.ogg and its packet sequence) once a scene scan had started the menu music.
+	_service.call(&"play_music", &"menu")
+	assert_int(_players_playing()).is_equal(1)
+	remove_child(_service)
+	for i: int in 2:
+		assert_bool(_deck.player_for_tests(i).playing).is_false()
+		assert_object(_deck.player_for_tests(i).stream).is_null()
+	add_child(_service)
+
+
 func test_crossfade_is_halfway_at_half_the_time() -> void:
 	_service.call(&"play_music", &"menu")
 	_finish_fade()
