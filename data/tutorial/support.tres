@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialUnitPickDef.gd" id="10_unit"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_support.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/support_enemy.tres" id="4_enemy"]
 
@@ -144,13 +145,32 @@ covers = Array[StringName]([&"units-build-minelayer"])
 budget_s = 20
 lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_09_build"), SubResource("Beat_09_tab")])
 
+[sub_resource type="Resource" id="Beat_10_unit"]
+script = ExtResource("10_unit")
+type_id = &"fossil_shot_truck"
+pick = 1
+
 [sub_resource type="Resource" id="Beat_10"]
 script = ExtResource("2_beat")
 id = &"select-truck"
 prompt_key = &"tutorial.support.select-truck"
+anchor = 3
+unit = SubResource("Beat_10_unit")
 kind = 1
 type_id = &"fossil_shot_truck"
 budget_s = 4
+
+[sub_resource type="Resource" id="Beat_11_unit"]
+script = ExtResource("10_unit")
+type_id = &"fossil_shot_truck"
+pick = 1
+
+[sub_resource type="Resource" id="Beat_11_select"]
+script = ExtResource("9_lead")
+anchor = 3
+unit = SubResource("Beat_11_unit")
+kind = 1
+type_id = &"fossil_shot_truck"
 
 [sub_resource type="Resource" id="Beat_11"]
 script = ExtResource("2_beat")
@@ -160,6 +180,7 @@ anchor = 1
 anchor_control = &"Mine"
 covers = Array[StringName]([&"orders-lay-mine"])
 budget_s = 8
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_11_select")])
 
 [sub_resource type="Resource" id="Beat_12"]
 script = ExtResource("2_beat")

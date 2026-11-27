@@ -1,11 +1,14 @@
 extends RefCounted
-## The mid-play fixtures of the chain sweep (plan row P591b). Not a test suite. Seven beats of the
-## lessons aim their ring at a control that exists only in the middle of play: the check mark of a
-## placement ghost, the check mark of a strike aim, Home and Board, Repair, Mine and Mend. Each is
-## brought up here the way a player brings it up, never by showing the control: units a lesson
-## would have trained stand in the scenario's spawn list (`scenario_for`), damage is written to the
-## World, and the placement and the strike aim begin through the real card tap and the real
-## button and ground tap of the controller (`prepare`).
+## The mid-play fixtures of the chain sweep (plan rows P591b, P593b-2). Not a test suite. Seven
+## beats of the lessons aim their ring at a control that exists only in the middle of play: the
+## check mark of a placement ghost, the check mark of a strike aim, Home and Board, Repair, Mine and
+## Mend. Three more aim at a unit the lesson makes or meets (the wave in view for `attack`, the
+## fighter on its pad for `tap-air`, the truck built for `select-truck`), and `home` and `mine`
+## start on a unit step with nothing selected. Each is brought up here the way a player brings it
+## up, never by showing the control: units a lesson would have trained stand in the scenario's
+## spawn list (`scenario_for`), damage is written to the World, and the placement and the strike
+## aim begin through the real card tap and the real button and ground tap of the controller
+## (`prepare`).
 
 const Rig: GDScript = preload("res://tests/view/support/building_rig.gd")
 const PLAYER: int = 1
@@ -15,16 +18,21 @@ const PLACE_ROUNDS: int = 12
 const SPAWNS: Dictionary[String, Array] = {
 	"air/board": [[1, "fossil_transport", 12, 10]],
 	"support/mine": [[1, "fossil_shot_truck", 12, 10]],
+	"support/select-truck": [[1, "fossil_shot_truck", 12, 10]],
+	"basics/attack": [[2, "renew_rifle", 13, 8], [2, "renew_rifle", 14, 9]],
 }
 ## The beats that have a fixture ("lesson/beat").
 const BEATS: Array[String] = [
 	"air/board",
 	"air/home",
+	"air/tap-air",
+	"basics/attack",
 	"basics/placed",
 	"strikes/fire",
 	"support/mend",
 	"support/mine",
 	"support/repair",
+	"support/select-truck",
 ]
 
 var failure: String = ""  ## What the fixture could not bring up, empty when it did.
@@ -65,13 +73,13 @@ static func scenario_for(pair: String, scenario: ScenarioDef) -> ScenarioDef:
 ## Brings up the state `pair`'s control needs and leaves the player's selection as the beat expects.
 func prepare(pair: String) -> void:
 	match pair:
-		"air/home":
+		"air/home", "air/tap-air":
 			await _train(&"fossil_fighter")
-			_select_type(&"fossil_fighter")
+			_selection.clear()  # The ring starts on the fighter, as for a player who has not tapped it.
+		"basics/attack", "support/select-truck", "support/mine":
+			_selection.clear()  # The units are in the scenario; nothing is selected yet.
 		"air/board":
 			_select_type(&"rifle_squad")
-		"support/mine":
-			_select_type(&"fossil_shot_truck")
 		"support/repair":
 			_select_hurt(&"light_tank")
 		"support/mend":
