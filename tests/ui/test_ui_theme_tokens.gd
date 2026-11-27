@@ -1,7 +1,7 @@
 extends GdUnitTestSuite
 ## The Treadline tokens (plan row P604, ADR 0049 section 5, ADR 0025 section 13): every token of
 ## the HUD, accent and guide types resolves, each accent keeps its hue apart from danger and money
-## (15 degrees; Nordvaern's orange 25 from danger), and text on each accent reads at 4.5:1.
+## (15 degrees; Ironward's orange 25 from danger), and text on each accent reads at 4.5:1.
 
 const HudThemes: GDScript = preload("res://tests/support/hud_theme.gd")
 const HUD: Array[StringName] = [
@@ -63,7 +63,7 @@ func test_each_accent_is_apart_from_danger_and_money() -> void:
 			assert_float(_apart(hue, money)).override_failure_message(why).is_greater_equal(MIN_HUE)
 
 
-func test_nordvaern_orange_is_far_from_danger_red() -> void:
+func test_ironward_orange_is_far_from_danger_red() -> void:
 	var theme: Theme = HudThemes.source()
 	var danger: float = _hue(theme.get_color(&"danger", &"HudTokens"))
 	for item: StringName in [&"accent", &"light"]:

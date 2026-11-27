@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit wears your team colour and has a shadow on the ground. Nordværn's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Nordværn's three squads are steel grey with orange hats, shoulder plates and pack panels, and show your team colour on a thin vest band. Nordværn's carrier, minelayer and aircraft are orange and steel too, and show your team colour on one small plate, stripe or band. Facet's three squads are white and graphite with blue helmets, shoulder plates and pack panels, and show your team colour on a thin chest band. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit wears your team colour and has a shadow on the ground. Ironward's four ground vehicles keep their orange panels and show your team colour on a small plate on the turret or the roof. Ironward's three squads are steel grey with orange hats, shoulder plates and pack panels, and show your team colour on a thin vest band. Ironward's carrier, minelayer and aircraft are orange and steel too, and show your team colour on one small plate, stripe or band. Facet's three squads are white and graphite with blue helmets, shoulder plates and pack panels, and show your team colour on a thin chest band. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -98,7 +98,7 @@ body = "Open the Flight tab of the build drawer. The cards stay locked until you
 script = ExtResource("3_ent")
 id = &"units-look-aircraft"
 title = "Your aircraft"
-body = "An aircraft hovers above its shadow. Nordværn's Torchjet and Drillhead are orange and steel and show your team colour on a stripe on the fin and on bands at the wing tips; Facet's Glint and Sunfall are white and show it on a stripe on their wings. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
+body = "An aircraft hovers above its shadow. Ironward's Torchjet and Drillhead are orange and steel and show your team colour on a stripe on the fin and on bands at the wing tips; Facet's Glint and Sunfall are white and show it on a stripe on their wings. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
 
 [sub_resource type="Resource" id="e15"]
 script = ExtResource("3_ent")
@@ -872,7 +872,7 @@ body = "When a Dusk Array switches off your radar building and you have no other
 script = ExtResource("3_ent")
 id = &"superweapon-computer"
 title = "The computer's strikes"
-body = "On Hard the computer builds its side's superweapon and fires it. Nordværn's Deep Bore comes with the red warning ring, so move out of it. Facet's Dusk Array comes without warning and hits your production buildings; it prefers a ring that also covers a radar building of yours that it has seen or remembers, even over one slightly richer in production buildings. Easy and Normal never build one."
+body = "On Hard the computer builds its side's superweapon and fires it. Ironward's Deep Bore comes with the red warning ring, so move out of it. Facet's Dusk Array comes without warning and hits your production buildings; it prefers a ring that also covers a radar building of yours that it has seen or remembers, even over one slightly richer in production buildings. Easy and Normal never build one."
 
 [sub_resource type="Resource" id="s14"]
 script = ExtResource("2_sec")
@@ -884,13 +884,13 @@ entries = Array[ExtResource("3_ent")]([SubResource("e116"), SubResource("e117"),
 script = ExtResource("3_ent")
 id = &"factions-two"
 title = "Playing a side"
-body = "In a match you play your side from the top of the map, and the computer plays the other side from the bottom. Your units and buildings wear your side's colour, orange for Nordværn and blue for Facet. The computer's wear the other one."
+body = "In a match you play your side from the top of the map, and the computer plays the other side from the bottom. Your units and buildings wear your side's colour, orange for Ironward and blue for Facet. The computer's wear the other one."
 
 [sub_resource type="Resource" id="e132"]
 script = ExtResource("3_ent")
 id = &"factions-sides"
 title = "Choose your side"
-body = "On the Skirmish screen, pick Nordværn or Facet. Nordværn runs on oil and gas and wears orange. Facet runs on green energy and wears blue. Each side has its own buildings and units, and your build drawer shows only yours. The computer plays the other side."
+body = "On the Skirmish screen, pick Ironward or Facet. Ironward runs on oil and gas and wears orange. Facet runs on green energy and wears blue. Each side has its own buildings and units, and your build drawer shows only yours. The computer plays the other side."
 
 [sub_resource type="Resource" id="s15"]
 script = ExtResource("2_sec")

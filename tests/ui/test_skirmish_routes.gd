@@ -1,10 +1,10 @@
 extends GdUnitTestSuite
 ## The two Skirmish routes (plan P90, rev 5, ADR 0025 answer 7): the dev menu has
-## "Skirmish (Nordværn)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
+## "Skirmish (Ironward)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
 ## with the player on that side as player 1, the computer of the other side as
 ## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
 ## and the player's units in its side's colour, the other player's in the other side's (orange for
-## Nordvaern, blue for Facet: the scenario's `team_triads`; P647 switches the markers to your own
+## Ironward, blue for Facet: the scenario's `team_triads`; P647 switches the markers to your own
 ## white, Sne, and the computer's red, Karmin, ADR 0050 section 3 answer 3). The
 ## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
@@ -14,7 +14,7 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ROUTES: Array[Dictionary] = [
 	{
 		"button": "SkirmishDerrickButton",
-		"text": "Skirmish (Nordværn)",
+		"text": "Skirmish (Ironward)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats.tres",
 		"opponent": &"opponent_renew",
 		"own_hq": &"headquarters",
@@ -37,7 +37,7 @@ const ROUTES: Array[Dictionary] = [
 ]
 ## Player 1's Headquarters tile in both scenarios (the minimap paints its footprint).
 const HQ_TILE: Vector2i = Vector2i(7, 7)
-## The interim marker colours (WorldSort.TRIADS): Nordvaern orange, Facet blue (Kobolt). The default
+## The interim marker colours (WorldSort.TRIADS): Ironward orange, Facet blue (Kobolt). The default
 ## markers of ADR 0050 section 3 (own Sne, the computer's Karmin) switch in with P647, the last
 ## model batch; until then the old models wear the side's colour on their whole team areas.
 const ORANGE: int = 0
@@ -219,7 +219,7 @@ func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
 
 
 ## Interim, 2026-11-25 (P632; P647 switches to Sne and Karmin): each player of every Skirmish
-## scenario wears its side's colour, orange for Nordvaern and blue for Facet, and in a mirror of one
+## scenario wears its side's colour, orange for Ironward and blue for Facet, and in a mirror of one
 ## side the second player wears the other side's colour.
 func test_every_skirmish_scenario_gives_each_player_its_sides_colour() -> void:
 	var seen: int = 0

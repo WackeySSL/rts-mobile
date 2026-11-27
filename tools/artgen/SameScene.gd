@@ -14,7 +14,7 @@ const GAP: int = 8
 const SIDE_PX: int = 32
 const EDGE_STEP: float = 0.08  ## Luminance jump between neighbours that counts as an edge.
 const DARK: float = 0.06
-## What a Skirmish route gives each side (interim, P632; `WorldSort.TRIADS` 0 and 3): Nordvaern's
+## What a Skirmish route gives each side (interim, P632; `WorldSort.TRIADS` 0 and 3): Ironward's
 ## orange, Facet's blue (Kobolt). `mirror_of` is what the second player of a mirror of one side
 ## wears: the other side's colour. P647 switches the routes to your own Sne and the computer's
 ## Karmin (ADR 0050 section 3).

@@ -215,7 +215,7 @@ func test_the_title_the_sides_and_the_tagline_show() -> void:
 	assert_array(texts).contains(
 		["TREADLINE", "Oil and gas against wind and sun. Choose your side."]
 	)
-	assert_array(texts).contains(["NORDVÆRN", "FACET"])
+	assert_array(texts).contains(["IRONWARD", "FACET"])
 
 
 ## `consent`: the fake ad service has consent, so the banner shows (false: no banner).

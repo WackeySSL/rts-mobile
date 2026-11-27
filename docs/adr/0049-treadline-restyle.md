@@ -126,6 +126,11 @@ changes (answer 3 A, §6).
   capitals). Every shipped font covers æ and Æ, and `tests/art/test_font_assets.gd` already checks
   æøå in each face. A key that needs ASCII uses `nordvaern`. **Facet** is the blue faction
   (answer 2).
+  - **Note, 2026-11-27 (P657): the first faction is now "Ironward".** Michael decided via
+    AskUserQuestion: "Ironward (Recommended)", because "Vi skal have fundet et andet navn end
+    Nordværn, det er jo dansk vi skal holde os til engelsk ord". The display name, the menus'
+    capitals ("IRONWARD") and the current docs change; the text above stays as the record. The
+    internal id `fossil` and every file name, resource id and enum are unchanged. Facet stays.
 - **Risky names, found so far:**
   - **"Helix"** is the name of a unit in *Command & Conquer: Generals – Zero Hour*: the China
     faction's heavy transport helicopter. CLAUDE.md forbids names from C&C. This is a must-fix

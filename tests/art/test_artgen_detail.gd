@@ -10,9 +10,9 @@ const UNIT_POLYS: int = 600  ## ADR 0050 section 1: a unit hull at level 2.
 const UNIT_BYTES: int = 64 * 1024
 const NUMBER_PAINT: String = "#E9E5D6"
 ## The models that have opted in, by restyle batch (docs/art/treadline-batches.json); every other
-## model of the game is at detail 0 until its own batch. P638: the Nordvaern ground vehicles; P639:
-## the Facet ground vehicles; P640: the three Nordvaern squads; P641: the three Facet squads; P642:
-## the Nordvaern support and air units.
+## model of the game is at detail 0 until its own batch. P638: the Ironward ground vehicles; P639:
+## the Facet ground vehicles; P640: the three Ironward squads; P641: the three Facet squads; P642:
+## the Ironward support and air units.
 const OPTED_IN: Dictionary[String, int] = {
 	"light_tank": 2,
 	"heavy_tank": 2,
