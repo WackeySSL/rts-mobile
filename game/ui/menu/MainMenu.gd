@@ -2,25 +2,20 @@ class_name MainMenu
 extends MenuScreen
 ## The main menu (ADR 0043 section 5, ADR 0052 section 3, plans P524 and P664): TREADLINE, the two
 ## sides each in its accent's light (`SideNameRenew`, `SideNameFossil`) and the tagline over the
-## picture's dark side (top left, `top_left`), then the items, each a number, the word and an arrow
-## (Continue only while a resume file exists, so the numbers count the items shown; the first
-## shown has the amber bar), and the commander card (`RankInsignia`, the rank title, the XP bar and
-## the next unlock from `Progression`). The card stands beside the items where the measured width
-## holds both, else above them, never by orientation. Then the version line and, at the foot, the
-## real `AdBannerBand` on the start page (its 48 dp of air is the band's data). Every item leads
-## through `MenuRoutes`: a route nobody registered yet leaves the item present and disabled, and
-## enables when the route is registered later. It is a menu: no Command, no sim.
+## picture's dark side (top left, `top_left`), then one column of items, each a number, the word
+## and an arrow: Continue (only while a resume file exists, so the numbers count the items shown),
+## Skirmish, Tutorial, Rank (`RankScreen`: the commander card), How to play and Settings; the first
+## shown has the amber bar. Then the version line and, at the foot, the real `AdBannerBand` on the
+## start page (its 48 dp of air is the band's data). Every item leads through `MenuRoutes`: a route
+## nobody registered yet leaves the item present and disabled, and enables when the route is
+## registered later. It is a menu: no Command, no sim.
 
-const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
 const ARROW: Texture2D = preload("res://assets/art/svg/ui/menu_arrow.svg")
 const EMBLEM_DP: float = 32.0
-const TWO_COLUMNS_DP: float = 600.0  ## The room at which the card stands beside the items.
-const TWO_COLUMNS_MAX_DP: float = 640.0  ## ... and the most width the two columns take.
 const ITEM_PAD_DP: float = 14.0  ## The number's and the arrow's distance from the item's edge.
 const NUMBER_DP: float = 28.0
 const ARROW_DP: float = 18.0
-const XP_BAR_DP: float = 12.0
 const VERSION_SETTING: String = "application/config/version"
 const SIDES: Array[Array] = [
 	[
@@ -37,10 +32,8 @@ const SIDES: Array[Array] = [
 
 ## The routes the buttons use; tests replace it.
 var routes: MenuRoutes = MenuRoutes.shared
-## Tests inject these two before the screen is pushed; null means the autoloads.
-var progression: ProgressionScript = null
+## Tests inject this before the screen is pushed; null means the autoload.
 var ad_service: AdServiceScript = null
-var catalog: MapCatalog = null  ## The map names of the next unlock; null means the data file.
 ## Whether a resume file exists (ADR 0042 section 6); tests replace it.
 var resume_check: Callable = func() -> bool: return ResumeStore.has_file()
 ## The notice key a failed restore left for this menu, taken once; tests replace it.
@@ -50,15 +43,6 @@ var _continue: Button
 var _routed: Dictionary[Button, StringName] = {}
 var _numbers: Dictionary[Button, Label] = {}
 var _arrows: Dictionary[Button, TextureRect] = {}
-var _body: BoxContainer
-var _list: VBoxContainer
-var _card: PanelContainer
-var _insignia: RankInsignia
-var _unlock_label: Label
-var _rank_label: Label
-var _xp_label: Label
-var _xp_bar: ProgressBar
-var _progression: ProgressionScript
 var _sides: HBoxContainer
 var _names: Array[Label] = []
 
@@ -67,21 +51,13 @@ func _ready() -> void:
 	top_left = true
 	super()
 	MainMenuText.register()
-	MapSelectText.register()
 	_build_header()
-	_body = BoxContainer.new()
-	_body.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	column.add_child(_body)
-	_list = VBoxContainer.new()
-	_list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_list.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	_body.add_child(_list)
 	_continue = _route_button(MainMenuText.CONTINUE, MenuRoutes.CONTINUE)  # P515.
 	_route_button(MainMenuText.SKIRMISH, MenuRoutes.SKIRMISH)  # P525.
 	_route_button(MainMenuText.TUTORIAL, MenuRoutes.TUTORIAL)  # P544.
+	_route_button(MainMenuText.RANK_ITEM, MenuRoutes.RANK)  # P664 (RankScreen).
 	_route_button(MainMenuText.HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)  # P527.
 	_route_button(MainMenuText.SETTINGS, MenuRoutes.SETTINGS)  # P526.
-	_build_card()
 	var notice: StringName = take_notice.call()
 	if notice != &"":
 		_label(tr(notice), &"PauseMuted")
@@ -94,7 +70,6 @@ func _ready() -> void:
 	band.start_page = true
 	band.service = ad_service
 	slot.host(band)
-	_progression = progression if progression != null else (Progression as ProgressionScript)
 	_listen()
 	_refresh()
 	_apply()
@@ -106,12 +81,10 @@ func _notification(what: int) -> void:
 		_refresh()
 	elif what == NOTIFICATION_EXIT_TREE and _continue != null:
 		routes.changed.disconnect(_refresh)
-		_progression.xp_changed.disconnect(_refresh_rank)
 
 
 func _listen() -> void:
 	routes.changed.connect(_refresh)
-	_progression.xp_changed.connect(_refresh_rank)
 
 
 func _refresh() -> void:
@@ -124,26 +97,6 @@ func _refresh() -> void:
 			shown += 1
 			_numbers[button].text = "%02d" % shown
 			button.theme_type_variation = &"MenuRowOn" if shown == 1 else &"MenuRow"
-	_refresh_rank()
-
-
-func _refresh_rank() -> void:
-	var rank: int = _progression.rank()
-	var total: int = _progression.xp()
-	var floor_xp: int = _progression.rank_floor_xp()
-	var next_xp: int = _progression.next_rank_xp()
-	_insignia.rank = rank
-	_insignia.max_rank = _progression.max_rank()
-	_unlock_label.text = _unlock_text()
-	_rank_label.text = tr(MainMenuText.RANK) % [rank, _progression.title(rank).to_upper()]
-	_xp_bar.min_value = floor_xp
-	_xp_bar.max_value = maxi(next_xp, floor_xp + 1)
-	_xp_bar.value = total
-	_xp_label.text = (
-		tr(MainMenuText.XP_TOP) % total
-		if next_xp <= floor_xp
-		else tr(MainMenuText.XP) % [total, next_xp]
-	)
 
 
 func _open(route: StringName) -> void:
@@ -176,7 +129,7 @@ func _route_button(text_key: StringName, route: StringName) -> Button:
 	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	button.add_child(arrow)
-	_list.add_child(button)
+	column.add_child(button)
 	_routed[button] = route
 	_numbers[button] = number
 	_arrows[button] = arrow
@@ -223,14 +176,8 @@ func _build_header() -> void:
 ## The screen's layout hook: the row is fitted again once every handler of the resize has run.
 func _apply() -> void:
 	super()
-	if _body == null or not is_inside_tree():
+	if _routed.is_empty() or not is_inside_tree():
 		return
-	var room: float = column_room_px()
-	var beside: bool = room >= UiScale.dp(TWO_COLUMNS_DP)
-	_body.vertical = not beside
-	_body.move_child(_card, 1 if beside else 0)
-	if beside:
-		column.custom_minimum_size.x = minf(room, UiScale.dp(TWO_COLUMNS_MAX_DP))
 	var pad: float = UiScale.dp(ITEM_PAD_DP)
 	for button: Button in _routed:
 		var number: Label = _numbers[button]
@@ -266,59 +213,6 @@ func _fit_names() -> void:
 	for label: Label in _names:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL if wrap else Control.SIZE_FILL
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
-
-
-## The commander card: the stripes and the rank title, the XP bar and the next unlock.
-func _build_card() -> void:
-	_card = PanelContainer.new()
-	_card.theme_type_variation = &"MenuRankBadge"
-	_card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_body.add_child(_card)
-	var rows: VBoxContainer = VBoxContainer.new()
-	rows.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	_card.add_child(rows)
-	_add_to(rows, MainMenuText.CARD, &"MenuEyebrow")
-	var head: HBoxContainer = HBoxContainer.new()
-	head.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
-	rows.add_child(head)
-	_insignia = RankInsignia.new()
-	head.add_child(_insignia)
-	_rank_label = _add_to(head, &"", &"MenuRankLabel")
-	_rank_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_rank_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_xp_bar = ProgressBar.new()
-	_xp_bar.theme_type_variation = &"MenuXpBar"
-	_xp_bar.show_percentage = false
-	_xp_bar.custom_minimum_size.y = UiScale.dp(XP_BAR_DP)
-	rows.add_child(_xp_bar)
-	_xp_label = _add_to(rows, &"", &"")
-	_add_to(rows, MainMenuText.NEXT, &"MenuEyebrow")
-	_unlock_label = _add_to(rows, &"", &"")
-	_unlock_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-
-
-func _add_to(parent: Control, text_key: StringName, variation: StringName) -> Label:
-	var label: Label = Label.new()
-	label.text = tr(text_key) if text_key != &"" else ""
-	label.theme_type_variation = variation
-	parent.add_child(label)
-	return label
-
-
-## The next unlock in words: the map's name or the computer's level, and the rank that opens it.
-func _unlock_text() -> String:
-	var next: Dictionary = _progression.next_unlock()
-	if next.is_empty():
-		return tr(MainMenuText.UNLOCK_DONE)
-	var id: StringName = next[&"id"] as StringName
-	var at: int = int(next[&"rank"])
-	if next[&"kind"] == &"map":
-		var maps: MapCatalog = catalog if catalog != null else load(MapCatalog.DEFAULT_PATH)
-		var title: String = maps.title(id)
-		return tr(MainMenuText.UNLOCK_MAP) % [title if title != "" else str(id), at]
-	var word: StringName = MapSelect.LEVEL_TEXT.get(id, &"") as StringName
-	var level: String = tr(word).capitalize() if word != &"" else str(id)
-	return tr(MainMenuText.UNLOCK_OPPONENT) % [level, at]
 
 
 func _label(text: String, variation: StringName) -> Label:

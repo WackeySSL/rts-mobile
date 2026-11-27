@@ -20,7 +20,7 @@ func _ready() -> void:
 	_bar = ProgressBar.new()
 	_bar.theme_type_variation = &"MenuXpBar"
 	_bar.show_percentage = false
-	_bar.custom_minimum_size.y = UiScale.dp(MainMenu.XP_BAR_DP)
+	_bar.custom_minimum_size.y = UiScale.dp(RankScreen.XP_BAR_DP)
 	column.add_child(_bar)
 	add_button(tr(MainMenuText.RESTORE_CANCEL), MenuFlow.cancel_restore)
 	MenuFlow.restore_started.connect(_on_started)

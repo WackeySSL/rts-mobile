@@ -11,6 +11,7 @@ const SKIRMISH: StringName = &"skirmish"  # P525 (map select)
 const TUTORIAL: StringName = &"tutorial"  # P544 (TutorialScreen)
 const HOW_TO_PLAY: StringName = &"how_to_play"  # P527
 const SETTINGS: StringName = &"settings"  # P526
+const RANK: StringName = &"rank"  # P664 (RankScreen)
 const CONTINUE: StringName = &"continue"  # P515 (resume)
 const LICENCES: StringName = &"licences"  # P529 (LicencesScreen)
 

@@ -27,6 +27,7 @@ const TOLERANCE_PX: float = 0.5
 const TOUCH_DP: float = 48.0
 const SETTLE_FRAMES: int = 2
 const MAIN: StringName = &"main"
+const RANK: StringName = &"rank"
 const MAP_SELECT: StringName = &"map_select"
 const SETTINGS: StringName = &"settings"
 const HOW_LIST: StringName = &"how_to_play_list"
@@ -109,8 +110,9 @@ func test_the_profiles_cover_the_six_sizes_and_their_portrait_twins() -> void:
 	assert_int(portrait).is_greater_equal(ScreenSizes.PORTRAIT.size())
 
 
-func test_the_main_menu_fits_at_every_size() -> void:
+func test_the_main_menu_and_the_rank_screen_fit_at_every_size() -> void:
 	await _check_every_size(MAIN, false)
+	await _check_every_size(RANK, false)
 
 
 func test_the_map_select_fits_at_every_size() -> void:
@@ -275,7 +277,7 @@ func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
 	for kind: StringName in [
-		MAIN, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
+		MAIN, RANK, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
 	]:
 		await _check_turns(kind, false)
 
@@ -650,7 +652,6 @@ func _make_screen(kind: StringName) -> MenuScreen:
 	match kind:
 		MAIN:
 			var main: MainMenu = MainMenu.new()
-			main.progression = _progression
 			main.ad_service = _ads
 			main.resume_check = func() -> bool: return true  # Continue shows: the tallest column.
 			return main
@@ -672,6 +673,15 @@ func _make_screen(kind: StringName) -> MenuScreen:
 			if kind == HOW_LONG_SECTION:
 				how.help = _long_help(60)
 			return how
+	return _make_other(kind)
+
+
+## The screens that need little set-up: Rank, Tutorial, and the build's own Licences.
+func _make_other(kind: StringName) -> MenuScreen:
+	if kind == RANK:
+		var rank: RankScreen = RankScreen.new()
+		rank.progression = _progression
+		return rank
 	if kind == TUTORIAL:
 		var tutorial: TutorialScreen = TutorialScreen.new()
 		tutorial.flow = _flow

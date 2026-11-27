@@ -53,11 +53,13 @@ func _check_defaults() -> void:
 	assert_int(_stack.depth()).is_equal(1)
 	var main: MainMenu = _stack.current() as MainMenu
 	var enabled: Array[String] = []
-	for child: Node in main._list.get_children():  # Continue is enabled, shown only with a file.
+	for child: Node in main.column.get_children():  # Continue is enabled, shown only with a file.
 		var button: Button = child as Button
 		if button != null and not button.disabled:
 			enabled.append(button.text)
-	assert_array(enabled).is_equal(["CONTINUE", "SKIRMISH", "TUTORIAL", "HOW TO PLAY", "SETTINGS"])
+	assert_array(enabled).is_equal(
+		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK", "HOW TO PLAY", "SETTINGS"]
+	)
 	for button: Button in main.items():
 		if button.text == "HOW TO PLAY":
 			button.emit_signal("pressed")

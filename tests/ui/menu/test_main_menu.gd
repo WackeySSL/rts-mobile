@@ -6,7 +6,6 @@ extends GdUnitTestSuite
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const SAVE_SCRIPT: String = "res://game/meta/save_service.gd"
-const SERVICE_SCRIPT: String = "res://game/meta/progression_service.gd"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.gd")
@@ -22,7 +21,6 @@ var _main: MainMenu
 var _ads: Node
 var _harness: RefCounted
 var _save: Node
-var _progression: Node
 var _routes: MenuRoutes
 var _resume: Array[bool] = [false]
 var _notice: Array[StringName] = [&""]
@@ -44,8 +42,6 @@ func before_test() -> void:
 	DirAccess.make_dir_recursive_absolute(_dir)
 	_save = (load(SAVE_SCRIPT) as GDScript).new()
 	_save.call("set_path_override", _dir.path_join("save.cfg"))
-	_progression = (load(SERVICE_SCRIPT) as GDScript).new()
-	_progression.call("bind", _save, null)
 	_routes = MenuRoutes.new()
 	_resume[0] = false
 	_notice[0] = &""
@@ -63,7 +59,7 @@ func after_test() -> void:
 	_close()
 	MenuRoutes.shared.clear()
 	ProjectSettings.set_setting(VERSION_KEY, _version_before)
-	for node: Node in [_ads, _save, _progression]:
+	for node: Node in [_ads, _save]:
 		if is_instance_valid(node):
 			node.free()
 	if _harness != null:
@@ -113,7 +109,7 @@ func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes
 				. override_failure_message(label)
 				. is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
 			)
-		assert_int(shown).override_failure_message(label).is_equal(5)
+		assert_int(shown).override_failure_message(label).is_equal(6)
 		_close()
 		UiScale.clear_override()
 	# Every upright size fits; at least one sideways size scrolls and is checked by scrolling.
@@ -144,21 +140,6 @@ func test_the_slot_is_0_tall_without_a_banner() -> void:
 	assert_float(_main.slot.get_global_rect().end.y).is_equal_approx(
 		UiScale.safe_rect_base().end.y, TOLERANCE_PX
 	)
-
-
-func test_the_xp_bar_and_rank_follow_xp_changed() -> void:
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	assert_float(_main._xp_bar.value).is_equal(0.0)
-	assert_str(_main._rank_label.text).contains("RANK 1")
-	var summary: MatchSummary = MatchSummary.new()
-	summary.outcome = &"win"
-	summary.level = &"normal"
-	summary.ticks = 5 * 900
-	var award: XpAward = _progression.call("award_match", summary) as XpAward
-	assert_int(award.base_xp).is_greater(0)
-	assert_float(_main._xp_bar.value).is_equal(float(_progression.call("xp")))
-	assert_str(_main._xp_label.text).contains(str(_progression.call("xp")))
-	assert_float(_main._xp_bar.max_value).is_equal(float(_progression.call("next_rank_xp")))
 
 
 func test_continue_shows_only_with_a_resume_file() -> void:
@@ -241,23 +222,6 @@ func test_the_version_line_shows_the_version_or_only_the_copyright() -> void:
 	assert_bool(texts.any(func(text: String) -> bool: return text.contains(" · "))).is_false()
 
 
-func test_the_xp_bar_at_the_top_rank_is_full() -> void:
-	_save.call("set_section", &"progress", {"xp": 5000})
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	var top: int = int(_progression.call("max_rank"))
-	assert_str(_main._rank_label.text).contains("RANK %d" % top)
-	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.max_value)
-	assert_str(_main._xp_label.text).is_equal("5000 XP")
-
-
-func test_the_xp_bar_exactly_at_a_rank_floor_is_empty() -> void:
-	_save.call("set_section", &"progress", {"xp": 250})
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	assert_str(_main._rank_label.text).contains("RANK 3")
-	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.min_value)
-	assert_float(_main._xp_bar.min_value).is_equal(250.0)
-
-
 func _open(profile: UiMetrics, consent: bool) -> void:
 	assert_object(profile).is_not_null()
 	UiScale.set_override(profile)
@@ -275,7 +239,6 @@ func _open(profile: UiMetrics, consent: bool) -> void:
 	_stack.quit_handler = func() -> void: _quits[0] += 1
 	_main = MainMenu.new()
 	_main.routes = _routes
-	_main.progression = _progression
 	_main.ad_service = _ads
 	_main.resume_check = func() -> bool: return _resume[0]
 	_main.take_notice = func() -> StringName: return _notice[0]
@@ -309,3 +272,49 @@ func _profile_with_window(size: Vector2i) -> UiMetrics:
 				return profiles[profile_name]
 	assert_bool(false).override_failure_message("no profile for %s" % size).is_true()
 	return null
+
+
+func test_the_rows_are_in_order_and_there_is_no_rank_block() -> void:
+	_resume[0] = true
+	_routes.register(MenuRoutes.RANK, MenuScreen.new)
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var words: Array[String] = []
+	var numbers: Array[String] = []
+	for item: Button in _main.items():
+		words.append(item.text)
+		numbers.append(_main._numbers[item].text)
+	assert_array(words).is_equal(
+		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK", "HOW TO PLAY", "SETTINGS"]
+	)
+	assert_array(numbers).is_equal(["01", "02", "03", "04", "05", "06"])
+	assert_array(_all_of(_main.column, ProgressBar)).is_empty()  # No XP bar on the front page.
+	for text: String in _label_texts():
+		assert_bool(text.begins_with("RANK ") or text.ends_with(" XP")).is_false()
+	_resume[0] = false
+	_main._refresh()
+	assert_int(_main.items().size()).is_equal(5)
+	assert_str(_main._numbers[_main.items()[0]].text).is_equal("01")
+
+
+func test_the_rank_row_opens_the_rank_screen_through_the_routes() -> void:
+	_routes.register(MenuRoutes.RANK, RankScreen.new)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
+	for item: Button in _main.items():
+		if item.text == "RANK":
+			item.pressed.emit()
+	assert_object(_stack.current()).is_instanceof(RankScreen)
+
+
+func _label_texts() -> Array[String]:
+	var texts: Array[String] = []
+	_collect(_main.column, texts)
+	return texts
+
+
+func _all_of(node: Node, type: Variant) -> Array[Node]:
+	var found: Array[Node] = []
+	for child: Node in node.get_children():
+		if is_instance_of(child, type):
+			found.append(child)
+		found.append_array(_all_of(child, type))
+	return found

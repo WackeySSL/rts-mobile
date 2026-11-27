@@ -120,7 +120,6 @@ func show(next: MenuScreen) -> void:
 func main_menu() -> MainMenu:
 	var main: MainMenu = MainMenu.new()
 	main.routes = MenuRoutes.new()
-	main.progression = progression
 	main.ad_service = ads
 	main.resume_check = func() -> bool: return false
 	main.take_notice = func() -> StringName: return &""
