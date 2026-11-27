@@ -7,6 +7,7 @@ const Buildings: GDScript = preload("res://tests/view/support/building_rig.gd")
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
 const SAFE: Rect2 = Rect2(0.0, 0.0, 1280.0, 720.0)
 const NO_RECTS: Dictionary[StringName, Rect2] = {}
+const NO_BUTTONS: Array[Rect2] = []
 
 var _runner: MatchRunner
 var _camera: RtsCamera
@@ -48,7 +49,7 @@ func _aim(side: TutorialUnitPickDef.Whose, pick: TutorialUnitPickDef.Pick) -> Tu
 
 
 func _update(aim: TutorialLeadInDef) -> void:
-	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud)
+	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, NO_BUTTONS)
 
 
 func _tick() -> void:

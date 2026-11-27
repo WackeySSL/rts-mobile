@@ -11,7 +11,7 @@ extends RefCounted
 ## the lower id. Enemies count only on cells the local player sees; buildings never.
 
 const MIN_HALF_DP: float = 24.0  ## The ring is never smaller than this half size.
-const THROUGH_BAND_DP: float = CoachMark.THROUGH_BAND_DP  ## The band a button's rect grows by.
+const THROUGH_BAND_DP: float = 8.0  ## A card button's rect grows by this to clear (and the card's).
 
 var unit_id: int = -1  ## The held unit, -1 for none.
 var point: Vector2 = Vector2.INF  ## Its tap point on the screen, base px; INF: no ring, no hand.
@@ -43,7 +43,7 @@ func update(
 	safe: Rect2,
 	dp: float,
 	rects: Dictionary[StringName, Rect2],
-	buttons: Array[Rect2] = []
+	buttons: Array[Rect2]
 ) -> void:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	var sel: TutorialUnitPickDef = aim.unit if aim != null else null
@@ -60,17 +60,20 @@ func update(
 		_tick = snap.tick
 		if unit_id >= 0 and not _holds(snap, sel, runner):
 			unit_id = -1
+			_under = false  # The next pick starts clear of a button.
 		if unit_id < 0:
 			_scan(snap, sel, runner, camera)
 	if unit_id < 0:
 		point = Vector2.INF
 		in_field = false
+		_under = false
 		return
 	flyer = WorldSort.is_flyer(snap, _type)
 	var world: Vector2 = air.tap_point(unit_id) if flyer else ground.tap_point(unit_id)
 	if world == Vector2.INF:
 		point = Vector2.INF
 		in_field = false
+		_under = false
 		return
 	point = camera.world_to_screen(world)
 	var ring: float = IsoProjection.ellipse_px(snap.type_selection_radius[_type]).x * camera.zoom.x

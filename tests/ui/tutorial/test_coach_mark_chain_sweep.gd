@@ -61,6 +61,7 @@ var _selection: SelectionModel
 var _camera: RtsCamera
 var _air: AirLayer
 var _proofs: Array[String] = []  ## The "lesson/beat WxH" of every touch proof that ran.
+var _button_hits: Array[String] = []  ## The proof keys where a unit stood under a card button.
 var _proof_key: String = ""
 var _sent: Array[Command] = []  ## What the controller sent since the last touch proof.
 var _own: PackedInt32Array = PackedInt32Array()
@@ -104,6 +105,7 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 	var judged: int = 0
 	var chained: int = 0
 	_proofs.clear()
+	_button_hits.clear()
 	for lesson: TutorialLessonDef in _lessons():
 		for profile: UiMetrics in profiles:
 			await _open(lesson, profile)
@@ -133,6 +135,12 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 			if not _proofs.has(key):
 				missing.append(key)
 	assert_array(missing).override_failure_message("no touch proof: %s" % [missing]).is_empty()
+	assert_array(_button_hits).override_failure_message("no unit met a card button").is_not_empty()
+	(
+		assert_array(_button_hits)
+		. override_failure_message("support/mine at 2400x912 no longer meets Next")
+		. contains(["support/mine 2400x912"])
+	)
 	for line: String in found:
 		print("CHAIN ", line)
 	print("CHAIN judged ", judged, " chained ", chained)
@@ -591,7 +599,11 @@ func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef)
 	# Under a visible card button the unit is not in the field and the hand is not a TAP: it drags
 	# (ADR 0048 section 13.5). A finger then pans a unit that is out of the field to where it can be
 	# tapped: first centred, then on the lower part of the screen.
+	# The check here uses the plain rect, while the anchor keeps "under" out to the 8 dp band. They
+	# agree where it matters: `in_field` is true only outside the grown rect, hence outside the plain
+	# one, so the pan loop (ends on `in_field`) and the final check (plain rect) cannot disagree.
 	if _under_a_card_button(unit.point):
+		_button_hits.append(_proof_key)
 		if unit.in_field:
 			lines.append("%s: unit %d is in the field under a card button" % [label, id])
 		if _mark.gesture_plan().kind == TutorialBeatDef.Gesture.TAP:
