@@ -31,6 +31,11 @@ const NAMES: Dictionary[StringName, String] = {
 ## The rule's band in the default view of zoom 1, and the band every other direction keeps.
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
+## A model at detail 2 (P642, the Nordvaern side) wears a small marker in the key colour: the
+## general rule of 2 to 12 % in the default view (ADR 0050 section 3), and in the other directions
+## a band from 1 % (a plate or a band seen from behind or below is thin).
+const SHARE_OPTED: Vector2 = Vector2(0.02, 0.12)
+const SHARE_WIDE_OPTED: Vector2 = Vector2(0.01, 0.16)
 ## The hover a sheet may ask for, world px at zoom 1: high enough to clear the shadow and the ring
 ## under it, low enough that the hull still belongs to them. `AirLayer.DEFAULT_FLY_PX` is 28.
 const FLY_PX: Vector2i = Vector2i(16, 36)
@@ -169,11 +174,11 @@ func test_the_ring_on_the_ground_and_the_bar_at_the_hull_suit_the_lift() -> void
 		)
 
 
-func test_the_team_share_of_the_default_view_is_8_to_12_percent_at_zoom_1() -> void:
+func test_the_team_share_of_the_default_view_is_in_its_band_at_zoom_1() -> void:
 	for id: StringName in IDS:
 		var share: float = _share(id, _model(id).default_dir())
 		assert_float(share).override_failure_message("%s team share %.3f" % [id, share]).is_between(
-			SHARE.x, SHARE.y
+			_band(id, false).x, _band(id, false).y
 		)
 
 
@@ -184,7 +189,7 @@ func test_the_team_share_holds_in_every_direction_at_zoom_1() -> void:
 			(
 				assert_float(share)
 				. override_failure_message("%s d%02d: %.3f" % [id, dir, share])
-				. is_between(SHARE_WIDE.x, SHARE_WIDE.y)
+				. is_between(_band(id, true).x, _band(id, true).y)
 			)
 
 
@@ -236,6 +241,13 @@ func _drawn_widths(id: StringName) -> Vector2:
 		var wide: float = float(_picture(id, dir).get_used_rect().size.x)
 		found = Vector2(minf(found.x, wide), maxf(found.y, wide))
 	return found
+
+
+## The team share band of `id`: the general band of a model at detail 2, else the old one.
+func _band(id: StringName, wide: bool) -> Vector2:
+	if _model(id).detail >= 2:
+		return SHARE_WIDE_OPTED if wide else SHARE_OPTED
+	return SHARE_WIDE if wide else SHARE
 
 
 func _model(id: StringName) -> ArtModel:
