@@ -35,7 +35,7 @@ density = Vector2(30, 75)
 shadow_alpha = Vector2(0.3, 0.4)
 spread_min = 80.0
 ; The saturation is judged twice (P638): `tone_sat` over the neutral body only, the pixels that are
-; not fixed faction material (hue within `faction_hue_band` of Nordvaern orange or Facet blue at a
+; not fixed faction material (hue within `faction_hue_band` of Ironward orange or Facet blue at a
 ; saturation of `faction_sat_min` or more) and not the marker, because orange and blue panels are
 ; saturated by design and FACTION_SHARE and TEAM_SHARE already bound their area; and
 ; `tone_sat_all_max` over every opaque pixel, so a sprite that is nearly all panel still fails.

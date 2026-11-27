@@ -33,7 +33,7 @@
 [resource]
 script = ExtResource("1_faction")
 id = &"fossil"
-display_name = "Nordværn"
+display_name = "Ironward"
 emblem = &"emblem_fossil"
 key_triad = PackedStringArray("#F07AF0", "#D234D2", "#9A1F9A")
 roster = Array[ExtResource("2_unit")]([ExtResource("3_hq"), ExtResource("4_power"), ExtResource("5_refinery"), ExtResource("6_barracks"), ExtResource("7_factory"), ExtResource("8_radar"), ExtResource("9_defence"), ExtResource("10_strike"), ExtResource("99_space"), ExtResource("98_aa"), ExtResource("97_airfield"), ExtResource("94_engineering"), ExtResource("90_weld"), ExtResource("11_rifle"), ExtResource("12_rocket"), ExtResource("89_patchers"), ExtResource("13_scout"), ExtResource("14_tank"), ExtResource("15_artillery"), ExtResource("16_tanker"), ExtResource("96_fighter"), ExtResource("95_bomber"), ExtResource("93_bunk"), ExtResource("92_shot")])

@@ -18,7 +18,7 @@ const SHADES: Array[float] = [1.0, 0.82, 0.62]
 const SENTINEL: Array[String] = ["#F07AF0", "#D234D2", "#9A1F9A"]
 ## The key triad of each faction: the sentinel for both (the per-faction triads are retired).
 const KEYS: Dictionary[StringName, Array] = {&"fossil": SENTINEL, &"renew": SENTINEL}
-## The fixed faction material: Nordvaern orange, Facet blue (the HUD accents' hues, STYLE.md).
+## The fixed faction material: Ironward orange, Facet blue (the HUD accents' hues, STYLE.md).
 const FACTION: StringName = &"faction"
 ## ADR 0023 section 6 as changed by the key band: rust #6E5D50, lamp #FFF1D6 (warm white), glass
 ## #B4C8CF and mint #A8F5B0 replace the canvas colours that fell in a key colour's hue band.

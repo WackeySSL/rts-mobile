@@ -1,5 +1,5 @@
 extends GdUnitTestSuite
-## Plan P607 (ADR 0049 section 2): the factions are Nordvaern (orange, id `fossil`) and Facet (blue,
+## Plan P607 (ADR 0049 section 2): the factions are Ironward (orange, id `fossil`) and Facet (blue,
 ## id `renew`). `FactionDef.display_name` is the one source; the menus' side names are its upper
 ## case (the two translation tables keep their keys, ADR 0049 section 2). No player text still
 ## holds the old names. The lesson text (`data/tutorial/`) is P608's and is not scanned here.
@@ -22,7 +22,7 @@ const PLAYER_TEXT: Array[String] = [
 
 
 func test_the_shipped_display_names() -> void:
-	assert_str((load(FACTIONS[&"fossil"]) as FactionDef).display_name).is_equal("Nordværn")
+	assert_str((load(FACTIONS[&"fossil"]) as FactionDef).display_name).is_equal("Ironward")
 	assert_str((load(FACTIONS[&"renew"]) as FactionDef).display_name).is_equal("Facet")
 
 
@@ -33,8 +33,7 @@ func test_the_side_names_are_the_faction_names_in_upper_case() -> void:
 	assert_str(MainMenuText.ENGLISH[MainMenuText.SIDE_RENEW]).is_equal(renew)
 	assert_str(MapSelectText.ENGLISH[MapSelectText.SIDE_FOSSIL]).is_equal(fossil)
 	assert_str(MapSelectText.ENGLISH[MapSelectText.SIDE_RENEW]).is_equal(renew)
-	# The upper case keeps the ae ligature as one letter.
-	assert_str(fossil).is_equal("NORDVÆRN")
+	assert_str(fossil).is_equal("IRONWARD")
 
 
 func test_no_player_text_holds_an_old_name() -> void:
