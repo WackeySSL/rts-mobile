@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialUnitPickDef.gd" id="10_unit"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_basics.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/basics_enemy.tres" id="4_enemy"]
 
@@ -272,6 +273,12 @@ prompt_key = &"tutorial.basics.rally"
 covers = Array[StringName]([&"orders-rally"])
 budget_s = 3
 
+[sub_resource type="Resource" id="Beat_21_select"]
+script = ExtResource("9_lead")
+anchor_control = &"AllArmy"
+kind = 1
+type_id = &"rifle_squad"
+
 [sub_resource type="Resource" id="Beat_21"]
 script = ExtResource("2_beat")
 id = &"groups"
@@ -283,6 +290,7 @@ count = 1
 value = 1
 covers = Array[StringName]([&"groups-save", &"groups-overwrite", &"groups-column"])
 budget_s = 8
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_21_select")])
 
 [sub_resource type="Resource" id="Beat_22"]
 script = ExtResource("2_beat")
@@ -292,13 +300,26 @@ covers = Array[StringName]([&"combat-under-attack"])
 after_ai_step = &"wave"
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_23_unit"]
+script = ExtResource("10_unit")
+side = 1
+
+[sub_resource type="Resource" id="Beat_23_select"]
+script = ExtResource("9_lead")
+anchor_control = &"AllArmy"
+kind = 1
+type_id = &"rifle_squad"
+
 [sub_resource type="Resource" id="Beat_23"]
 script = ExtResource("2_beat")
 id = &"attack"
 prompt_key = &"tutorial.basics.attack"
+anchor = 3
+unit = SubResource("Beat_23_unit")
 kind = 7
 covers = Array[StringName]([&"orders-attack", &"combat-keep-fighting"])
 budget_s = 15
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_23_select")])
 
 [sub_resource type="Resource" id="Beat_24"]
 script = ExtResource("2_beat")
