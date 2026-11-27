@@ -19,7 +19,9 @@ func _end_heights(batch: BakeMesh.Batch, at: Vector3) -> Array[float]:
 	var found: Array[float] = []
 	for v: Vector3 in batch.vertices:
 		if absf(v.x - at.x) < 0.0001 and absf(v.z - at.y) < 0.0001:
-			found.append(snappedf(v.y, 0.0001))
+			var height: float = snappedf(v.y, 0.0001)
+			if not found.has(height):
+				found.append(height)
 	found.sort()
 	return found
 
@@ -32,7 +34,7 @@ func test_the_same_seed_gives_the_same_wall_and_another_seed_another() -> void:
 func test_both_ends_are_pinned_whatever_the_seed() -> void:
 	for at: Vector3 in [FOOT_A, FOOT_B]:
 		var one: Array[float] = _end_heights(_wall(1), at)
-		assert_int(one.size()).is_greater(10)
+		assert_int(one.size()).is_equal(21)
 		assert_array(one).is_equal(_end_heights(_wall(99), at))
 	var w: BakeMesh.Batch = _wall(4)
 	assert_array(_end_heights(w, FOOT_A)).is_equal(_end_heights(w, FOOT_B))
