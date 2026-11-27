@@ -338,10 +338,30 @@ func _check_every_size(kind: StringName, must_scroll: bool) -> void:
 		var label: String = _label(kind, profile_name)
 		assert_int(_stack.depth()).override_failure_message(label).is_equal(_depth_of(kind))
 		var scrolls: bool = await _assert_layout(label)
+		_assert_backdrop(label)
 		if must_scroll:
 			assert_bool(scrolls).override_failure_message(label + " must scroll").is_true()
 		_close()
 		UiScale.clear_override()
+
+
+## P663: the picture covers the whole screen, in the crop whose aspect is nearer the screen's.
+func _assert_backdrop(label: String) -> void:
+	var backdrop: MenuBackdrop = _stack.get_node("MenuBackdrop") as MenuBackdrop
+	var view: Vector2 = get_viewport().get_visible_rect().size
+	var picture: TextureRect = backdrop.get_node("Picture") as TextureRect
+	assert_vector(picture.get_global_rect().size).override_failure_message(label).is_equal_approx(
+		view, Vector2(1, 1)
+	)
+	var best: float = INF
+	var nearest: Texture2D = null
+	for path: String in [MenuBackdrop.WIDE_ART, MenuBackdrop.TALL_ART]:
+		var texture: Texture2D = load(path) as Texture2D
+		var off: float = absf(log(view.x / view.y * texture.get_height() / texture.get_width()))
+		if off < best:
+			best = off
+			nearest = texture
+	assert_object(picture.texture).override_failure_message(label).is_same(nearest)
 
 
 ## The kind turned between each pair of sizes, both ways. `must_hold` demands that at least one
@@ -601,6 +621,7 @@ func _open(kind: StringName, profile: UiMetrics) -> void:
 	add_child(_menu)
 	_stack = _menu.get_node("MenuStack") as MenuStack
 	_stack.slide_ms = 0
+	MenuBackdrop.attach(_stack)  # P663: every screen is checked with the picture under it.
 	_root = null
 	if kind == TUTORIAL:
 		_root = _make_screen(MAIN)  # The tutorial opens over the main menu.

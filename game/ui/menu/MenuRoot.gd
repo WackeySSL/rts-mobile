@@ -32,6 +32,7 @@ func _ready() -> void:
 	if stack == null:
 		push_error("MenuRoot: no MenuStack at %s (from %s)" % [stack_path, get_path()])
 		return
+	MenuBackdrop.attach(stack)
 	if register_defaults:
 		MenuRoutesDefaults.register(routes)
 	var main: MainMenu = MainMenu.new()
