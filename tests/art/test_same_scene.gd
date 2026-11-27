@@ -78,7 +78,9 @@ func test_todays_art_holds_every_band() -> void:
 func test_a_sprite_lit_from_the_south_east_fails_the_light_bands() -> void:
 	for id: StringName in [SCOUT, HQ]:
 		assert_array(_problems(id)).is_empty()
-	var flipped: SameScene.Sprite = SameScene.sprite(SCOUT, _bands, 1.0)
+	# The Swift's own light is a thin 0.042 left over right since its body went gunmetal (P658): its
+	# flip reads -0.036, above the band's floor, so the Facet HQ (0.099) is the sprite that is flipped.
+	var flipped: SameScene.Sprite = SameScene.sprite(&"renew_hq", _bands, 1.0)
 	flipped.body.flip_x()
 	assert_str("\n".join(_problems_of(flipped))).contains("left_right")
 	flipped = SameScene.sprite(HQ, _bands, 1.0)
