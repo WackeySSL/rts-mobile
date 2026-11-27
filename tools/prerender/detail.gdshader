@@ -7,6 +7,7 @@ uniform vec3 base : source_color = vec3(0.2);
 uniform float metal = 0.4;
 uniform float rough = 0.5;
 uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas, 6 ground
+uniform vec3 phase = vec3(0.0); // the terrain kit's per-piece shift of the finest grain
 uniform float wear_amount = 1.0;
 uniform float dirt_amount = 1.5;
 uniform sampler2D nz : repeat_enable, filter_linear_mipmap;
@@ -47,9 +48,15 @@ void fragment() {
 	float met = metal;
 	float rgh = rough;
 	if (kind == 6) {
-		// Ground (the terrain kit): two soft mottles, each a whole number of periods per tile, so
-		// the mottle runs on across the seam to the next tile. No dust, mud, streaks or wear.
-		ALBEDO = base * (0.80 + 0.40 * tri(mp, mn, 2.0)) * (0.93 + 0.14 * tri(mp, mn, 6.0));
+		// Ground (the terrain kit), after P653's grain: a soft mottle and two finer scales, each a
+		// whole number of periods per tile so they run on across the seam; only the finest takes
+		// the piece's `phase`, so the variants differ in grain, not in colour. Water (low
+		// roughness) is calmer. No dust, mud, streaks or wear.
+		float amp = mix(0.4, 1.0, smoothstep(0.1, 0.5, rough));
+		float soft = tri(mp, mn, 1.0) - 0.5;
+		float mid = tri(mp, mn, 2.0) - 0.5;
+		float fine = tri(mp + phase, mn, 4.0) - 0.5;
+		ALBEDO = base * (1.0 + amp * (0.75 * soft + 0.6 * mid + 0.4 * fine));
 		METALLIC = metal;
 		ROUGHNESS = rough;
 	} else if (kind == 3 || kind == 4) {

@@ -3235,8 +3235,8 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 | --- | --- | --- | --- | --- |
 | `base` | every terrain | variant 0 to 3 (the cell hash picks one; they differ in where details sit, not in hue) | 24 | 128 x 64 |
 | `blend` | a lower terrain, in the look of the higher one (sand, scrub, ore) | `side_ne/se/sw/nw`, `corner_n/e/s/w` | 24 | 128 x 64 |
-| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 90 |
-| `shore` | water | the same twelve | 12 | 128 x 64 to 72 |
+| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 94 |
+| `shore` | water | the same twelve | 12 | 128 x 64 |
 | `road` | grass or sand, replaces the base | `nw_se`, `ne_sw`, `nw_ne`, `ne_se`, `se_sw`, `sw_nw` | 12 | 128 x 64 |
 
 - **Masks** name the neighbours that differ. Edge neighbours are `ne` (grid y - 1), `se` (x + 1),
@@ -3253,43 +3253,57 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 - **Lip rule.** A flat piece (base, blend, road) is exactly 64 texels tall. Only a rock lip or a
   water shore rises above its diamond's top corner, by at most 36 texels (the bake refuses a piece
   that reaches the canvas top, 36 above the corner; `tests/art/test_terrain_kit.gd` pins 64 to 100).
-  Shipped: lips rise 0 to 26 texels, shores 0 to 8. Rock and water are the cells that cost 0 for
+  Shipped: lips rise 0 to 30 texels, shores 0 (a flat rim). Rock and water are the cells that cost 0 for
   all three move classes, so no unit stands behind a rising part. Nothing under 2 art px across is
   modelled.
 - **Seamless.** The ground reaches 0.02 tile (about 1 texel) past each edge, never past a corner,
   so two tiles overlap and no hairline shows; its mottling repeats a whole number of times per tile
   and so runs on across the seam. A lip's or a stone's shadow is baked (the bake's sun, along +gx,
   at the shadow band's alpha where the geometry leaves the ground bare).
-- **Palette** (mean over the four base pieces of a terrain, rendered sRGB; today's twelve SVG
-  diamonds measured the same way in brackets). The hue stays within 4 degrees of today's, the
-  saturation is held to 0.29 or less (ADR 0053 section 8's calm ground), the value is today's:
+- **Look** (reworked after Michael's no on 2026-11-27 to the first kit: stones everywhere, colours too
+  dark; his reference is the P653 prototype's terrain, `docs/proto/p653/terrain_z1.png`). A base piece
+  is a flat sheet in the terrain's colour with a soft grain (three scales, whole periods per tile,
+  amplitude about 5 % of the value): no stones, bushes, flecks or rings. Only one of the four grass
+  variants (`base_2`) and one of the four rock variants (`base_3`) carry a boulder, one each, a
+  rounded chunk 0.22 to 0.28 tile wide and 6 to 9 texels tall. Scrub is the grass tone a step
+  darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, with
+  cliff walls of narrow vertical columns in three tones under a lighter cap (front walls 47 texels
+  tall, back walls 33). Water is a calm blue sheet, a wet bank on the water cell's open side and a
+  thin light foam rim in front of it. Roads are asphalt with a worn dashed line and a gravel
+  shoulder. Hues follow P653's (grass olive-khaki, hue 62), not today's diamonds'.
+- **Palette** (mean over the four base pieces of a terrain, rendered sRGB; P653's terrain areas
+  measured the same way in brackets, `-` where P653 has no such area):
 
 | Terrain | Mean | Hue | Saturation | Value |
 | --- | --- | --- | --- | --- |
-| grass | #798F68 (#6E8E56) | 94 (95) | 0.27 (0.39) | 0.56 (0.56) |
-| sand | #CCBA93 (#CCB88F) | 41 (41) | 0.28 (0.30) | 0.80 (0.80) |
-| scrub | #5E6A4D (#5C6943) | 85 (81) | 0.27 (0.36) | 0.42 (0.41) |
-| rock | #716D68 (#716D68) | 34 (33) | 0.08 (0.08) | 0.44 (0.44) |
-| water | #5F7685 (#2E5E7D) | 204 (204) | 0.29 (0.63) | 0.52 (0.49) |
-| ore | #52443B (#524339) | 24 (26) | 0.28 (0.31) | 0.32 (0.32) |
+| grass | #93946F | 62 (60) | 0.25 (0.22 to 0.28) | 0.58 (0.58 to 0.60) |
+| sand | #C7B58F | 41 (-) | 0.28 (-) | 0.78 (-) |
+| scrub | #7D8561 | 73 (-) | 0.27 (-) | 0.52 (-) |
+| rock | #756C62 | 32 (33) | 0.16 (0.18) | 0.46 (0.44) |
+| water | #3E6479 | 201 (202) | 0.49 (0.49) | 0.48 (0.48) |
+| ore | #605044 | 26 (-) | 0.29 (-) | 0.38 (-) |
 
-  The look is calmer than the diamonds, most of all the water (saturation 0.29, not 0.63), which is
-  the price of the saturation ceiling; Michael judges it in P659. No pixel is in the key band (hue
-  300 +- 20 degrees, saturation 0.30 or more) and none is a faction or route-triad colour.
-- **Measured now, not yet a gate** (P656e sets the bands; zoom 1, tiles box-filtered to 64 x 32,
-  the four base pieces of a terrain, the Skirmish roster's eight units over a 3 x 3 patch):
+  Rock cliff walls (the 12 lips) measure saturation 0.13, value 0.44 (P653's cliff 0.10 and 0.45 to
+  0.48). The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
+  key band (hue 300 +- 20 degrees, saturation 0.30 or more).
+- **Water is over the ground ceiling.** Water's mean saturation is 0.49, as P653's, so it is above
+  ADR 0053 section 8's 0.30 and in the route triad's blue hue band (100 % of it at saturation 0.35
+  or more); P653's own water does the same. The ceiling holds for the grass, sand, scrub, rock and
+  ore of a scene; whether it is judged on a mix or per terrain is for P656e and Michael.
+- **Measured now, not yet a gate** (P656e sets the bands; zoom 1, tiles box-filtered to 64 x 32, the
+  four base pieces of a terrain, the Skirmish roster's eight units over a 3 x 3 patch):
 
-| Terrain | Mean saturation (at most 0.30) | In a route triad's hue band (at most 5 %) | Edges per 100 px2 (at most 30) | Lowest 32 px greyscale spread (at least 80) |
+| Terrain | Mean saturation | In a route triad's hue band | Edges per 100 px2 (P653's) | Lowest 32 px greyscale spread (at least 80) |
 | --- | --- | --- | --- | --- |
-| grass | 0.271 | 0.00 % | 18.8 | 118.8 |
-| sand | 0.276 | 0.00 % | 14.7 | 144.8 |
-| scrub | 0.271 | 0.00 % | 16.8 | 113.7 |
-| rock | 0.084 | 0.00 % | 25.4 | 114.2 |
-| water | 0.286 | 0.00 % | 13.7 | 113.3 |
-| ore | 0.278 | 0.00 % | 13.8 | 116.2 |
+| grass | 0.248 | 0.00 % | 4.7 (3.4 to 7.4) | 118.1 |
+| sand | 0.281 | 0.00 % | 12.3 (-) | 136.2 |
+| scrub | 0.270 | 0.00 % | 7.8 (-) | 115.1 |
+| rock | 0.162 | 0.00 % | 1.2 (18.6 on P653's grainier plateau) | 113.9 |
+| water | 0.486 | 100 % | 0.0 (0.0) | 113.6 |
+| ore | 0.291 | 0.00 % | 4.5 (-) | 114.3 |
 
-- **Budgets.** The 84 files total 0.41 MB (the ADR's budget is 5 MB; the largest piece is 8.1 KB);
-  packed with a 2 px gutter into rows of 4096 px they take 224 rows (the budget is 512).
+- **Budgets.** The 84 files total 0.43 MB (the ADR's budget is 5 MB; the largest piece is 12.7 KB);
+  packed with a 2 px gutter into rows of 4096 px they take 228 rows (the budget is 512).
 
 ## Map looks (P551 and P553, plan answer 5)
 A map may carry its own ground look: `MapDef.ground_look`, a folder name under
@@ -3862,4 +3876,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-26 | v1.57 (P642, art-director, no rule change): the Ironward Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view, the team colour from P652) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passed them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` held 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %; 30 to 65 % and 25 to 75 % from P652) |
 | 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Ironward name in new text is Ironward (Michael, 2026-11-27) |
 | 2026-11-27 | v1.59 (P658, art-director, no rule change; Michael 2026-11-27: SVG units take the P655 probe's palette and silhouette): the gunmetal family (`gunmetal` #2B2E32, `gunsteel` #5C6066, `gunbody` #4A4D52) replaces iron, steel and olive on the 11 Ironward and graphite and titanium on the 7 Facet detail-2 models, new materials so that the buildings and older models are unchanged ("Gunmetal bodies (P658)"); barrels 0.1 tile longer on the Flarejack and the Swift (the Bullhead's and the Torque's stay, see "Gunmetal bodies (P658)"); the Drillhead widened so that no direction reads under 25 % team (the P652 exception is gone); the Linemen's reel hub widened to 0.19;  the two mirror pages and the cross page re-pinned (page 1 +1, 0 and +2 on the cross and the two mirror pages, page 2 unchanged) |
-| 2026-11-27 | v1.60 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain; the twelve SVG diamonds and every other ground rule stay as they were |
+| 2026-11-27 | v1.60 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain, against P653's terrain, and the look reworked after Michael's no to the first kit (calm grain, no stones, P653 colours, tall cliff columns); the twelve SVG diamonds and every other ground rule stay as they were |
