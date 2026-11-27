@@ -14,6 +14,8 @@ Source of truth: this file for rules, `docs/GDD.md` for game design,
   0013), each with a GDScript twin in `game/sim/` that stays the reference and the web path.
   No C#.
 - Renderer: **Compatibility** (required for web export and low-end Android).
+  Bake tool only: `tools/prerender/` renders terrain and building sprites with Godot Forward+ under
+  xvfb and pinned Mesa lavapipe; the committed PNGs ship, the game never renders 3D (ADR 0053).
 - 2D isometric (dimetric 2:1, ADR 0023): the sim keeps its square grid and only the view projects;
   landscape and portrait (ADR 0015; the Android build follows the phone's sensor, the web preview
   turns with the phone). Base size 1280x720, stretch mode `canvas_items`, aspect `expand`.
@@ -49,6 +51,7 @@ native/      C++ sim kernels (GDExtension) and their build; godot-cpp is fetched
 data/        unit/building/AI definitions (.tres) - all balance numbers live here
 assets/art/svg/, assets/audio/   see assets/CREDITS.md
 tools/artgen/ the art generator: simple 3D models to SVG frames (ADR 0023)
+tools/prerender/ the bake: our 3D models to pre-rendered terrain and building PNGs (ADR 0053)
 scenes/dev/  developer scenes (art gallery, sandbox maps)
 tests/       gdUnit4 tests mirroring game/
 ```
@@ -93,8 +96,9 @@ release workflow (Michael, 2026-11-17). UMP consent before any ad request. Detai
   other existing game. Factions, units and lore are original.
 - Never copy code from EA's C&C source release or OpenRA. They are GPL and would force the whole
   project to GPL.
-- Assets: only SVG authored in this repo (by hand or by `tools/artgen/`), or CC0/CC-BY with
-  an entry in `assets/CREDITS.md`. Own SVG, model data and audio are © AppCode ApS, all rights
+- Assets: only SVG authored in this repo (by hand or by `tools/artgen/`), PNG for terrain and
+  buildings pre-rendered by `tools/prerender/` from our own in-repo 3D models (Michael,
+  2026-11-27; ADR 0053), or CC0/CC-BY with an entry in `assets/CREDITS.md`. Own SVG, model data and audio are © AppCode ApS, all rights
   reserved (Michael, 2026-11-15; ADR 0046); the code stays MIT. AppCode ApS's own brand files
   (wordmark, mark), supplied by Michael, are allowed unmodified; they are the company's trademark
   and © AppCode ApS, all rights reserved (Michael, 2026-11-15).
