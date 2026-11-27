@@ -9,7 +9,6 @@ extends MenuScreen
 
 const HEADING_VARIATION: StringName = &"CapsTitle"
 const TITLE: String = "LICENCES"
-const BACK: String = "BACK"
 const ALL_LICENCES: String = "ALL LICENCES"
 const CHUNK_CHARS: int = 2000
 
@@ -25,6 +24,7 @@ func _ready() -> void:
 	if catalog == null:
 		catalog = LicenceCatalog.from_build()
 	_entries = catalog.build()
+	use_footer()
 	_show_list()
 
 
@@ -34,6 +34,10 @@ func _apply() -> void:
 	if scroll != null and column != null and is_inside_tree():
 		var bar_px: float = scroll.get_v_scroll_bar().get_combined_minimum_size().x
 		column.custom_minimum_size.x = maxf(column.custom_minimum_size.x - bar_px, 0.0)
+
+
+func screen_name() -> String:
+	return tr(TITLE)
 
 
 func on_back() -> bool:
@@ -49,12 +53,13 @@ func _show_list() -> void:
 	_heading(tr(TITLE))
 	for entry: LicenceEntry in _entries:
 		add_button(entry.title.to_upper(), _show_entry.bind(entry))
-	add_button(tr(BACK), _go_back).set_meta(&"ui_cue", &"ui_back")
+	set_back_name("")
 	scroll.scroll_vertical = 0
 
 
 func _show_entry(entry: LicenceEntry) -> void:
 	open_entry = entry
+	set_back_name(tr(TITLE))  # A text's back goes to the list.
 	_clear()
 	_heading(entry.title)
 	add_button(tr(ALL_LICENCES), _show_list)
@@ -76,12 +81,6 @@ func _chunks(text: String) -> PackedStringArray:
 	if not current.is_empty():
 		chunks.append(current)
 	return chunks
-
-
-func _go_back() -> void:
-	var stack: MenuStack = get_parent() as MenuStack
-	if stack != null:
-		stack.back()
 
 
 func _clear() -> void:

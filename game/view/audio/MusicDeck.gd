@@ -75,6 +75,14 @@ func play(id: StringName) -> bool:
 	return true
 
 
+## A playing player keeps its stream and its playback alive to the end of the process, so the engine
+## reports them ("resources still in use at exit"). Stopping and dropping the streams lets them go.
+func _exit_tree() -> void:
+	for player: AudioStreamPlayer in _players:
+		player.stop()
+		player.stream = null
+
+
 ## Silences both players at once. A sting cut short still emits `sting_finished`. The duck ends.
 func stop() -> void:
 	var cut: StringName = _current
@@ -192,7 +200,10 @@ func _apply() -> void:
 func _new_tween() -> Tween:
 	var tween: Tween = create_tween()
 	_live.append(tween)
-	tween.finished.connect(_live.erase.bind(tween))
+	# Not `.bind(tween)`: a Callable that holds the tween, stored in the tween's own signal, is a
+	# reference cycle that is never freed (one leaked Tween per fade at exit). The weak ref avoids it.
+	var weak: WeakRef = weakref(tween)
+	tween.finished.connect(func() -> void: _live.erase(weak.get_ref()))
 	if _paused:
 		tween.pause()
 	return tween
