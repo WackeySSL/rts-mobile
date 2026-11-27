@@ -97,3 +97,11 @@ each frame's size against its sheet and a source hash that moved.
 it re-bakes every listed model with the default flags and its recorded exposure and compares the
 bytes (exit 1 on a difference). Any other stamp exits 5 and renders nothing: a new image is a
 re-bake row (ADR 0053 section 5).
+
+Caveat: `--check` re-bakes with the default flags plus the recorded exposure. Any other flag
+(`--scale`, `--no-ssao`, `--dirs`, `--team`) is not recorded in the manifest, so art baked with a
+non-default flag will show as a difference.
+
+CI installs the post's Python pins (`python3 -m pip install -r tools/prerender/requirements.txt`
+in a Python 3.13 setup-python step); `verify.sh` installs nothing and fails with that command if
+numpy or Pillow is missing.

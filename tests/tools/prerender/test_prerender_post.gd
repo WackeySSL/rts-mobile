@@ -1,15 +1,23 @@
 extends GdUnitTestSuite
 ## tools/prerender/post.py (plan row P656b): its PNGs hold only IHDR, IDAT and IEND, a clipped
 ## sentinel pixel is refused naming the frame and the count, the box filter and the shadow alpha.
-## It runs `python3 -I`; where numpy and Pillow are not installed (the CI runner has no pip step
-## for them, see the README) the tests return at once.
+## It runs `python3 -I` with the pins of tools/prerender/requirements.txt; a missing numpy or
+## Pillow fails every test (CI installs them in its setup-python step, verify.sh checks them).
 
 const POST: String = "res://tools/prerender/post.py"
 const DIR: String = "user://prerender_post"
 
 
-func _python_ready() -> bool:
-	return OS.execute("python3", ["-I", "-c", "import numpy, PIL"], [], true) == 0
+func _require_python() -> void:
+	var output: Array = []
+	var code: int = OS.execute("python3", ["-I", "-c", "import numpy, PIL"], output, true)
+	(
+		assert_int(code)
+		. override_failure_message(
+			"numpy or Pillow is missing: python3 -m pip install -r tools/prerender/requirements.txt"
+		)
+		. is_equal(0)
+	)
 
 
 func _raw(name: String, colour: Color, scale: int = 4) -> void:
@@ -54,8 +62,7 @@ func _be(b: PackedByteArray, at: int) -> int:
 
 
 func test_the_output_has_no_time_gamma_icc_or_text_chunk_and_is_1x() -> void:
-	if not _python_ready():
-		return
+	_require_python()
 	_raw("a_hull.png", Color8(200, 40, 200))
 	assert_int(_post().code).is_equal(0)
 	var out: String = DIR + "/post/a_hull.png"
@@ -66,8 +73,7 @@ func test_the_output_has_no_time_gamma_icc_or_text_chunk_and_is_1x() -> void:
 
 
 func test_a_clipped_sentinel_pixel_is_refused_naming_the_frame_and_the_count() -> void:
-	if not _python_ready():
-		return
+	_require_python()
 	_raw("bad_hull.png", Color8(255, 60, 220))
 	var run: Dictionary = _post()
 	assert_int(run.code).is_equal(6)
@@ -76,15 +82,13 @@ func test_a_clipped_sentinel_pixel_is_refused_naming_the_frame_and_the_count() -
 
 
 func test_a_saturated_colour_outside_the_key_band_is_not_refused() -> void:
-	if not _python_ready():
-		return
+	_require_python()
 	_raw("red_hull.png", Color8(255, 0, 0))
 	assert_int(_post().code).is_equal(0)
 
 
 func test_the_shadow_frame_is_black_at_the_bands_alpha() -> void:
-	if not _python_ready():
-		return
+	_require_python()
 	_raw("a_shadow.png", Color8(0, 0, 0, 255))
 	assert_int(_post().code).is_equal(0)
 	var pixel: Color = Image.load_from_file(DIR + "/post/a_shadow.png").get_pixel(1, 1)
