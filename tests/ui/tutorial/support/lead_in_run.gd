@@ -24,6 +24,8 @@ var problems: Array[String] = []
 ## States judged, by variant: `closed` and `regressed`.
 var closed: int = 0
 var regressed: int = 0
+## Closed states that needed a start with a selection (see `_closed`).
+var fallbacks: int = 0
 ## States judged by the kind of the step that was undone (`TutorialConditions.Kind` -> count).
 var undone_kinds: Dictionary[int, int] = {}
 ## Beats ("lesson/beat") that were judged at least once.
@@ -85,13 +87,11 @@ func _judge_beat(
 	var closed_state: Dictionary = {
 		"unfold": HudState.Unfold.NONE, "tab": World.Tab.STRUCTURES, "select": ChainRig.NONE
 	}
-	# The drawer closed.
+	# The drawer closed, nothing selected.
 	if midplay:
 		await _midplay(lesson, beat, profile, pair, closed_state)
 	else:
-		var result: Array = await _rig.judge(lesson, beat, profile, closed_state, "closed", true)
-		problems.append_array(result[1] as Array[String])
-	closed += 1
+		await _closed(lesson, beat, profile, closed_state)
 	# Each step undone after the steps up to it were met.
 	for index: int in beat.lead_in.size():
 		for how: int in _ways(beat.lead_in[index]):
@@ -101,6 +101,27 @@ func _judge_beat(
 				await _regress(lesson, beat, profile, closed_state, index, how)
 	if midplay:
 		await _open_again(lesson, profile)  # The plain match again for the beats after it.
+
+
+## The beat in the closed state `state` (the drawer shut, nothing selected), as a player who tapped
+## the map reaches it. Only when that state shows no clean ring does a start with a selection count
+## (a control that exists for a selection alone, such as an order button); `fallbacks` counts those.
+func _closed(
+	lesson: TutorialLessonDef, beat: TutorialBeatDef, profile: UiMetrics, state: Dictionary
+) -> void:
+	await _rig.enter(state)
+	await _rig.show(lesson, beat)
+	var driven: Array = await _rig.drive(lesson, beat, profile, state, "closed", true)
+	if not (driven[1] as Array[String]).is_empty():
+		var result: Array = await _rig.judge(lesson, beat, profile, state, "closed", true)
+		if (result[1] as Array[String]).is_empty():
+			fallbacks += 1
+			driven = result
+			driven.append(1)
+		else:
+			problems.append_array(driven[1] as Array[String])
+	if int(driven[2]) > 0:
+		closed += 1
 
 
 ## How many ways the step can be undone: one, and for a drawer tab a second (another tab opened).
@@ -140,6 +161,8 @@ func _midplay(
 			return
 		var driven: Array = await _rig.drive(lesson, beat, profile, state, "closed", true)
 		problems.append_array(driven[1] as Array[String])
+		if int(driven[2]) > 0:
+			closed += 1
 		return
 	await _regress(lesson, beat, profile, state, index, how, false)
 
@@ -174,16 +197,12 @@ func _regress(
 	else:
 		_rig.selection.clear()  # The fixture's start: nothing selected, so the steps are to do.
 	await _rig.show(lesson, beat)
-	for met: int in index + 1:
-		if _rig.director.active_target() == null:
-			return  # The beat's own condition held already: it ended, nothing to show.
-		if not await _rig.satisfy(beat.lead_in[met]):
-			problems.append(
-				"%s: no hand for step %d (kind %d)" % [label, met, beat.lead_in[met].kind]
-			)
-			return
-	if _rig.director.active_target() == null:
+	var problem: String = await _meet(beat, index)
+	if not problem.is_empty():
+		problems.append("%s: %s" % [label, problem])
 		return
+	if _rig.director.active_target() == null:
+		return  # The beat's own condition held already: it ended, nothing to show.
 	if not await _undo(step, how):
 		problems.append("%s: no way to undo a step of kind %d" % [label, step.kind])
 		return
@@ -203,6 +222,23 @@ func _regress(
 	problems.append_array(driven[1] as Array[String])
 	regressed += 1
 	undone_kinds[step.kind] = int(undone_kinds.get(step.kind, 0)) + 1
+
+
+## Meets the steps 0 to `index` of the beat on show. "" when the chain then stands past `index`
+## (or the beat ended); else what is wrong.
+func _meet(beat: TutorialBeatDef, index: int) -> String:
+	for met: int in index + 1:
+		if _rig.director.active_target() == null:
+			return ""
+		if not await _rig.satisfy(beat.lead_in[met]):
+			return "no hand for step %d (kind %d)" % [met, beat.lead_in[met].kind]
+	var active: TutorialLeadInDef = _rig.director.active_target()
+	if active == null:
+		return ""
+	var at: int = beat.lead_in.find(active) if beat.lead_in.has(active) else beat.lead_in.size()
+	if at <= index:
+		return "the chain did not move past step %d (on %d)" % [index, at]
+	return ""
 
 
 ## Undoes what `satisfy` did for `step`. `how` 1 on a drawer tab opens another tab with the drawer
@@ -254,9 +290,9 @@ func judge_lessons(ids: Array[StringName]) -> void:
 	_suite.assert_int(closed).override_failure_message("closed states").is_equal(
 		beat_ids.size() * count
 	)
-	# One undo per step and way at each profile; a beat that ended before its steps were met (its own
-	# condition held at the start) is not counted, so the floor is what the data gives.
-	_suite.assert_int(regressed).override_failure_message("regressed states").is_greater_equal(
+	# One undo per step and way at each profile, exactly: a beat that ended before its steps were met
+	# would not be counted and so fail this count.
+	_suite.assert_int(regressed).override_failure_message("regressed states").is_equal(
 		int(expected["regressed"]) * count
 	)
 	for kind: int in expected["kinds"]:

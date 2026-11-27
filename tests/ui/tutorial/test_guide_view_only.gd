@@ -16,15 +16,19 @@ extends GdUnitTestSuite
 ## Command the match stamped, the bot's orders and the scripted opponent's. The guide's own taps
 ## (the card's Next, Skip and the drawer tab, the hand, the ring) are UI calls on the director and
 ## send no Command, so there is nothing to exclude.
-## One thing is held still so that the bot's ticks do not depend on wall time: the camera's zoom
-## snap is a Tween of real time, so a run takes a different number of frames to reach a zoom level
-## and the bot, which waits for the level, acts some ticks later (a first version of this suite
-## differed in the third command's tick between two runs of the same guide). The camera of each run
-## gets a copy of its settings with `zoom_snap_ms` 0, which snaps at once.
-## The runs are played at the phone's landscape size only (ScreenSizes.LANDSCAPE[1]). At its
-## portrait twin the bot's command ticks still moved between two runs of the same guide (1220, 1250
-## and 1266 ticks in three runs: a real-time Tween of the upright HUD that the bot waits for, not
-## found), so a portrait comparison would be flaky; it is an open point of plan row P595.
+## Two things are held still so that the bot's ticks do not depend on wall time (a first version
+## differed between two runs of the same guide, in landscape and upright):
+## - the camera's zoom snap is a Tween of real time and the bot waits for the zoom level, so its
+##   command ticks moved: each camera gets a copy of its settings with `zoom_snap_ms` 0;
+## - the match runner ticks by real time in each frame until the bot turns it off, so the frames
+##   waited for after the scene was added played a few ticks (the `welcome` card showed at tick 1,
+##   2 or 3): the runner's `_process` is off as soon as the scene is in the tree.
+## Replay: each run's log is also replayed from the scenario and the seed (`Replay.play`, no
+## controller: the log already holds the scripted opponent's orders, which MatchRunner stamps and
+## records like a player's) to the run's last tick, and must end in the run's hash, so the log is
+## the whole story of the run.
+## The runs are played at the phone's landscape size and at its portrait twin (ScreenSizes), each
+## with its own golden (the bot's taps are screen points).
 
 const Bot: GDScript = preload("res://tests/e2e/support/tutorial_bot.gd")
 const ChainRig: GDScript = preload("res://tests/ui/tutorial/support/chain_rig.gd")
@@ -34,6 +38,8 @@ const LESSON: String = "res://data/tutorial/basics.tres"
 ## The golden of Basics at the landscape phone: ticks the bot played and the World's state hash.
 const GOLDEN_TICKS: int = 1193
 const GOLDEN_HASH: int = -8777520963123993103
+const GOLDEN_TICKS_PORTRAIT: int = 1220
+const GOLDEN_HASH_PORTRAIT: int = 6731924923334771205
 const GOLDEN_COMMAND_WORDS: int = 175
 
 var _window_size_before: Vector2i
@@ -61,10 +67,19 @@ func after_test() -> void:
 
 
 func test_basics_ends_the_same_with_the_guide_on_twice_and_with_reduced_effects() -> void:
-	var landscape: Dictionary = await _three(ScreenSizes.LANDSCAPE[1])
-	assert_int(landscape["ticks"]).override_failure_message("golden ticks").is_equal(GOLDEN_TICKS)
-	assert_int(landscape["hash"]).override_failure_message("golden hash").is_equal(GOLDEN_HASH)
-	assert_int(landscape["words"]).override_failure_message("golden command words").is_equal(
+	var run: Dictionary = await _three(ScreenSizes.LANDSCAPE[1])
+	_assert_golden(run, GOLDEN_TICKS, GOLDEN_HASH, "landscape")
+
+
+func test_basics_ends_the_same_upright_with_the_guide_on_twice_and_with_reduced_effects() -> void:
+	var run: Dictionary = await _three(ScreenSizes.PORTRAIT[1])
+	_assert_golden(run, GOLDEN_TICKS_PORTRAIT, GOLDEN_HASH_PORTRAIT, "portrait")
+
+
+func _assert_golden(run: Dictionary, ticks: int, state_hash: int, label: String) -> void:
+	assert_int(run["ticks"]).override_failure_message(label + " golden ticks").is_equal(ticks)
+	assert_int(run["hash"]).override_failure_message(label + " golden hash").is_equal(state_hash)
+	assert_int(run["words"]).override_failure_message(label + " golden words").is_equal(
 		GOLDEN_COMMAND_WORDS
 	)
 
@@ -87,6 +102,7 @@ func _three(size: Vector2i) -> Dictionary:
 		var which: String = "reduced effects" if other == reduced else "the guide again"
 		assert_bool(other["done"]).override_failure_message(which + " did not end").is_true()
 		assert_str(other["failure"]).override_failure_message(which).is_empty()
+		_report_drift(first, other, which)
 		assert_int(other["ticks"]).override_failure_message(which + ": ticks").is_equal(
 			first["ticks"]
 		)
@@ -98,6 +114,15 @@ func _three(size: Vector2i) -> Dictionary:
 			. override_failure_message(which + ": command log")
 			. is_true()
 		)
+	for run: Dictionary in [first, again, reduced]:
+		var back: Dictionary = run["replayed"]
+		assert_int(back["checked"]).override_failure_message("replay checkpoints").is_equal(
+			Replay.PLAY_MATCHED
+		)
+		assert_int(back["tick"]).override_failure_message("replay ticks").is_equal(back["want"])
+		assert_int(back["hash"]).override_failure_message("replay hash").is_equal(run["hash"])
+	assert_bool(reduced["reduced_on"]).override_failure_message("mark not reduced").is_true()
+	assert_bool(first["reduced_on"]).override_failure_message("mark reduced").is_false()
 	assert_int(first["words"]).override_failure_message("the log holds commands").is_greater(0)
 	return first
 
@@ -119,6 +144,10 @@ func _play(size: Vector2i, reduced: bool) -> Dictionary:
 	var opponents: Array[AiDef] = [lesson.enemy]
 	runner.opponents = opponents
 	add_child(_main)
+	# The runner ticks by real time in every frame until the bot turns it off; the frames waited
+	# for below would play a few ticks of the match before the lesson starts, a different few in
+	# each run (the `welcome` card showed at tick 1, 2 or 3). The bot ticks it from here.
+	runner.set_process(false)
 	await await_idle_frame()
 	# The zoom snap is a Tween of real time; the bot's ticks must not depend on how many frames it
 	# takes. A copy of the settings snaps at once (`RtsCamera._snap_to_level`).
@@ -135,10 +164,36 @@ func _play(size: Vector2i, reduced: bool) -> Dictionary:
 		"hash": runner.world.state_hash(),
 		"log": commands,
 		"words": commands.size(),
+		"shown": result["shown"],
+		"reduced_on": result["reduced"],
+		"replayed": _replayed(runner),
 	}
 	_free_main()
 	CommandQueue.clear()
 	return made
+
+
+## The hash of a fresh World of the run's scenario and seed that replays the run's log up to the
+## run's last tick (no controller: the log already holds the scripted opponent's orders), or 0 and
+## a failure line when the replay does not match its checkpoints.
+func _replayed(runner: MatchRunner) -> Dictionary:
+	var world: World = World.from_scenario(
+		runner.scenario, DetRng.create(runner.match_seed, DetRandom.STREAM_SIM)
+	)
+	runner.replay.apply_setup(world)
+	var ticks: int = runner.world.tick
+	var checked: int = Replay.play(runner.replay, world, ticks)
+	return {"checked": checked, "tick": world.tick, "hash": world.state_hash(), "want": ticks}
+
+
+## Prints the first beat whose card showed at another tick than in `first` (a drift finder).
+func _report_drift(first: Dictionary, other: Dictionary, which: String) -> void:
+	var a: Dictionary = first["shown"]
+	var b: Dictionary = other["shown"]
+	for id: StringName in a:
+		if a[id] != b.get(id):
+			print("DRIFT ", which, " first beat ", id, " ", a[id], " vs ", b.get(id))
+			return
 
 
 func _free_main() -> void:

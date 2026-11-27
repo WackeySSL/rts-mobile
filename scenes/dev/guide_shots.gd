@@ -19,6 +19,7 @@ const PROFILES_PATH: String = "res://tests/support/ui_profiles.gd"
 const SUITE_PATH: String = "res://addons/gdUnit4/src/GdUnitTestSuite.gd"
 const LESSON_DIR: String = "res://data/tutorial/"
 const OUT_ARG: String = "--out="
+const ONLY_ARG: String = "--only="  ## Shoots only the specs whose file name contains this.
 ## The beats shot at every size: the beat ("lesson/beat") and whether the ring is first walked on
 ## along the beat's lead-in to the beat's own step (the army selected before `attack`'s enemy).
 const BEATS: Array[Dictionary] = [
@@ -39,6 +40,7 @@ const SETTLE_FRAMES: int = 8
 const PNG_LIMIT_BYTES: int = 300 * 1024
 
 var _out: String = ""
+var _only: String = ""
 var _suite: Node
 var _rig: RefCounted
 var _midplay: GDScript
@@ -73,6 +75,8 @@ func _ready() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with(OUT_ARG):
 			_out = arg.trim_prefix(OUT_ARG)
+		elif arg.begins_with(ONLY_ARG):
+			_only = arg.trim_prefix(ONLY_ARG)
 	if _out.is_empty():
 		# Opened without --out (the scene scan instantiates every scene): it does nothing.
 		print("guide_shots: pass --out=<dir> after -- to save the shots")
@@ -99,10 +103,14 @@ func _run() -> void:
 	SaveService.set_path_override(dir.path_join("save.cfg"))
 	BuildSidebar.set_slide_ms_override(0)
 	for spec: Dictionary in specs():
-		await _shoot(spec)
+		if _only.is_empty() or String(spec["file"]).contains(_only):
+			await _shoot(spec)
 	BuildSidebar.clear_slide_ms_override()
 	SaveService.clear_path_override()
 	UiScale.clear_override()
+	for file_name: String in DirAccess.get_files_at(dir):
+		DirAccess.remove_absolute(dir.path_join(file_name))
+	DirAccess.remove_absolute(dir)
 
 
 ## One shot: the match at the size, the fixture, the beat shown, the lead-in walked on when asked,
@@ -138,7 +146,8 @@ func _shoot(spec: Dictionary) -> void:
 		if not await _rig.satisfy(_rig.director.active_target()):
 			_failures.append("%s: a lead-in step cannot be met" % spec["file"])
 			break
-	await _hand_shown()
+	if not await _hand_shown():
+		print("guide_shots: WARNING ", spec["file"], " has no hand in it")
 	await RenderingServer.frame_post_draw
 	var image: Image = get_viewport().get_texture().get_image()
 	var path: String = _out.path_join(spec["file"])
@@ -152,18 +161,27 @@ func _shoot(spec: Dictionary) -> void:
 	await get_tree().process_frame
 
 
-## Waits for the ring to settle and for the hand to be on a pose that draws (its loop rests).
-func _hand_shown() -> void:
+## Waits for the ring to settle and for the hand to be on a pose that draws (its loop rests). A
+## DRAG is shot in its still key pose (Reduced effects: the finger on its start point, the arrow
+## showing): mid-travel the press ring sits on whatever the finger has reached. Returns whether a
+## hand shows.
+func _hand_shown() -> bool:
 	for _frame: int in SETTLE_FRAMES:
 		await get_tree().process_frame
 	var hand: GestureHint = _rig.mark.find_child("GestureHint", true, false) as GestureHint
 	if hand == null or not hand.visible:
-		return
+		return false
+	if _rig.mark.gesture_plan().kind == TutorialBeatDef.Gesture.DRAG:
+		_rig.mark.reduced = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+		return hand.draw_pose() != null
 	for _frame: int in HAND_FRAMES:
 		var pose: GestureHint.Pose = hand.draw_pose()
 		if pose != null and pose.alpha >= 1.0 and pose.pressed:
-			return
+			return true
 		await get_tree().process_frame
+	return false
 
 
 func _beat_of(lesson: TutorialLessonDef, id: String) -> TutorialBeatDef:

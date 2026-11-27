@@ -117,7 +117,8 @@ func judge(
 
 
 ## Walks the chain of the beat on show: checks the ring on the active step, satisfies it, checks
-## the next, up to the beat's own target.
+## the next, up to the beat's own target. The result: [a chain of two steps or more was driven,
+## the problems, the steps judged].
 func drive(
 	lesson: TutorialLessonDef,
 	beat: TutorialBeatDef,
@@ -169,7 +170,7 @@ func drive(
 		if next == step:
 			lines.append("%s: the ring stayed on step %d after it was satisfied" % [label, steps])
 			break
-	return [steps >= 2, lines]
+	return [steps >= 2, lines, steps]
 
 
 ## What is wrong with the hand on `step` (ADR 0048 section 6), one line each: a step on a control or
