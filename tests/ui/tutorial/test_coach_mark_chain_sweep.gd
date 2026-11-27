@@ -16,6 +16,7 @@ const Lesson: GDScript = preload("res://tests/ui/tutorial/support/lesson_rig.gd"
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
 const MidPlay: GDScript = preload("res://tests/ui/tutorial/support/midplay_fixture.gd")
 const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
+const TouchEvents: GDScript = preload("res://tests/support/touch_events.gd")
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const LESSON_DIR: String = "res://data/tutorial/"
@@ -53,6 +54,9 @@ var _sidebar: BuildSidebar
 var _mark: CoachMark
 var _director: TutorialDirector
 var _selection: SelectionModel
+var _camera: RtsCamera
+var _air: AirLayer
+var _sent: Array[Command] = []  ## What the controller sent since the last touch proof.
 var _own: PackedInt32Array = PackedInt32Array()
 var _own_buildings: PackedInt32Array = PackedInt32Array()
 
@@ -238,6 +242,10 @@ func _drive(
 		if not problems.is_empty():
 			break
 		steps += 1
+		if step.anchor == TutorialBeatDef.Anchor.UNIT:
+			lines.append_array(await _touch_proof("%s step %d" % [label, steps - 1], beat, step))
+			if beat.lead_in.has(step) and _director.active_target() != step:
+				continue  # The touch passed the lead-in step: the next step is judged.
 		if not beat.lead_in.has(step):  # The beat's own target: the end of the chain.
 			break
 		if not await _satisfy(step):
@@ -274,6 +282,12 @@ func _ring_problems(label: String, step: TutorialLeadInDef) -> Array[String]:
 			var button: BaseButton = target as BaseButton
 			if not target.is_visible_in_tree() or (button != null and button.disabled):
 				lines.append("%s: %s is hidden or disabled" % [label, target.name])
+	if step.anchor == TutorialBeatDef.Anchor.UNIT:
+		var unit: GuideUnitAnchor = _mark.unit_anchor()
+		if unit.unit_id < 0:
+			lines.append("%s: no unit under the ring (selector %s)" % [label, step.unit.type_id])
+		elif unit.in_field and not ring.grow(ring.size.y / 4.0).has_point(unit.point):
+			lines.append("%s: the ring %s is not on the unit at %s" % [label, ring, unit.point])
 	if _mark.card_open() and not _mark.see_through():
 		if _mark.card_rect().intersection(ring).get_area() > OVERLAP_PX2:
 			lines.append("%s: the card %s hides the ring %s" % [label, _mark.card_rect(), ring])
@@ -528,12 +542,95 @@ func _open(lesson: TutorialLessonDef, profile: UiMetrics, scenario: ScenarioDef 
 	_director.sidebar = _sidebar
 	_director.strike_aim = _main.find_children("*", "StrikeAim", true, false)[0] as StrikeAim
 	_main.add_child(_director)
+	_camera = _director.camera
+	_air = _main.find_children("*", "AirLayer", true, false)[0] as AirLayer
+	var controller: PlayerController = (
+		_main.find_children("*", "PlayerController", true, false)[0] as PlayerController
+	)
+	_sent.clear()
+	controller.command_sink = _take_command
 	_mark = CoachMark.new()
 	_mark.director = _director
 	_mark.camera = _director.camera
+	_mark.runner = runner
+	_mark.ground_layer = _main.find_children("*", "UnitLayer", true, false)[0] as UnitLayer
+	_mark.air_layer = _air
 	_mark.hud_root = _feed.get_parent()
 	_feed.get_parent().add_child(_mark)
 	await await_idle_frame()
+
+
+## What a finger does on a `UNIT` step: the unit is panned into the field when it is not in it (as
+## the bot does), a real screen touch is pushed at `target_point()` and the unit must answer: a
+## selecting step selects it, `attack` (the army selected) sends an ATTACK on it. For a flyer the
+## point is its hull, `rig.lift` times the zoom above the shadow's.
+func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef) -> Array[String]:
+	var lines: Array[String] = []
+	var unit: GuideUnitAnchor = _mark.unit_anchor()
+	var id: int = unit.unit_id
+	if id < 0:
+		return lines  # `_ring_problems` told it.
+	# A finger pans a unit that is out of the field, or under one of the card's buttons (they take
+	# a touch even when the card is see-through), to where it can be tapped: first centred, then
+	# on the lower part of the screen.
+	var view: Rect2 = get_viewport().get_visible_rect()
+	for want: Vector2 in [Vector2(0.5, 0.5), Vector2(0.5, 0.65), Vector2(0.25, 0.65)]:
+		if unit.in_field and not _under_a_card_button(unit.point):
+			break
+		var aim: Vector2 = view.position + view.size * want
+		var home: Vector2 = _camera.screen_to_world(unit.point)
+		_camera.centre_on(home + (view.get_center() - aim) / _camera.zoom.x)
+		_camera.force_update_scroll()
+		for _frame: int in 3:
+			await await_idle_frame()
+	if not unit.in_field or unit.unit_id != id or _under_a_card_button(unit.point):
+		lines.append(
+			"%s: unit %d is not in the field after centring (%s)" % [label, id, unit.point]
+		)
+		return lines
+	if unit.flyer:
+		var rig: AirLayer.Rig = _air.rig_of(id)
+		var shadow: Vector2 = _camera.world_to_screen(rig.global_position)
+		var gap: Vector2 = shadow - unit.point
+		if absf(gap.x) > TOLERANCE_PX or absf(gap.y - rig.lift * _camera.zoom.y) > TOLERANCE_PX:
+			lines.append(
+				"%s: the point %s is not the hull (shadow %s)" % [label, unit.point, shadow]
+			)
+	var attack: bool = (
+		beat.kind == TutorialConditions.Kind.ENEMY_LOSSES and not beat.lead_in.has(step)
+	)
+	if not attack:
+		_selection.clear()
+	_sent.clear()
+	var at: Vector2 = unit.point
+	TouchEvents.press(get_viewport(), 0, at)
+	TouchEvents.release(get_viewport(), 0, at)
+	for _frame: int in 3:
+		await await_idle_frame()
+	if attack:
+		var hit: bool = false
+		for command: Command in _sent:
+			hit = hit or (command.type == Command.Type.ATTACK and command.target_id == id)
+		if not hit:
+			lines.append("%s: a touch at %s sent no ATTACK on unit %d" % [label, at, id])
+	elif not _selection.selected.has(id):
+		lines.append("%s: a touch at %s did not select unit %d" % [label, at, id])
+	return lines
+
+
+## Whether a button of the card (Next, Skip, the tab) stands at screen point `at`.
+func _under_a_card_button(at: Vector2) -> bool:
+	for node: Node in _mark.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node as BaseButton
+		if button.is_visible_in_tree() and button.get_global_rect().has_point(at):
+			return true
+	return false
+
+
+## The controller's sink: a copy kept for the touch proof, and the queue takes it as it would.
+func _take_command(command: Command) -> void:
+	_sent.append(command)
+	CommandQueue.submit(command)
 
 
 func _buildings_of(runner: MatchRunner, player: int) -> PackedInt32Array:
