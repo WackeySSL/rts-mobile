@@ -1,7 +1,10 @@
 name: CI
 
-# "verify" is the only required check: format, lint, import, tests, sim smoke and the web
-# export, all through the scripts a developer runs locally. "android-debug-apk" (ADR 0005) follows it,
+# "verify" is the only required check. It is a gate over two parallel jobs that run the scripts a developer runs
+# locally, split (follow-up #87; a PR run took 60-97 min in one job): "checks" (native build, format, lint, import,
+# C++ format, sim smoke, the web export and its browser load guard) and "tests" (4 shards of the gdUnit4 suites,
+# every suite file in exactly one shard, split by scripts/ci/shard-tests.py). "verify" is green only when all
+# of them are. "android-debug-apk" (ADR 0005) follows it,
 # after it installs the NDK and builds the kernel libraries (ADR 0013 section 10), and on a push to main
 # "android-dev-release" publishes that APK as the rolling pre-release.
 # "android-aab" (P410c) follows verify on pull requests and on a push to main and exports the Play bundle with a
@@ -43,7 +46,7 @@ env:
   SCONS_CACHE: /home/runner/.cache/rts-mobile-scons
 
 jobs:
-  verify:
+  checks:
     runs-on: ubuntu-24.04
     # The suite is about 4400 cases and verify ran 29-30 min on push runs (main 1a6209c was
     # cancelled at 29:43); 45 leaves room for growth.
@@ -51,7 +54,10 @@ jobs:
     # and PR #486 was cancelled twice at the 45 min limit; 75 leaves room again.
     # Treadline art (about 8150 cases): the L2 vehicle and squad frames (P638-P640) put verify at
     # 58-73 min on PR runs, and PR #673 was cancelled at the 75 min limit; 100 leaves room again.
-    timeout-minutes: 100
+    # Follow-up #87: the gdUnit4 suites moved to the "tests" shards, so this job is the rest of the old verify
+    # run: about 25-30 min (the web export, its browser check and the native build are the long parts); 50
+    # leaves room for a cold cache.
+    timeout-minutes: 50
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -95,6 +101,14 @@ jobs:
       - name: Offline test of the web load guard
         run: bash scripts/ci/test-check-web-load.sh
 
+      # The test sharding (follow-up #87): the split rule, the union check and the usage errors, offline, on a
+      # fixture tree; then the split of this tree for the 4 shards of the "tests" job (every suite file in
+      # exactly one shard; keep the 4 in step with that job's matrix).
+      - name: Offline test of the test sharding
+        run: |
+          bash scripts/ci/test-shard-tests.sh
+          python3 -I scripts/ci/shard-tests.py --check 4
+
       # verify.sh builds the C++ kernels first and checks their format last (ADR 0013 section 10).
       - name: Install the native toolchain (SCons, clang-format, binutils)
         run: |
@@ -121,13 +135,10 @@ jobs:
           key: ${{ steps.native-key.outputs.key }}
 
       # On this fresh checkout verify.sh builds, seeds and imports with no retry: the fresh-clone
-      # import canary (ADR 0013 section 9).
-      - name: Verify (native build, format, lint, import, tests, C++ format, sim smoke, error scan)
-        run: bash scripts/verify.sh 2>&1 | tee "$RUNNER_TEMP/verify.log"
-
-      # ADR 0013 section 10: the native suites verify.sh ran must have passed. Never inside verify.sh.
-      - name: Check the native suites ran (check-native-tests.sh)
-        run: bash scripts/ci/check-native-tests.sh
+      # import canary (ADR 0013 section 9). The gdUnit4 suites run in the "tests" shards (--no-tests), and
+      # ADR 0013 section 10's check that the native suites passed runs in the shard that holds them.
+      - name: Verify (native build, format, lint, import, C++ format, sim smoke, error scan; no unit tests)
+        run: bash scripts/verify.sh --no-tests 2>&1 | tee "$RUNNER_TEMP/verify.log"
 
       # export-web.sh owns the export checks: Godot version, templates, error scan of its own log,
       # non-empty artifacts, wasm size, threads off and the dev_menu custom feature.
@@ -172,17 +183,9 @@ jobs:
         run: |
           out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/test/export changed the tree"; echo "$out"; exit 1; }
 
-      # P51: the two PERF lines of tests/perf/test_sim_perf.gd, the GDScript one (PERF sim units=) and the native
-      # one (PERF sim impl=native), copied from the verify log. Without the SimKernels library the suite prints a
-      # plain note, which is no PERF line, so only the first shows.
-      # P96: the two PERF lines of tests/perf/test_base_arena_perf.gd (PERF bases units= and PERF bases impl=native
-      # units=), copied the same way under their own heading, after the PERF sim lines, which show as before. Report
-      # only: nothing gates on them. P309: the two PERF lines of tests/perf/test_air_perf.gd (PERF air units= and
-      # PERF air impl=native units=), the same way under their own heading after the bases block. P516b: the one PERF restore line of
-      # tests/perf/test_restore_perf.gd (restore_ticks_per_s, file_bytes and the 15-minute estimate), the same way under its own
-      # heading after the PERF air block, report only. P190: every `WATCH ai ` line (tests/perf/test_ai_perf.gd, P189, and the
-      # determinism suite, P188), copied the same way under their own heading after the bases block, report only. The other WATCH lines (WATCH sim hash_bytes and
-      # WATCH bases hash_bytes among them) stay in the verify log; the summary copies none of them.
+      # The step summary and the job log: the VERIFY SUMMARY of this job. The PERF and WATCH report lines come from
+      # the "tests" shards (scripts/ci/job-summary.sh), since the perf suites run there. Report only; the steps
+      # never fail the job.
       - name: Job summary
         if: always()
         env:
@@ -191,72 +194,12 @@ jobs:
           {
             echo "Godot cache hit: ${CACHE_HIT:-false}"
             echo
-            echo '```'
-            if [ -f "$RUNNER_TEMP/verify.log" ] && grep -q -x '===== VERIFY SUMMARY =====' "$RUNNER_TEMP/verify.log"; then
-              sed -n '/^===== VERIFY SUMMARY =====$/,$p' "$RUNNER_TEMP/verify.log"
-            else
-              echo "no VERIFY SUMMARY block (verify.sh did not finish)"
-            fi
-            echo '```'
-            echo
-            echo '```'
-            grep -a -E '^PERF sim (units=|impl=native)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF line (the perf suite did not run)"
-            echo '```'
-            echo
-            echo '### PERF bases (the base arena, report only)'
-            echo
-            echo '```'
-            grep -a -E '^PERF bases (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
-            echo '```'
-            echo
-            echo '### PERF air (the air arena, report only)'
-            echo
-            echo '```'
-            grep -a -E '^PERF air (units=|impl=native units=)' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF air line (the air perf suite did not run)"
-            echo '```'
-            echo
-            echo '### PERF restore (the resume restore, report only)'
-            echo
-            echo '```'
-            grep -a -E '^PERF restore ' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no PERF restore line (the restore perf suite did not run)"
-            echo '```'
-            echo
-            echo '### WATCH ai (the opponent AI, report-only lines)'
-            echo
-            echo '```'
-            grep -a -E '^WATCH ai ' "$RUNNER_TEMP/verify.log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"
-            echo '```'
+            bash scripts/ci/job-summary.sh --summary "$RUNNER_TEMP/verify.log"
           } >> "$GITHUB_STEP_SUMMARY"
 
-      # P190b: the same report-only lines, one group each in a fixed place after the run (the REST API serves job logs,
-      # not job summaries; the Verify step's own output has them scattered). The step only prints and never fails the job.
       - name: Job log lines
         if: always()
-        run: |
-          log="$RUNNER_TEMP/verify.log"
-          echo "::group::VERIFY SUMMARY"
-          if [ -f "$log" ] && grep -q -x '===== VERIFY SUMMARY =====' "$log"; then
-            sed -n '/^===== VERIFY SUMMARY =====$/,$p' "$log" || true
-          else
-            echo "no VERIFY SUMMARY block (verify.sh did not finish)"
-          fi
-          echo "::endgroup::"
-          echo "::group::PERF sim"
-          grep -a -E '^PERF sim (units=|impl=native)' "$log" 2>/dev/null || echo "no PERF line (the perf suite did not run)"
-          echo "::endgroup::"
-          echo "::group::PERF bases"
-          grep -a -E '^PERF bases (units=|impl=native units=)' "$log" 2>/dev/null || echo "no PERF bases line (the base arena perf suite did not run)"
-          echo "::endgroup::"
-          echo "::group::PERF air"
-          grep -a -E '^PERF air (units=|impl=native units=)' "$log" 2>/dev/null || echo "no PERF air line (the air perf suite did not run)"
-          echo "::endgroup::"
-          echo "::group::PERF restore"
-          grep -a -E '^PERF restore ' "$log" 2>/dev/null || echo "no PERF restore line (the restore perf suite did not run)"
-          echo "::endgroup::"
-          echo "::group::WATCH ai"
-          grep -a -E '^WATCH ai ' "$log" 2>/dev/null || echo "no WATCH ai line (the AI perf suite did not run)"
-          echo "::endgroup::"
-          exit 0
+        run: bash scripts/ci/job-summary.sh --groups "$RUNNER_TEMP/verify.log"
 
       - name: Upload web build
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -265,6 +208,124 @@ jobs:
           path: build/web/
           if-no-files-found: error
           retention-days: 14
+
+  # Follow-up #87: the gdUnit4 suites in 4 parallel shards. scripts/ci/shard-tests.py gives every .gd file below tests/
+  # to exactly one shard by a stable rule (heaviest first to the lightest shard; tests/sim/native/ stays whole,
+  # because check-native-tests.sh reads one results.xml), and checks that the union is the full list. Each shard
+  # builds the kernels and imports (the suites need both), runs its share through verify.sh --shard, and prints
+  # its VERIFY SUMMARY and the PERF and WATCH lines of the suites it holds. fail-fast is off: a red shard does not
+  # hide the others. Estimated 20-25 min per shard (about 7 min of build and import, about 18 min of suites).
+  # Change the matrix and the "--check 4" of the checks job together.
+  tests:
+    name: tests (shard ${{ matrix.shard }} of 4)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Cache Godot editor and web export templates
+        id: godot-cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.local/opt/godot-${{ env.GODOT_VERSION }}
+            ~/.local/share/godot/export_templates/${{ env.GODOT_VERSION }}.stable
+          key: godot-${{ env.GODOT_VERSION }}-linux-x86_64-web-${{ hashFiles('scripts/ci/install-godot.sh', 'scripts/ci/remote_zip.py') }}
+
+      - name: Install Godot (editor + web no-threads templates only)
+        run: bash scripts/ci/install-godot.sh
+
+      # The suites need the kernel library (SCons, binutils) and ffmpeg (the music generator's test); not
+      # gdtoolkit or clang-format, which the checks job uses.
+      - name: Install the native toolchain (SCons, binutils, ffmpeg)
+        run: |
+          pipx install "scons==${SCONS_VERSION}"
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends binutils ffmpeg
+
+      - name: Read the native cache key
+        id: native-key
+        run: |
+          key="$(bash scripts/build-native.sh --print-cache-key)"
+          echo "key=$key" >> "$GITHUB_OUTPUT"
+
+      - name: Cache godot-cpp and the SCons object cache
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            native/godot-cpp
+            ${{ env.SCONS_CACHE }}
+          key: ${{ steps.native-key.outputs.key }}
+
+      # Fails when the shards do not cover the suite list exactly once (a file in no shard or in two).
+      - name: Check that the shards cover every suite file once
+        env:
+          SHARDS: ${{ strategy.job-total }}
+        run: python3 -I scripts/ci/shard-tests.py --check "$SHARDS"
+
+      - name: Verify (native build, import, this shard's suites, error scan)
+        env:
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: bash scripts/verify.sh --shard "$SHARD" 2>&1 | tee "$RUNNER_TEMP/verify.log"
+
+      # ADR 0013 section 10: the native suites must have run and passed. They are one unit of the split, so one
+      # shard holds them all, and results.xml of the others has none. Never inside verify.sh.
+      - name: Check the native suites ran (check-native-tests.sh)
+        env:
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+        run: |
+          if python3 -I scripts/ci/shard-tests.py --shard "$SHARD" | grep -q '^tests/sim/native/'; then
+            bash scripts/ci/check-native-tests.sh
+          else
+            echo "no native suite in shard $SHARD"
+          fi
+
+      - name: Clean-tree check (import and tests must not change the tree)
+        if: success()
+        run: |
+          out="$(git status --porcelain)"; [ -z "$out" ] || { echo "::error::import/tests changed the tree"; echo "$out"; exit 1; }
+
+      - name: Job summary
+        if: always()
+        env:
+          SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}
+          CACHE_HIT: ${{ steps.godot-cache.outputs.cache-hit }}
+        run: |
+          {
+            echo "### tests, shard ${SHARD}"
+            echo
+            echo "Godot cache hit: ${CACHE_HIT:-false}"
+            echo
+            bash scripts/ci/job-summary.sh --summary --perf "$RUNNER_TEMP/verify.log"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Job log lines
+        if: always()
+        run: bash scripts/ci/job-summary.sh --groups --perf "$RUNNER_TEMP/verify.log"
+
+  # The one required check. It is green only when "checks" and every "tests" shard are, so a red result anywhere
+  # turns it red, and the android jobs below, which need it, wait for all of them. A skipped or cancelled needed
+  # job is not green either. The name stays "verify" for the branch protection rule.
+  verify:
+    needs: [checks, tests]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Every verify job must be green
+        env:
+          CHECKS: ${{ needs.checks.result }}
+          TESTS: ${{ needs.tests.result }}
+        run: |
+          echo "checks: $CHECKS"
+          echo "tests (4 shards): $TESTS"
+          [ "$CHECKS" = "success" ] && [ "$TESTS" = "success" ] || { echo "::error::checks or a tests shard is not green"; exit 1; }
 
   # ADR 0013 section 10: a clang -O3 library (the shipped build is NDK clang -O3, the other runs g++ -O2)
   # running the tests/sim/native suites. Not required. gdUnit4 runs only when a suite exists

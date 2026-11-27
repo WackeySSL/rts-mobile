@@ -2,8 +2,35 @@
 # Full verification for rts-mobile: native build, format, lint, import, tests, C++ format, smoke.
 # Prints a VERIFY SUMMARY block and exits 0 only when everything is GREEN.
 # Godot can exit 0 after runtime script errors, so the combined log is scanned as well.
+# Usage: bash scripts/verify.sh              the full run (what a developer runs)
+#        bash scripts/verify.sh --no-tests   everything except the gdUnit4 suites (CI job "checks")
+#        bash scripts/verify.sh --shard I/N  native build, import, shard I of N of the gdUnit4 suites and the
+#                                            error scan, no format, lint, C++ format or smoke (CI "tests" shards)
+# CI runs the two partial modes in parallel jobs; together they are the full run (CI follow-up #87).
 set -uo pipefail
 cd "$(git rev-parse --show-toplevel)" || exit 2
+
+RUN_STATIC=1
+RUN_TESTS=1
+RUN_SMOKE=1
+SHARD=""
+case "${1:-}" in
+  "") ;;
+  --no-tests)
+    [ $# -eq 1 ] || { echo "usage: verify.sh [--no-tests | --shard I/N]" >&2; exit 2; }
+    RUN_TESTS=0
+    ;;
+  --shard)
+    [ $# -eq 2 ] || { echo "usage: verify.sh [--no-tests | --shard I/N]" >&2; exit 2; }
+    SHARD="$2"
+    RUN_STATIC=0
+    RUN_SMOKE=0
+    ;;
+  *)
+    echo "usage: verify.sh [--no-tests | --shard I/N]" >&2
+    exit 2
+    ;;
+esac
 
 if ! command -v godot >/dev/null 2>&1; then
   echo "GODOT MISSING: no 'godot' on PATH in this session."
@@ -33,7 +60,7 @@ for d in game tests scenes; do
   if [ -d "$d" ]; then GD_DIRS+=("$d"); fi
 done
 
-if [ ${#GD_DIRS[@]} -gt 0 ]; then
+if [ "$RUN_STATIC" -eq 1 ] && [ ${#GD_DIRS[@]} -gt 0 ]; then
   if command -v gdformat >/dev/null 2>&1 && command -v gdlint >/dev/null 2>&1; then
     run_step "format (gdformat --check)" gdformat --check "${GD_DIRS[@]}"
     run_step "lint (gdlint)" gdlint "${GD_DIRS[@]}"
@@ -46,16 +73,26 @@ fi
 run_step "seed extension list" bash scripts/seed-extension-list.sh
 run_step "import" godot --headless --path . --import
 
-if [ -f scripts/run-tests.sh ]; then
-  run_step "unit tests (gdUnit4)" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh
+if [ "$RUN_TESTS" -eq 0 ]; then
+  echo "::: unit tests skipped (--no-tests)"
+elif [ -f scripts/run-tests.sh ]; then
+  if [ -n "$SHARD" ]; then
+    run_step "unit tests (gdUnit4, shard ${SHARD})" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh --shard "$SHARD"
+  else
+    run_step "unit tests (gdUnit4)" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh
+  fi
 else
   echo "scripts/run-tests.sh is missing (created in Phase 0)"
   FAILED+=("run-tests.sh missing")
 fi
 
-run_step "C++ format (clang-format)" bash scripts/ci/check-cpp-format.sh
+if [ "$RUN_STATIC" -eq 1 ]; then
+  run_step "C++ format (clang-format)" bash scripts/ci/check-cpp-format.sh
+fi
 
-if [ -f scripts/run-sim-smoke.sh ]; then
+if [ "$RUN_SMOKE" -eq 0 ]; then
+  echo "::: sim smoke skipped (a shard run; the checks job runs it)"
+elif [ -f scripts/run-sim-smoke.sh ]; then
   SMOKE_START=$SECONDS
   run_step "sim smoke (3 seeded AI-vs-AI matches)" env RUN_SIM_SMOKE_SKIP_IMPORT=1 bash scripts/run-sim-smoke.sh --matches 3
   SMOKE_SECS=$((SECONDS - SMOKE_START))
@@ -102,6 +139,8 @@ echo "godot:  $(godot --version 2>/dev/null | head -n 1)"
 DIRTY=""
 if ! git diff --quiet 2>/dev/null; then DIRTY=" (+ uncommitted changes)"; fi
 echo "commit: $(git rev-parse --short HEAD 2>/dev/null)${DIRTY}"
+if [ -n "$SHARD" ]; then echo "shard:  ${SHARD} (gdUnit4 suites only; format, lint, C++ format and smoke run in the checks job)"; fi
+if [ "$RUN_TESTS" -eq 0 ]; then echo "tests:  not run here (--no-tests; the shard jobs run them)"; fi
 if [ -n "$SMOKE_SECS" ]; then echo "smoke:  ${SMOKE_SECS} s (run-sim-smoke.sh --matches 3)"; fi
 if [ ${#FAILED[@]} -eq 0 ]; then
   echo "RESULT: GREEN"

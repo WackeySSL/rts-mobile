@@ -22,10 +22,27 @@ const PLUGIN_INSTALLER_RUN: String = "run: bash scripts/ci/test-install-android-
 const EXPORT_STEP: String = "      - name: Export debug APK"
 const CHECK_STEP: String = "Check the native suites ran (check-native-tests.sh)"
 const CHECK_RUN: String = "run: bash scripts/ci/check-native-tests.sh"
+## Follow-up #87: verify is a gate over the "checks" job (everything but the gdUnit4 suites) and
+## the four shards of the "tests" job (the suites, split by scripts/ci/shard-tests.py).
+const CHECKS_JOB: String = "  checks:"
+const TESTS_JOB: String = "  tests:"
+const GATE_JOB: String = "  verify:"
 const VERIFY_STEP: String = (
-	"Verify (native build, format, lint, import, tests, " + "C++ format, sim smoke, error scan)"
+	"Verify (native build, format, lint, import, C++ format, sim smoke, error scan; "
+	+ "no unit tests)"
 )
-const VERIFY_RUN: String = "run: bash scripts/verify.sh 2>&1 | tee " + '"$RUNNER_TEMP/verify.log"'
+const VERIFY_RUN: String = (
+	"run: bash scripts/verify.sh --no-tests 2>&1 | tee " + '"$RUNNER_TEMP/verify.log"'
+)
+const SHARD_VERIFY_STEP: String = "Verify (native build, import, this shard's suites, error scan)"
+const SHARD_ENV: String = "SHARD: ${{ matrix.shard }}/${{ strategy.job-total }}"
+const SHARD_VERIFY_RUN: String = (
+	'run: bash scripts/verify.sh --shard "$SHARD" 2>&1 | tee ' + '"$RUNNER_TEMP/verify.log"'
+)
+const SHARD_TEST_STEP: String = "Offline test of the test sharding"
+const SHARD_COVER_STEP: String = "Check that the shards cover every suite file once"
+const TESTS_INSTALL_STEP: String = "Install the native toolchain (SCons, binutils, ffmpeg)"
+const SUMMARY_SCRIPT: String = "res://scripts/ci/job-summary.sh"
 const INSTALL_STEP: String = "Install the native toolchain (SCons, %s, binutils)"
 const KEY_STEP: String = "Read the native cache key"
 ## The key is assigned first so that a failing build-native.sh fails this step, not actions/cache.
@@ -74,62 +91,27 @@ const ARM64_CHECK_RUN: String = (
 	+ " --require test_ai_determinism"
 )
 const GODOT_SCRIPT: String = "res://scripts/ci/install-godot.sh"
-## P51: the verify job's summary copies the PERF lines of the verify log.
+## P51: the summary of the tests shards copies the PERF lines of the verify log (job-summary.sh).
 const SUMMARY_STEP: String = "Job summary"
 ## P190b: the step that prints the same blocks to the job log.
 const LOG_STEP: String = "Job log lines"
 const PERF_PATTERN: String = "^PERF sim (units=|impl=native)"
-const PERF_GREP: String = (
-	"grep -a -E '"
-	+ PERF_PATTERN
-	+ "' "
-	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
-	+ ' || echo "no PERF line (the perf suite did not run)"'
-)
 ## P96: under its own heading, after the PERF sim lines, the same step copies the two PERF lines of
 ## the base arena (tests/perf/test_base_arena_perf.gd). Report only.
-const BASES_HEADING: String = "echo '### PERF bases (the base arena, report only)'"
+const BASES_HEADING: String = "PERF bases (the base arena, report only)"
 const BASES_PATTERN: String = "^PERF bases (units=|impl=native units=)"
-const BASES_GREP: String = (
-	"grep -a -E '"
-	+ BASES_PATTERN
-	+ "' "
-	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
-	+ ' || echo "no PERF bases line (the base arena perf suite did not run)"'
-)
 ## P309: after the bases block, the same step copies the two PERF lines of the air arena
 ## (tests/perf/test_air_perf.gd) under a heading of their own. Report only.
-const AIR_HEADING: String = "echo '### PERF air (the air arena, report only)'"
+const AIR_HEADING: String = "PERF air (the air arena, report only)"
 const AIR_PATTERN: String = "^PERF air (units=|impl=native units=)"
-const AIR_GREP: String = (
-	"grep -a -E '"
-	+ AIR_PATTERN
-	+ "' "
-	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
-	+ ' || echo "no PERF air line (the air perf suite did not run)"'
-)
 ## P516b: after the air block, the same step copies the one `PERF restore` line of the resume
 ## restore (tests/perf/test_restore_perf.gd) under a heading of its own. Report only.
-const RESTORE_HEADING: String = "echo '### PERF restore (the resume restore, report only)'"
+const RESTORE_HEADING: String = "PERF restore (the resume restore, report only)"
 const RESTORE_PATTERN: String = "^PERF restore "
-const RESTORE_GREP: String = (
-	"grep -a -E '"
-	+ RESTORE_PATTERN
-	+ "' "
-	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
-	+ ' || echo "no PERF restore line (the restore perf suite did not run)"'
-)
 ## P190: after the bases block, the same step copies every `WATCH ai ` line (P189's think, flow
 ## and peaks lines, P188's determinism lines) under a heading of their own. Report only.
-const WATCH_AI_HEADING: String = "echo '### WATCH ai (the opponent AI, report-only lines)'"
+const WATCH_AI_HEADING: String = "WATCH ai (the opponent AI, report-only lines)"
 const WATCH_AI_PATTERN: String = "^WATCH ai "
-const WATCH_AI_GREP: String = (
-	"grep -a -E '"
-	+ WATCH_AI_PATTERN
-	+ "' "
-	+ '"$RUNNER_TEMP/verify.log" 2>/dev/null'
-	+ ' || echo "no WATCH ai line (the AI perf suite did not run)"'
-)
 const CACHE_STEP: String = "Cache godot-cpp and the SCons object cache"
 const CACHE_KEY: String = "key: ${{ steps.native-key.outputs.key }}"
 ## P55a, the Android job (ADR 0013 sections 8 and 10).
@@ -330,8 +312,8 @@ func test_native_tool_pins_agree_everywhere() -> void:
 func test_verify_job_runs_the_native_script_test() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	var step: int = lines.find("      - name: Offline test of the native scripts")
-	assert_int(step).is_greater(lines.find("  verify:"))
-	assert_int(step).is_less(lines.find(ANDROID_JOB))
+	assert_int(step).is_greater(lines.find(CHECKS_JOB))
+	assert_int(step).is_less(lines.find(TESTS_JOB))
 	assert_str(lines[step + 1]).is_equal("        run: bash scripts/ci/test-native-scripts.sh")
 	assert_str(lines[step + 2].strip_edges()).is_empty()
 
@@ -339,7 +321,7 @@ func test_verify_job_runs_the_native_script_test() -> void:
 ## P55b: the offline test of the cloud Android installer runs in the verify job, the required check
 ## (P410: so does the one of the AdMob plugin installer).
 func test_verify_job_runs_the_installer_tests() -> void:
-	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+	var job: PackedStringArray = _job(_lines("ci.yml"), CHECKS_JOB)
 	_assert_step(job, INSTALLER_STEP, [INSTALLER_RUN])
 	# P410: the offline test of the AdMob plugin installer runs there too.
 	_assert_step(job, PLUGIN_INSTALLER_STEP, [PLUGIN_INSTALLER_RUN])
@@ -347,31 +329,55 @@ func test_verify_job_runs_the_installer_tests() -> void:
 	_assert_step(job, AAB_STEP, [AAB_RUN])
 
 
-## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh.
-func test_verify_job_checks_the_native_suites_after_verify_sh() -> void:
-	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
-	_assert_step(job, VERIFY_STEP, [VERIFY_RUN])
-	_assert_step(job, CHECK_STEP, [CHECK_RUN])
-	_assert_order(job, [VERIFY_STEP, CHECK_STEP])
+## ADR 0013 section 10: check-native-tests.sh is a step after verify.sh, never inside verify.sh. It
+## runs in the shard that holds the native suites (they are one unit of the split), which the step
+## finds with shard-tests.py; the checks job runs no suite, so it has no such step.
+func test_tests_job_checks_the_native_suites_after_verify_sh() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), TESTS_JOB)
+	_assert_step(job, SHARD_VERIFY_STEP, ["env:", SHARD_ENV, SHARD_VERIFY_RUN])
+	_assert_step(
+		job,
+		CHECK_STEP,
+		[
+			"env:",
+			SHARD_ENV,
+			"run: |",
+			(
+				'if python3 -I scripts/ci/shard-tests.py --shard "$SHARD"'
+				+ " | grep -q '^tests/sim/native/'; then"
+			),
+			CHECK_RUN.trim_prefix("run: "),
+			"else",
+			'echo "no native suite in shard $SHARD"',
+			"fi",
+		]
+	)
+	_assert_order(job, [SHARD_VERIFY_STEP, CHECK_STEP])
+	var checks: PackedStringArray = _job(_lines("ci.yml"), CHECKS_JOB)
+	assert_int(checks.find("      - name: " + CHECK_STEP)).is_equal(-1)
 	var verify_sh: String = FileAccess.get_file_as_string("res://scripts/verify.sh")
 	assert_bool(verify_sh.contains("check-native-tests")).is_false()
 
 
-## P51: the summary of the verify job copies the GDScript and the impl=native PERF line, after the
+## P51: the summary of a tests shard copies the GDScript and the impl=native PERF line, after the
 ## VERIFY SUMMARY block, in a step that runs when verify.sh failed too. P96: the same step then
 ## copies the two `PERF bases` lines under a heading of their own (`_assert_perf_bases_summary`).
 ## P190b: the step after it prints the same blocks to the job log (`_assert_log_lines_step`), and
 ## verify.sh's summary gains the smoke seconds line (`_assert_verify_prints_smoke_seconds`).
-func test_verify_job_summary_copies_the_two_perf_lines() -> void:
-	var job: PackedStringArray = _job(_lines("ci.yml"), "  verify:")
+## Follow-up #87: scripts/ci/job-summary.sh holds the selectors, the shards (which run the perf
+## suites) call it with --perf, and the checks job shows the VERIFY SUMMARY alone.
+func test_tests_job_summary_copies_the_perf_lines() -> void:
+	var job: PackedStringArray = _job(_lines("ci.yml"), TESTS_JOB)
 	var step: Array = Array(_step(job, SUMMARY_STEP))
-	assert_array(step).contains(["if: always()", PERF_GREP])
-	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP])
-	var block: int = step.find(
-		"sed -n '/^===== VERIFY SUMMARY =====$/,$p' " + '"$RUNNER_TEMP/verify.log"'
+	assert_array(step).contains(
+		[
+			"if: always()",
+			'bash scripts/ci/job-summary.sh --summary --perf "$RUNNER_TEMP/verify.log"'
+		]
 	)
-	assert_int(block).is_greater(-1)
-	assert_int(step.find(PERF_GREP)).is_greater(block)
+	_assert_order(job, [SHARD_VERIFY_STEP, SUMMARY_STEP])
+	var script: String = FileAccess.get_file_as_string(SUMMARY_SCRIPT)
+	assert_bool(script.contains("sed -n '/^===== VERIFY SUMMARY =====$/,$p' \"$log\"")).is_true()
 	var selected: Array[String] = [
 		"PERF sim units=150 ticks=900 runs=3 mean_ms=1.020 hash=4eb974e71b2107be",
 		"PERF sim impl=native units=150 ticks=900 runs=3 mean_ms=0.308 hash=4eb974e71b2107be",
@@ -391,11 +397,13 @@ func test_verify_job_summary_copies_the_two_perf_lines() -> void:
 	]
 	for line: String in skipped:
 		assert_bool(_perf_selected(line)).is_false()
-	_assert_perf_bases_summary(step)
-	_assert_perf_air_summary(step)
-	_assert_perf_restore_summary(step)
-	_assert_watch_ai_summary(step)
+	_assert_summary_script_selectors(script)
+	_assert_perf_bases_summary(script)
+	_assert_perf_air_summary(script)
+	_assert_perf_restore_summary(script)
+	_assert_watch_ai_summary(script)
 	_assert_log_lines_step(job)
+	_assert_checks_job_summary(_job(_lines("ci.yml"), CHECKS_JOB))
 	_assert_verify_prints_smoke_seconds()
 
 
@@ -465,12 +473,15 @@ func test_arm64_job_builds_a_clang_library_and_runs_the_determinism_suites() -> 
 func test_native_caches_use_the_key_that_build_native_prints() -> void:
 	var lines: PackedStringArray = _lines("ci.yml")
 	assert_array(Array(lines)).contains("  SCONS_CACHE: /home/runner/.cache/rts-mobile-scons")
-	var verify: PackedStringArray = _job(lines, "  verify:")
+	var verify: PackedStringArray = _job(lines, CHECKS_JOB)
 	_assert_step(verify, KEY_STEP, ["id: native-key", "run: |", KEY_ASSIGN % "", KEY_ECHO])
 	_assert_order(verify, [INSTALL_STEP % "clang-format", KEY_STEP, CACHE_STEP, VERIFY_STEP])
+	var shards: PackedStringArray = _job(lines, TESTS_JOB)
+	_assert_step(shards, KEY_STEP, ["id: native-key", "run: |", KEY_ASSIGN % "", KEY_ECHO])
+	_assert_order(shards, [TESTS_INSTALL_STEP, KEY_STEP, CACHE_STEP, SHARD_VERIFY_STEP])
 	var clang: PackedStringArray = _job(lines, "  native-clang:")
 	_assert_order(clang, [INSTALL_STEP % "clang", KEY_STEP, CACHE_STEP, BUILD_STEP])
-	for job: PackedStringArray in [verify, clang]:
+	for job: PackedStringArray in [verify, shards, clang]:
 		_assert_cache_step(job)
 		_assert_job_always_runs(job)
 
@@ -741,15 +752,28 @@ func _assert_cache_step(
 	assert_array(step).contains_exactly(wanted)
 
 
-## P96: the summary step also copies the two `PERF bases` lines, under a heading of their own after
+## Follow-up #87: job-summary.sh holds one section per report-only selector, in this order, each
+## under its heading (the PERF sim one has none).
+func _assert_summary_script_selectors(script: String) -> void:
+	var last: int = -1
+	for entry: Array in [
+		["PERF sim", PERF_PATTERN],
+		["PERF bases", BASES_PATTERN],
+		["PERF air", AIR_PATTERN],
+		["PERF restore", RESTORE_PATTERN],
+		["WATCH ai", WATCH_AI_PATTERN],
+	]:
+		var at: int = script.find('"%s~%s~' % entry)
+		assert_int(at).is_greater(last)
+		last = at
+
+
+## P96: the summary also copies the two `PERF bases` lines, under a heading of their own after
 ## the `PERF sim` block. The `PERF sim` selector is the one P51 set, so what that block shows does
 ## not change: no `PERF bases` line reaches it, and no `PERF sim` line reaches the new one. The
 ## `WATCH` lines (the `WATCH bases hash_bytes` line too) are no `PERF` line.
-func _assert_perf_bases_summary(step: Array) -> void:
-	assert_array(step).contains([BASES_HEADING, BASES_GREP])
-	var heading: int = step.find(BASES_HEADING)
-	assert_int(heading).is_greater(step.find(PERF_GREP))
-	assert_int(step.find(BASES_GREP)).is_greater(heading)
+func _assert_perf_bases_summary(script: String) -> void:
+	assert_bool(script.contains(BASES_HEADING)).is_true()
 	var bases_lines: Array[String] = [
 		"PERF bases units=178 ticks=900 runs=3 mean_ms=1.250 hash=a294900896cc6438",
 		"PERF bases impl=native units=178 ticks=900 runs=3 mean_ms=0.410 hash=a294900896cc6438",
@@ -776,13 +800,10 @@ func _assert_perf_bases_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, BASES_PATTERN)).is_false()
 
 
-## P309: the same step copies the two `PERF air` lines under a heading of their own after the
+## P309: the same summary copies the two `PERF air` lines under a heading of their own after the
 ## `PERF bases` block. The other PERF selectors reach no air line, nor this one theirs.
-func _assert_perf_air_summary(step: Array) -> void:
-	assert_array(step).contains([AIR_HEADING, AIR_GREP])
-	var heading: int = step.find(AIR_HEADING)
-	assert_int(heading).is_greater(step.find(BASES_GREP))
-	assert_int(step.find(AIR_GREP)).is_greater(heading)
+func _assert_perf_air_summary(script: String) -> void:
+	assert_int(script.find(AIR_HEADING)).is_greater(script.find(BASES_HEADING))
 	var air_lines: Array[String] = [
 		"PERF air units=120 ticks=900 runs=3 mean_ms=0.900 hash=a294900896cc6438",
 		"PERF air impl=native units=120 ticks=900 runs=3 mean_ms=0.300 hash=a294900896cc6438",
@@ -806,14 +827,11 @@ func _assert_perf_air_summary(step: Array) -> void:
 		assert_bool(_perf_selected(line, AIR_PATTERN)).is_false()
 
 
-## P516b: the same step copies the `PERF restore` line under a heading of its own after the
+## P516b: the same summary copies the `PERF restore` line under a heading of its own after the
 ## `PERF air` block, before the WATCH ai block. No other selector reaches it, nor this one theirs.
-func _assert_perf_restore_summary(step: Array) -> void:
-	assert_array(step).contains([RESTORE_HEADING, RESTORE_GREP])
-	var heading: int = step.find(RESTORE_HEADING)
-	assert_int(heading).is_greater(step.find(AIR_GREP))
-	assert_int(step.find(RESTORE_GREP)).is_greater(heading)
-	assert_int(step.find(WATCH_AI_HEADING)).is_greater(step.find(RESTORE_GREP))
+func _assert_perf_restore_summary(script: String) -> void:
+	assert_int(script.find(RESTORE_HEADING)).is_greater(script.find(AIR_HEADING))
+	assert_int(script.find(WATCH_AI_HEADING)).is_greater(script.find(RESTORE_HEADING))
 	var line: String = "PERF restore impl=auto ticks=3000 restore_ticks_per_s=3333.3 file_bytes=9000"
 	assert_bool(_perf_selected(line, RESTORE_PATTERN)).is_true()
 	assert_bool(_perf_selected(line)).is_false()
@@ -828,13 +846,11 @@ func _assert_perf_restore_summary(step: Array) -> void:
 		assert_bool(_perf_selected(other, RESTORE_PATTERN)).is_false()
 
 
-## P190: the same step copies every `WATCH ai ` line, under a heading of their own after the
-## `PERF bases` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF line.
-func _assert_watch_ai_summary(step: Array) -> void:
-	assert_array(step).contains([WATCH_AI_HEADING, WATCH_AI_GREP])
-	var heading: int = step.find(WATCH_AI_HEADING)
-	assert_int(heading).is_greater(step.find(AIR_GREP))
-	assert_int(step.find(WATCH_AI_GREP)).is_greater(heading)
+## P190: the same summary copies every `WATCH ai ` line, under a heading of their own after the
+## `PERF restore` block. Neither PERF selector reaches a WATCH line and this one reaches no PERF
+## line.
+func _assert_watch_ai_summary(script: String) -> void:
+	assert_bool(script.contains(WATCH_AI_HEADING)).is_true()
 	var shown: Array[String] = [
 		"WATCH ai think impl=native slots=3 thinks=360 p95_us=412 max_us=900 est_phone_p95_ms=1.2",
 		"WATCH ai flow seed=42 ticks=900 full_ticks=191 hash=4eb974e71b2107be",
@@ -859,34 +875,35 @@ func _assert_watch_ai_summary(step: Array) -> void:
 
 ## P190b: the job log (the REST API serves it, not the job summary) carries the same report-only
 ## lines: one `::group::` each, in a step of their own after the summary, that never fails the job.
+## The step calls job-summary.sh, which exits 0 whatever the log holds.
 func _assert_log_lines_step(job: PackedStringArray) -> void:
+	_assert_order(job, [SHARD_VERIFY_STEP, SUMMARY_STEP, LOG_STEP])
+	_assert_step(
+		job,
+		LOG_STEP,
+		[
+			"if: always()",
+			'run: bash scripts/ci/job-summary.sh --groups --perf "$RUNNER_TEMP/verify.log"'
+		]
+	)
+	var script: String = FileAccess.get_file_as_string(SUMMARY_SCRIPT)
+	assert_bool(script.contains('echo "::group::VERIFY SUMMARY"')).is_true()
+	assert_bool(script.contains('echo "::group::${name}"')).is_true()
+	assert_bool(script.ends_with("exit 0\n")).is_true()
+
+
+## The checks job shows the VERIFY SUMMARY of its own run and no PERF block (it runs no suite).
+func _assert_checks_job_summary(job: PackedStringArray) -> void:
 	_assert_order(job, [VERIFY_STEP, SUMMARY_STEP, LOG_STEP])
-	var body: Array = [
-		"if: always()",
-		"run: |",
-		'log="$RUNNER_TEMP/verify.log"',
-		'echo "::group::VERIFY SUMMARY"',
-		'if [ -f "$log" ] && grep -q -x \'===== VERIFY SUMMARY =====\' "$log"; then',
-		"sed -n '/^===== VERIFY SUMMARY =====$/,$p' \"$log\" || true",
-		"else",
-		'echo "no VERIFY SUMMARY block (verify.sh did not finish)"',
-		"fi",
-		'echo "::endgroup::"',
-	]
-	var groups: Dictionary = {
-		"PERF sim": PERF_GREP,
-		"PERF bases": BASES_GREP,
-		"PERF air": AIR_GREP,
-		"PERF restore": RESTORE_GREP,
-		"WATCH ai": WATCH_AI_GREP
-	}
-	for group: String in groups:
-		var grep: String = groups[group]
-		body.append('echo "::group::%s"' % group)
-		body.append(grep.replace('"$RUNNER_TEMP/verify.log"', '"$log"'))
-		body.append('echo "::endgroup::"')
-	body.append("exit 0")
-	_assert_step(job, LOG_STEP, body)
+	var step: Array = Array(_step(job, SUMMARY_STEP))
+	assert_array(step).contains(
+		["if: always()", 'bash scripts/ci/job-summary.sh --summary "$RUNNER_TEMP/verify.log"']
+	)
+	_assert_step(
+		job,
+		LOG_STEP,
+		["if: always()", 'run: bash scripts/ci/job-summary.sh --groups "$RUNNER_TEMP/verify.log"']
+	)
 
 
 ## P190b: verify.sh times the smoke step and adds one line to its VERIFY SUMMARY, after `commit:`
