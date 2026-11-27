@@ -1004,7 +1004,7 @@ body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and 
 script = ExtResource("3_ent")
 id = &"menus-deploy"
 title = "Starting a match"
-body = "When you tap START on Skirmish, or start a lesson, a still card covers the screen while the match is made. It shows the game icon, the word DEPLOYING and the map's name. It goes away by itself when the match is ready, and also if the match could not start."
+body = "When you tap START on Skirmish, or start a lesson, a still card covers the screen while the match is made. It shows a picture, the word DEPLOYING, the map's name and one tip line, a new tip each time. It goes away by itself when the match is ready, and also if the match could not start."
 
 [sub_resource type="Resource" id="e149"]
 script = ExtResource("3_ent")
