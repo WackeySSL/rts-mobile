@@ -64,6 +64,7 @@ var _air: AirLayer
 var _proofs: Array[String] = []  ## The "lesson/beat WxH" of every touch proof that ran.
 var _button_hits: Array[String] = []  ## The proof keys where a unit stood under a card button.
 var _proof_key: String = ""
+var _pressed: int = 0  ## Presses of the card's buttons during a proof's touch-drag.
 var _sent: Array[Command] = []  ## What the controller sent since the last touch proof.
 var _own: PackedInt32Array = PackedInt32Array()
 var _own_buildings: PackedInt32Array = PackedInt32Array()
@@ -678,6 +679,13 @@ func _drag_proof(label: String, id: int) -> Array[String]:
 		if key != HudCorners.CARD and rect.has_point(plan.point):
 			lines.append("%s: the drag starts at %s under HUD part %s" % [label, plan.point, key])
 	var before: Vector2 = _camera.position
+	_pressed = 0
+	var buttons: Array[BaseButton] = []
+	for node: Node in _mark.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node as BaseButton
+		if button.is_visible_in_tree():
+			button.pressed.connect(_count_press)
+			buttons.append(button)
 	var beat: TutorialBeatDef = _director.current_beat()
 	var progress: Vector2i = _director.progress()
 	var aim: TutorialLeadInDef = _director.active_target()
@@ -693,10 +701,20 @@ func _drag_proof(label: String, id: int) -> Array[String]:
 		await await_idle_frame()
 	if _camera.position.is_equal_approx(before):
 		lines.append("%s: a touch-drag from %s did not pan the camera" % [label, plan.point])
+	for button: BaseButton in buttons:
+		button.pressed.disconnect(_count_press)
+	if _pressed > 0:
+		lines.append("%s: a touch-drag from %s fired a card button's pressed" % [label, plan.point])
 	var held: bool = _director.current_beat() == beat and _director.progress() == progress
 	if not held or _director.active_target() != aim:
-		lines.append("%s: a touch-drag from %s pressed a card button" % [label, plan.point])
+		lines.append(
+			"%s: the beat or its step changed after a touch-drag from %s" % [label, plan.point]
+		)
 	return lines
+
+
+func _count_press() -> void:
+	_pressed += 1
 
 
 ## Whether a button of the card (Next, Skip, the tab) stands at screen point `at`.

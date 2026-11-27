@@ -83,8 +83,61 @@ func test_the_band_and_the_dp_grow_the_buttons_the_start_must_clear() -> void:
 		_plan.resolve(
 			_beat_def, _aim_def, false, Rect2(), _camera, _field_of, SAFE, dp, _settings, _anchor
 		)
+		assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.DRAG)
 		var grown: Rect2 = _buttons[0].grow(GuideUnitAnchor.THROUGH_BAND_DP * dp)
 		assert_bool(grown.has_point(_plan.point)).override_failure_message(str(dp)).is_false()
+
+
+func test_the_nearest_free_point_wins() -> void:
+	_buttons = _tall_button()
+	_run(_buttons)
+	var band: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP
+	# The button reaches 20 px left of the unit and 60 right: its left side is the nearer.
+	assert_float(_plan.point.x).is_equal_approx(_buttons[0].position.x - band, 0.01)
+	assert_float(_plan.point.y).is_equal_approx(_anchor.point.y, 0.01)
+
+
+func test_a_candidate_the_clamp_pushes_into_a_blocked_rect_is_rejected() -> void:
+	_buttons = _tall_button()
+	var top: Rect2 = Rect2(Vector2(0.0, _anchor.point.y - 5.0), SAFE.size)  # Hand box leaves it.
+	_run(_buttons, top)
+	var nearest: Vector2 = _plan.point
+	assert_float(nearest.y - _anchor.point.y).is_greater(12.0)  # The clamp moved it down.
+	var trap: Rect2 = Rect2(nearest - Vector2(10.0, 10.0), Vector2(20.0, 20.0))
+	assert_bool(trap.has_point(Vector2(nearest.x, _anchor.point.y))).is_false()  # Clear before it.
+	_hud[HudCorners.PILL] = trap
+	_run(_buttons, top)
+	assert_bool(_plan.kind == TutorialBeatDef.Gesture.NONE or _plan.point != nearest).is_true()
+	if _plan.kind != TutorialBeatDef.Gesture.NONE:
+		assert_bool(_anchor.clear_at(_plan.point)).is_true()
+		assert_bool(trap.has_point(_plan.point)).is_false()
+
+
+func test_the_card_rect_does_not_block_a_start_inside_it() -> void:
+	_anchor_up()
+	var at: Vector2 = _anchor.point
+	_hud[HudCorners.CARD] = Rect2(at - Vector2(300.0, 200.0), Vector2(600.0, 400.0))
+	_buttons = [Rect2(at - Vector2(30.0, 20.0), Vector2(60.0, 40.0))]
+	_run(_buttons)
+	assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.DRAG)
+	var card: Rect2 = _hud[HudCorners.CARD]
+	assert_bool(card.has_point(_plan.point)).is_true()
+	assert_bool(_buttons[0].grow(GuideUnitAnchor.THROUGH_BAND_DP).has_point(_plan.point)).is_false()
+	var gap: float = GuideUnitAnchor.THROUGH_BAND_DP + GuideHintPlan.START_GAP_DP
+	assert_float(_plan.point.distance_to(at)).is_less(30.0 + gap + 1.0)  # Just outside the band.
+
+
+func test_a_move_along_one_axis_that_lands_in_another_rect_leaves_no_hand() -> void:
+	_anchor_up()
+	var at: Vector2 = _anchor.point
+	_buttons = [Rect2(at - Vector2(20.0, 20.0), Vector2(40.0, 40.0))]
+	# A band along the unit's row stops the x moves, a column through it the y moves; free ground
+	# lies in the corners, but a start moves along one axis only.
+	_hud[HudCorners.PILL] = Rect2(Vector2(0.0, at.y - 60.0), Vector2(SAFE.size.x, 120.0))
+	_hud[HudCorners.BUILD] = Rect2(Vector2(at.x - 60.0, 0.0), Vector2(120.0, SAFE.size.y))
+	_run(_buttons)
+	assert_bool(_anchor.clear_at(Vector2(100.0, 100.0))).is_true()
+	assert_int(_plan.kind).is_equal(TutorialBeatDef.Gesture.NONE)
 
 
 func _field_of() -> Vector2:
@@ -105,14 +158,21 @@ func _buttons_at(count: int) -> Array[Rect2]:
 	return made
 
 
+## One tall button, 20 px left of the unit to 60 px right of it.
+func _tall_button() -> Array[Rect2]:
+	_anchor_up()
+	var at: Vector2 = _anchor.point
+	return [Rect2(at + Vector2(-20.0, -100.0), Vector2(80.0, 200.0))]
+
+
 func _anchor_up() -> void:
 	_anchor.update(_aim_def, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, NO_BUTTONS)
 
 
-func _run(buttons: Array[Rect2]) -> void:
-	_anchor.update(_aim_def, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, buttons)
+func _run(buttons: Array[Rect2], safe: Rect2 = SAFE) -> void:
+	_anchor.update(_aim_def, _runner, _camera, _ground, _air, safe, 1.0, _hud, buttons)
 	_plan.resolve(
-		_beat_def, _aim_def, false, Rect2(), _camera, _field_of, SAFE, 1.0, _settings, _anchor
+		_beat_def, _aim_def, false, Rect2(), _camera, _field_of, safe, 1.0, _settings, _anchor
 	)
 
 

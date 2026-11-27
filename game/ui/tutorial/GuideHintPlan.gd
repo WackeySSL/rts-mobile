@@ -24,6 +24,8 @@ extends RefCounted
 ## itself is shifted in. A unit's drag starts on free field, never under a card button or a HUD
 ## part: its start moves to the nearest free point, and with none there is no hand (`_free_start`).
 
+const START_GAP_DP: float = 1.0  ## A free start lies this far past a blocked rect's grown edge.
+
 var kind: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.NONE
 var point: Vector2 = Vector2.ZERO  ## Where the fingertip starts.
 var vector_dp: Vector2 = Vector2.ZERO  ## The drag's or box's diagonal.
@@ -114,14 +116,15 @@ func resolve(
 
 
 ## Moves the drag's start (`point`) to the nearest free point of the field, keeping the vector: the
-## start itself when it is free, else a point 1 dp past each side of a button grown by the band or
-## of a HUD rect, each with the hand's box brought into `safe`. A drag that starts on a card button
-## would press it, and the map would not pan (plan row P593b-4). False when none is free.
+## start itself when it is free, else a point `START_GAP_DP` past each side of a button or HUD rect
+## grown by the band, each with the hand's box brought into `safe`. A drag that starts on a card
+## button would press it, and the map would not pan (plan row P593b-4). False when none is free.
 @warning_ignore("integer_division")
 func _free_start(unit: GuideUnitAnchor, safe: Rect2, dp: float, settings: GuideSettingsDef) -> bool:
 	var home: Vector2 = point
 	var best: float = INF
 	var pick: Vector2 = Vector2.INF
+	var gap: float = START_GAP_DP * dp
 	_edges.clear()
 	unit.edge_rects(_edges)
 	for turn: int in 1 + _edges.size() * 4:
@@ -130,18 +133,18 @@ func _free_start(unit: GuideUnitAnchor, safe: Rect2, dp: float, settings: GuideS
 			var edge: Rect2 = _edges[(turn - 1) / 4]
 			match (turn - 1) % 4:
 				0:
-					at.x = edge.position.x - dp
+					at.x = edge.position.x - gap
 				1:
-					at.x = edge.end.x + dp
+					at.x = edge.end.x + gap
 				2:
-					at.y = edge.position.y - dp
+					at.y = edge.position.y - gap
 				_:
-					at.y = edge.end.y + dp
+					at.y = edge.end.y + gap
 		point = at
 		at += _inside(_bounds(TutorialBeatDef.Gesture.DRAG, dp, settings, false, false), safe)
-		var gap: float = at.distance_squared_to(unit.point)
-		if gap < best and unit.clear_at(at):
-			best = gap
+		var away: float = at.distance_squared_to(unit.point)
+		if away < best and unit.clear_at(at):
+			best = away
 			pick = at
 	point = pick if pick != Vector2.INF else home
 	return pick != Vector2.INF

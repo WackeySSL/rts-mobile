@@ -28,9 +28,12 @@ var _version: int = -1  ## `rows_version` the held row was read at.
 var _row: int = -1
 var _type: int = -1
 var _under: bool = false  ## The point is under a card button (hysteresis: see `_under_button`).
-var _safe: Rect2 = Rect2()  ## The field's rect, the HUD rects, the buttons and the dp of the last
-var _hud: Dictionary[StringName, Rect2] = {}  ## `update` (the same containers the mark refills):
-var _buttons: Array[Rect2] = []  ## what `clear_at` and `edge_rects` test a point against.
+## The field's rect, the HUD rects, the buttons and the dp of the last `update`, what `clear_at` and
+## `edge_rects` test a point against. The two containers are the mark's own, which it reuses and
+## clears each frame: they are valid only in the frame of `update`.
+var _safe: Rect2 = Rect2()
+var _hud: Dictionary[StringName, Rect2] = {}
+var _buttons: Array[Rect2] = []
 var _dp: float = 1.0
 
 
@@ -110,7 +113,7 @@ func clear_at(at: Vector2) -> bool:
 	return true
 
 
-## Appends the rects `clear_at` refuses (the buttons grown by the band, the HUD rects) to `out`: the
+## Appends the rects `clear_at` refuses (buttons and HUD rects, grown by the band) to `out`: the
 ## edges a free point is looked for along.
 func edge_rects(out: Array[Rect2]) -> void:
 	var band: float = THROUGH_BAND_DP * _dp
@@ -118,7 +121,7 @@ func edge_rects(out: Array[Rect2]) -> void:
 		out.append(rect.grow(band))
 	for key: StringName in _hud:
 		if key != HudCorners.CARD:
-			out.append(_hud[key])
+			out.append(_hud[key].grow(band))
 
 
 ## Whether the point is under a button. It is once inside a plain rect and clear only once outside

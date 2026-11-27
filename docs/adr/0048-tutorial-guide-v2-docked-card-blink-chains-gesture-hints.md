@@ -623,7 +623,11 @@ Checked against the code (`main` at 59efa29b):
   DRAG. The hand then drags the unit clear by the existing out-of-field path.
   That drag starts on the nearest free field point (P593b-4), never under a visible card button
   grown by the band or a HUD rect (`GuideUnitAnchor.clear_at`), with its vector unchanged; with no
-  free point there is no hand, so a finger that follows it pans and never presses Next.
+  free point there is no hand, so a finger that follows it pans and never presses Next. The search
+  moves the start along one axis only, to a point `START_GAP_DP` past a blocked rect grown by the
+  band: where the x move lands in one HUD rect and the y move in another there is no hand (it fails
+  safe). It applies to any off-field UNIT drag, not only under a button. The drag's end is not
+  checked: a Button fires only when the press began on it, and the vector is unchanged.
 - **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
   field gets §6's off-screen `DRAG` from the point (clamped into the safe rect) toward the field's
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it
