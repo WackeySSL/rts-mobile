@@ -59,11 +59,12 @@ func problems() -> PackedStringArray:
 	return found
 
 
-## Builds the pieces of sheet part `part` into `m`.
-func build(part: StringName, m: BakeMesh) -> void:
+## Builds the pieces of sheet part `part` into `m`, leaving out those that reach less than `min_top`
+## tiles high (the terrain kit's shadow skips the flat ground).
+func build(part: StringName, m: BakeMesh, min_top: float = -1.0) -> void:
 	for index: int in parts.size():
 		var piece: DetailPart = parts[index]
-		if piece.part != part:
+		if piece.part != part or piece.top() < min_top:
 			continue
 		for side: int in 2 if piece.mirror else 1:
 			for copy: int in piece.count:

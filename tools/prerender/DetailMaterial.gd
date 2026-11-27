@@ -4,8 +4,9 @@ extends Resource
 ## what the bake's one shader (`detail.gdshader`) needs to paint it.
 
 ## What the shader does with it: a plain body, the team paint (the key colour the recolour finds),
-## running gear (mud, no streaks), glass, an emissive lamp, or cloth.
-enum Kind { BODY, TEAM, GEAR, GLASS, LAMP, CLOTH }
+## running gear (mud, no streaks), glass, an emissive lamp, cloth, or ground (the terrain kit: soft
+## mottling only, no dust, mud or wear).
+enum Kind { BODY, TEAM, GEAR, GLASS, LAMP, CLOTH, GROUND }
 
 @export var id: StringName = &""
 @export var base: Color = Color(0.2, 0.2, 0.2)

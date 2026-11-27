@@ -9,10 +9,13 @@ extends Resource
 ##   dome     `a` centre, `b` the way it faces, `radius`, `segs`
 ##   torus    `a` centre, `b` the axis, `radius` (ring), `radius2` (tube), `segs`, `sides`
 ##   solid    `planes` (nx, ny, nz, d) outward, `bevel`
+##   quad     `a` centre, `size.x` and `size.y` across: one flat face facing up, no sides (ground)
 ## `mirror` adds the copy across y = 0; `count` repeats along `step`, each copy moved by up to
 ## `jitter` of a step from the model's variation seed.
 
-const SHAPES: Array[StringName] = [&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid"]
+const SHAPES: Array[StringName] = [
+	&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid", &"quad"
+]
 
 @export var part: StringName = &"hull"  ## The sheet part it belongs to: hull, turret or head.
 @export var shape: StringName = &"box"
@@ -32,6 +35,22 @@ const SHAPES: Array[StringName] = [&"box", &"bar", &"cylinder", &"dome", &"torus
 @export_range(0.0, 1.0) var jitter: float = 0.0
 
 
+## The highest z the piece reaches, tiles, so a shadow can skip what lies flat on the ground.
+func top() -> float:
+	match shape:
+		&"quad":
+			return a.z
+		&"box", &"bar":
+			return a.z + size.z * 0.5
+		&"cylinder":
+			return maxf(a.z, b.z)
+		&"dome":
+			return a.z + radius * BakeShapes.DOME_RISE
+		&"torus":
+			return a.z + radius2
+	return 1.0
+
+
 ## Adds the piece to `m`; `flip` is the mirrored copy.
 func emit(m: BakeMesh, flip: bool) -> void:
 	var s: Vector3 = Vector3(1.0, -1.0 if flip else 1.0, 1.0)
@@ -46,6 +65,8 @@ func emit(m: BakeMesh, flip: bool) -> void:
 			BakeShapes.dome(m, material, a * s, b * s, radius, segs)
 		&"torus":
 			BakeShapes.torus(m, material, a * s, b * s, radius, radius2, segs, sides)
+		&"quad":
+			BakeShapes.quad(m, material, a * s, Vector2(size.x, size.y))
 		&"solid":
 			var found: Array[Plane] = []
 			for v: Vector4 in planes:

@@ -6,7 +6,7 @@ render_mode diffuse_burley, specular_schlick_ggx;
 uniform vec3 base : source_color = vec3(0.2);
 uniform float metal = 0.4;
 uniform float rough = 0.5;
-uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas
+uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas, 6 ground
 uniform float wear_amount = 1.0;
 uniform float dirt_amount = 1.5;
 uniform sampler2D nz : repeat_enable, filter_linear_mipmap;
@@ -46,7 +46,13 @@ void fragment() {
 	vec3 col = base * (0.86 + 0.28 * n2) * (0.88 + 0.24 * n1) * (1.0 + plate * (kind == 1 ? 0.10 : 0.34));
 	float met = metal;
 	float rgh = rough;
-	if (kind == 3 || kind == 4) {
+	if (kind == 6) {
+		// Ground (the terrain kit): two soft mottles, each a whole number of periods per tile, so
+		// the mottle runs on across the seam to the next tile. No dust, mud, streaks or wear.
+		ALBEDO = base * (0.80 + 0.40 * tri(mp, mn, 2.0)) * (0.93 + 0.14 * tri(mp, mn, 6.0));
+		METALLIC = metal;
+		ROUGHNESS = rough;
+	} else if (kind == 3 || kind == 4) {
 		ALBEDO = col;
 		METALLIC = met;
 		ROUGHNESS = rgh;

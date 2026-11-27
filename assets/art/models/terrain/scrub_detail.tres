@@ -1,0 +1,5629 @@
+[gd_resource type="Resource" script_class="DetailModel" format=3]
+
+[ext_resource type="Script" path="res://tools/prerender/DetailMaterial.gd" id="1_mat"]
+[ext_resource type="Script" path="res://tools/prerender/DetailPart.gd" id="2_part"]
+[ext_resource type="Script" path="res://tools/prerender/DetailModel.gd" id="3_model"]
+
+[sub_resource type="Resource" id="m_ground"]
+script = ExtResource("1_mat")
+id = &"ground"
+base = Color(0.3973, 0.4454, 0.298, 1)
+roughness = 0.92
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_dark"]
+script = ExtResource("1_mat")
+id = &"sc_dark"
+base = Color(0.3377, 0.3786, 0.2533, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_light"]
+script = ExtResource("1_mat")
+id = &"sc_light"
+base = Color(0.445, 0.4988, 0.3338, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_bush"]
+script = ExtResource("1_mat")
+id = &"sc_bush"
+base = Color(0.3417, 0.383, 0.2563, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_tip"]
+script = ExtResource("1_mat")
+id = &"sc_tip"
+base = Color(0.5027, 0.579, 0.3875, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_twig"]
+script = ExtResource("1_mat")
+id = &"sc_twig"
+base = Color(0.4365, 0.3739, 0.2776, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_stone"]
+script = ExtResource("1_mat")
+id = &"sc_stone"
+base = Color(0.4899, 0.4722, 0.4251, 1)
+roughness = 0.8
+kind = 6
+
+[sub_resource type="Resource" id="m_sc_fleck"]
+script = ExtResource("1_mat")
+id = &"sc_fleck"
+base = Color(0.2185, 0.245, 0.1639, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="p0"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p1"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p2"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p3"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p4"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p5"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2894, -0.2289, 0)
+b = Vector3(-0.2894, -0.2289, 0.004)
+radius = 0.1092
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p6"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2674, -0.1716, 0)
+b = Vector3(-0.2674, -0.1716, 0.004)
+radius = 0.0821
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p7"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2638, -0.2848, 0)
+b = Vector3(-0.2638, -0.2848, 0.004)
+radius = 0.0765
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p8"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3116, 0.3365, 0)
+b = Vector3(0.3116, 0.3365, 0.004)
+radius = 0.087
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p9"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3336, 0.2928, 0)
+b = Vector3(0.3336, 0.2928, 0.004)
+radius = 0.0597
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p10"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3603, 0.3414, 0)
+b = Vector3(0.3603, 0.3414, 0.004)
+radius = 0.056
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p11"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2135, 0.0941, 0)
+b = Vector3(0.2135, 0.0941, 0.004)
+radius = 0.0904
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p12"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2047, 0.1442, 0)
+b = Vector3(0.2047, 0.1442, 0.004)
+radius = 0.0716
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p13"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2053, 0.1443, 0)
+b = Vector3(0.2053, 0.1443, 0.004)
+radius = 0.0728
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p14"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.037, -0.1167, 0)
+b = Vector3(0.037, -0.1167, 0.004)
+radius = 0.0941
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p15"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0125, -0.1355, 0)
+b = Vector3(-0.0125, -0.1355, 0.004)
+radius = 0.0678
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p16"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0255, -0.0651, 0)
+b = Vector3(0.0255, -0.0651, 0.004)
+radius = 0.0649
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p17"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.293, -0.1332, 0)
+b = Vector3(0.293, -0.1332, 0.004)
+radius = 0.0981
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p18"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2868, -0.0784, 0)
+b = Vector3(0.2868, -0.0784, 0.004)
+radius = 0.0691
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p19"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.299, -0.1881, 0)
+b = Vector3(0.299, -0.1881, 0.004)
+radius = 0.0634
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p20"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.042, 0.3043, 0)
+b = Vector3(0.042, 0.3043, 0.004)
+radius = 0.1063
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p21"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0142, 0.2839, 0)
+b = Vector3(-0.0142, 0.2839, 0.004)
+radius = 0.0681
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p22"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0355, 0.2448, 0)
+b = Vector3(0.0355, 0.2448, 0.004)
+radius = 0.0815
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p23"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.1124, 0.1037, 0)
+b = Vector3(-0.1124, 0.1037, 0.0587)
+radius = 0.086
+radius2 = 0.0688
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p24"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.113, 0.0786, 0.0492)
+b = Vector3(0, 0, 1)
+radius = 0.0668
+segs = 8
+
+[sub_resource type="Resource" id="p25"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.1119, 0.12, 0.0592)
+b = Vector3(0, 0, 1)
+radius = 0.0543
+segs = 8
+
+[sub_resource type="Resource" id="p26"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.1139, 0.0867, 0.0457)
+b = Vector3(0, 0, 1)
+radius = 0.0525
+segs = 8
+
+[sub_resource type="Resource" id="p27"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.2649, 0.3063, 0)
+b = Vector3(-0.2649, 0.3063, 0.0493)
+radius = 0.0891
+radius2 = 0.0713
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p28"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.2745, 0.2904, 0.0502)
+b = Vector3(0, 0, 1)
+radius = 0.0659
+segs = 8
+
+[sub_resource type="Resource" id="p29"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2619, 0.2653, 0.0562)
+b = Vector3(0, 0, 1)
+radius = 0.0551
+segs = 8
+
+[sub_resource type="Resource" id="p30"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2783, 0.3031, 0.0539)
+b = Vector3(0, 0, 1)
+radius = 0.0641
+segs = 8
+
+[sub_resource type="Resource" id="p31"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.3138, 0.0435, 0)
+b = Vector3(-0.3138, 0.0435, 0.0402)
+radius = 0.0955
+radius2 = 0.0764
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p32"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.3024, 0.0407, 0.0489)
+b = Vector3(0, 0, 1)
+radius = 0.0618
+segs = 8
+
+[sub_resource type="Resource" id="p33"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.3093, 0.0368, 0.0586)
+b = Vector3(0, 0, 1)
+radius = 0.0684
+segs = 8
+
+[sub_resource type="Resource" id="p34"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2987, 0.0378, 0.056)
+b = Vector3(0, 0, 1)
+radius = 0.0629
+segs = 8
+
+[sub_resource type="Resource" id="p35"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.1577, -0.3182, 0)
+b = Vector3(0.1577, -0.3182, 0.0537)
+radius = 0.0891
+radius2 = 0.0713
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p36"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.1574, -0.3171, 0.0434)
+b = Vector3(0, 0, 1)
+radius = 0.0687
+segs = 8
+
+[sub_resource type="Resource" id="p37"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.1714, -0.3228, 0.0433)
+b = Vector3(0, 0, 1)
+radius = 0.055
+segs = 8
+
+[sub_resource type="Resource" id="p38"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.1178, -0.3247, 0.0489)
+b = Vector3(0, 0, 1)
+radius = 0.0612
+segs = 8
+
+[sub_resource type="Resource" id="p39"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.0834, -0.0684, 0.006)
+b = Vector3(-0.1919, -0.05, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p40"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(0.3488, -0.372, 0.006)
+b = Vector3(0.4093, -0.2802, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p41"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.0535, -0.4005, 0.006)
+b = Vector3(0.02, -0.3186, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p42"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.4296, 0.2196, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0252
+segs = 6
+
+[sub_resource type="Resource" id="p43"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3128, -0.406, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0244
+segs = 6
+
+[sub_resource type="Resource" id="p44"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.0839, -0.2427, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0292
+segs = 6
+
+[sub_resource type="Resource" id="p45"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.1183, 0.3463, 0)
+b = Vector3(-0.1183, 0.3463, 0.005)
+radius = 0.0125
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p46"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.0115, 0.107, 0)
+b = Vector3(0.0115, 0.107, 0.005)
+radius = 0.0122
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p47"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.4411, -0.3853, 0)
+b = Vector3(0.4411, -0.3853, 0.005)
+radius = 0.0126
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p48"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.3137, -0.4042, 0)
+b = Vector3(0.3137, -0.4042, 0.005)
+radius = 0.0127
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p49"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p50"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p51"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p52"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p53"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p54"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3445, 0.1426, 0)
+b = Vector3(-0.3445, 0.1426, 0.004)
+radius = 0.0743
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p55"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3031, 0.1366, 0)
+b = Vector3(-0.3031, 0.1366, 0.004)
+radius = 0.0577
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p56"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3798, 0.165, 0)
+b = Vector3(-0.3798, 0.165, 0.004)
+radius = 0.0587
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p57"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0504, -0.0715, 0)
+b = Vector3(0.0504, -0.0715, 0.004)
+radius = 0.0742
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p58"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0828, -0.0452, 0)
+b = Vector3(0.0828, -0.0452, 0.004)
+radius = 0.0516
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p59"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0212, -0.0417, 0)
+b = Vector3(0.0212, -0.0417, 0.004)
+radius = 0.0587
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p60"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1117, 0.1179, 0)
+b = Vector3(-0.1117, 0.1179, 0.004)
+radius = 0.1063
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p61"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.0848, 0.1712, 0)
+b = Vector3(-0.0848, 0.1712, 0.004)
+radius = 0.084
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p62"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1355, 0.1727, 0)
+b = Vector3(-0.1355, 0.1727, 0.004)
+radius = 0.0738
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p63"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3258, -0.0509, 0)
+b = Vector3(0.3258, -0.0509, 0.004)
+radius = 0.094
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p64"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3742, -0.0722, 0)
+b = Vector3(0.3742, -0.0722, 0.004)
+radius = 0.0627
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p65"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3752, -0.0321, 0)
+b = Vector3(0.3752, -0.0321, 0.004)
+radius = 0.0637
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p66"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1571, -0.3332, 0)
+b = Vector3(-0.1571, -0.3332, 0.004)
+radius = 0.0897
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p67"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1577, -0.3837, 0)
+b = Vector3(-0.1577, -0.3837, 0.004)
+radius = 0.0678
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p68"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1584, -0.2828, 0)
+b = Vector3(-0.1584, -0.2828, 0.004)
+radius = 0.0645
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p69"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2884, -0.2747, 0)
+b = Vector3(0.2884, -0.2747, 0.004)
+radius = 0.11
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p70"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.294, -0.2131, 0)
+b = Vector3(0.294, -0.2131, 0.004)
+radius = 0.0853
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p71"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3402, -0.2409, 0)
+b = Vector3(0.3402, -0.2409, 0.004)
+radius = 0.0836
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p72"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.0577, -0.3565, 0)
+b = Vector3(0.0577, -0.3565, 0.0474)
+radius = 0.0888
+radius2 = 0.0711
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p73"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.0546, -0.3522, 0.0527)
+b = Vector3(0, 0, 1)
+radius = 0.0563
+segs = 8
+
+[sub_resource type="Resource" id="p74"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.0192, -0.3504, 0.0414)
+b = Vector3(0, 0, 1)
+radius = 0.0658
+segs = 8
+
+[sub_resource type="Resource" id="p75"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.0489, -0.3771, 0.0581)
+b = Vector3(0, 0, 1)
+radius = 0.0623
+segs = 8
+
+[sub_resource type="Resource" id="p76"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.2577, -0.1119, 0)
+b = Vector3(-0.2577, -0.1119, 0.0577)
+radius = 0.091
+radius2 = 0.0728
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p77"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.2705, -0.1155, 0.0403)
+b = Vector3(0, 0, 1)
+radius = 0.0584
+segs = 8
+
+[sub_resource type="Resource" id="p78"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2482, -0.1014, 0.0541)
+b = Vector3(0, 0, 1)
+radius = 0.0556
+segs = 8
+
+[sub_resource type="Resource" id="p79"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2655, -0.068, 0.0401)
+b = Vector3(0, 0, 1)
+radius = 0.0537
+segs = 8
+
+[sub_resource type="Resource" id="p80"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.2254, 0.3376, 0)
+b = Vector3(0.2254, 0.3376, 0.041)
+radius = 0.0924
+radius2 = 0.074
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p81"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.2315, 0.3383, 0.0503)
+b = Vector3(0, 0, 1)
+radius = 0.053
+segs = 8
+
+[sub_resource type="Resource" id="p82"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.255, 0.3338, 0.0447)
+b = Vector3(0, 0, 1)
+radius = 0.07
+segs = 8
+
+[sub_resource type="Resource" id="p83"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.2694, 0.3498, 0.0563)
+b = Vector3(0, 0, 1)
+radius = 0.0595
+segs = 8
+
+[sub_resource type="Resource" id="p84"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.3553, 0.1646, 0)
+b = Vector3(0.3553, 0.1646, 0.0572)
+radius = 0.0853
+radius2 = 0.0682
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p85"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.3573, 0.1737, 0.0464)
+b = Vector3(0, 0, 1)
+radius = 0.0597
+segs = 8
+
+[sub_resource type="Resource" id="p86"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.373, 0.1762, 0.0556)
+b = Vector3(0, 0, 1)
+radius = 0.0592
+segs = 8
+
+[sub_resource type="Resource" id="p87"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.3415, 0.1925, 0.0544)
+b = Vector3(0, 0, 1)
+radius = 0.0577
+segs = 8
+
+[sub_resource type="Resource" id="p88"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.2873, 0.2892, 0.006)
+b = Vector3(-0.3663, 0.3657, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p89"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(0.0345, 0.3526, 0.006)
+b = Vector3(0.0499, 0.4615, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p90"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.0788, 0.3488, 0.006)
+b = Vector3(-0.0948, 0.4576, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p91"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.2259, 0.1627, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0283
+segs = 6
+
+[sub_resource type="Resource" id="p92"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.4034, -0.1533, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0299
+segs = 6
+
+[sub_resource type="Resource" id="p93"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.1886, 0.0861, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0272
+segs = 6
+
+[sub_resource type="Resource" id="p94"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.1935, 0.2735, 0)
+b = Vector3(-0.1935, 0.2735, 0.005)
+radius = 0.0157
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p95"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.0431, 0.212, 0)
+b = Vector3(0.0431, 0.212, 0.005)
+radius = 0.015
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p96"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.1447, 0.2055, 0)
+b = Vector3(0.1447, 0.2055, 0.005)
+radius = 0.0127
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p97"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.4251, 0.2856, 0)
+b = Vector3(0.4251, 0.2856, 0.005)
+radius = 0.0121
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p98"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p99"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p100"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p101"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p102"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p103"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1899, -0.3215, 0)
+b = Vector3(0.1899, -0.3215, 0.004)
+radius = 0.0928
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p104"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1677, -0.2743, 0)
+b = Vector3(0.1677, -0.2743, 0.004)
+radius = 0.0684
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p105"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1835, -0.3734, 0)
+b = Vector3(0.1835, -0.3734, 0.004)
+radius = 0.0667
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p106"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2849, -0.05, 0)
+b = Vector3(-0.2849, -0.05, 0.004)
+radius = 0.0947
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p107"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3188, -0.0911, 0)
+b = Vector3(-0.3188, -0.0911, 0.004)
+radius = 0.0733
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p108"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3076, -0.0982, 0)
+b = Vector3(-0.3076, -0.0982, 0.004)
+radius = 0.0693
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p109"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1571, -0.2157, 0)
+b = Vector3(-0.1571, -0.2157, 0.004)
+radius = 0.0898
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p110"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2064, -0.2042, 0)
+b = Vector3(-0.2064, -0.2042, 0.004)
+radius = 0.0656
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p111"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1288, -0.1739, 0)
+b = Vector3(-0.1288, -0.1739, 0.004)
+radius = 0.0624
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p112"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0584, 0.1687, 0)
+b = Vector3(-0.0584, 0.1687, 0.004)
+radius = 0.0847
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p113"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0535, 0.1213, 0)
+b = Vector3(-0.0535, 0.1213, 0.004)
+radius = 0.0536
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p114"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0117, 0.1592, 0)
+b = Vector3(-0.0117, 0.1592, 0.004)
+radius = 0.0582
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p115"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3283, 0.3063, 0)
+b = Vector3(0.3283, 0.3063, 0.004)
+radius = 0.0813
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p116"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3728, 0.2956, 0)
+b = Vector3(0.3728, 0.2956, 0.004)
+radius = 0.0647
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p117"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3227, 0.3516, 0)
+b = Vector3(0.3227, 0.3516, 0.004)
+radius = 0.0553
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p118"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0945, -0.047, 0)
+b = Vector3(0.0945, -0.047, 0.004)
+radius = 0.0947
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p119"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0944, -0.1002, 0)
+b = Vector3(0.0944, -0.1002, 0.004)
+radius = 0.0593
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p120"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0412, -0.0469, 0)
+b = Vector3(0.0412, -0.0469, 0.004)
+radius = 0.0665
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p121"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.2223, 0.3076, 0)
+b = Vector3(-0.2223, 0.3076, 0.052)
+radius = 0.0955
+radius2 = 0.0764
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p122"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.2091, 0.3336, 0.0579)
+b = Vector3(0, 0, 1)
+radius = 0.0573
+segs = 8
+
+[sub_resource type="Resource" id="p123"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.1779, 0.3129, 0.0593)
+b = Vector3(0, 0, 1)
+radius = 0.0664
+segs = 8
+
+[sub_resource type="Resource" id="p124"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2288, 0.2897, 0.0464)
+b = Vector3(0, 0, 1)
+radius = 0.052
+segs = 8
+
+[sub_resource type="Resource" id="p125"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.348, -0.0788, 0)
+b = Vector3(0.348, -0.0788, 0.0476)
+radius = 0.1004
+radius2 = 0.0804
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p126"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.3583, -0.0863, 0.0428)
+b = Vector3(0, 0, 1)
+radius = 0.0684
+segs = 8
+
+[sub_resource type="Resource" id="p127"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.3692, -0.1213, 0.055)
+b = Vector3(0, 0, 1)
+radius = 0.0613
+segs = 8
+
+[sub_resource type="Resource" id="p128"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.3494, -0.0674, 0.0559)
+b = Vector3(0, 0, 1)
+radius = 0.0563
+segs = 8
+
+[sub_resource type="Resource" id="p129"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.0822, 0.3701, 0)
+b = Vector3(0.0822, 0.3701, 0.0445)
+radius = 0.0891
+radius2 = 0.0713
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p130"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.1067, 0.3605, 0.0491)
+b = Vector3(0, 0, 1)
+radius = 0.0646
+segs = 8
+
+[sub_resource type="Resource" id="p131"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.0821, 0.3802, 0.0477)
+b = Vector3(0, 0, 1)
+radius = 0.0569
+segs = 8
+
+[sub_resource type="Resource" id="p132"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.0805, 0.3803, 0.0473)
+b = Vector3(0, 0, 1)
+radius = 0.0595
+segs = 8
+
+[sub_resource type="Resource" id="p133"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.1586, 0.187, 0)
+b = Vector3(0.1586, 0.187, 0.0518)
+radius = 0.0856
+radius2 = 0.0685
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p134"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.1365, 0.2185, 0.0591)
+b = Vector3(0, 0, 1)
+radius = 0.0568
+segs = 8
+
+[sub_resource type="Resource" id="p135"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.1323, 0.1908, 0.0463)
+b = Vector3(0, 0, 1)
+radius = 0.0624
+segs = 8
+
+[sub_resource type="Resource" id="p136"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.1694, 0.1616, 0.0518)
+b = Vector3(0, 0, 1)
+radius = 0.0519
+segs = 8
+
+[sub_resource type="Resource" id="p137"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.4217, -0.3279, 0.006)
+b = Vector3(-0.389, -0.2229, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p138"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.4426, 0.1924, 0.006)
+b = Vector3(-0.3703, 0.2753, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p139"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(0.0457, -0.3836, 0.006)
+b = Vector3(-0.0512, -0.3317, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p140"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3904, 0.0531, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0251
+segs = 6
+
+[sub_resource type="Resource" id="p141"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3779, 0.394, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0263
+segs = 6
+
+[sub_resource type="Resource" id="p142"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.4238, -0.4352, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0294
+segs = 6
+
+[sub_resource type="Resource" id="p143"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.0778, -0.0197, 0)
+b = Vector3(-0.0778, -0.0197, 0.005)
+radius = 0.0139
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p144"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.0302, 0.3389, 0)
+b = Vector3(-0.0302, 0.3389, 0.005)
+radius = 0.0143
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p145"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.3056, 0.1019, 0)
+b = Vector3(0.3056, 0.1019, 0.005)
+radius = 0.0155
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p146"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.3985, -0.3733, 0)
+b = Vector3(-0.3985, -0.3733, 0.005)
+radius = 0.015
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p147"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p148"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p149"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p150"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p151"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p152"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2352, 0.2105, 0)
+b = Vector3(0.2352, 0.2105, 0.004)
+radius = 0.0921
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p153"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2275, 0.1593, 0)
+b = Vector3(0.2275, 0.1593, 0.004)
+radius = 0.0705
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p154"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1837, 0.2164, 0)
+b = Vector3(0.1837, 0.2164, 0.004)
+radius = 0.0742
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p155"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0392, 0.0065, 0)
+b = Vector3(-0.0392, 0.0065, 0.004)
+radius = 0.0893
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p156"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0041, 0.0423, 0)
+b = Vector3(-0.0041, 0.0423, 0.004)
+radius = 0.0689
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p157"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0109, 0.0028, 0)
+b = Vector3(0.0109, 0.0028, 0.004)
+radius = 0.0714
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p158"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.251, -0.2175, 0)
+b = Vector3(0.251, -0.2175, 0.004)
+radius = 0.0729
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p159"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2768, -0.1856, 0)
+b = Vector3(0.2768, -0.1856, 0.004)
+radius = 0.059
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p160"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.228, -0.1835, 0)
+b = Vector3(0.228, -0.1835, 0.004)
+radius = 0.0545
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p161"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3002, 0.0731, 0)
+b = Vector3(-0.3002, 0.0731, 0.004)
+radius = 0.0886
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p162"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.287, 0.025, 0)
+b = Vector3(-0.287, 0.025, 0.004)
+radius = 0.056
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p163"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2503, 0.0739, 0)
+b = Vector3(-0.2503, 0.0739, 0.004)
+radius = 0.0567
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p164"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3347, 0.2513, 0)
+b = Vector3(-0.3347, 0.2513, 0.004)
+radius = 0.0821
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p165"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3547, 0.2929, 0)
+b = Vector3(-0.3547, 0.2929, 0.004)
+radius = 0.0645
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p166"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3054, 0.2869, 0)
+b = Vector3(-0.3054, 0.2869, 0.004)
+radius = 0.0548
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p167"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0041, -0.1796, 0)
+b = Vector3(0.0041, -0.1796, 0.004)
+radius = 0.0729
+bevel = 0.0016
+segs = 12
+
+[sub_resource type="Resource" id="p168"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.013, -0.2169, 0)
+b = Vector3(-0.013, -0.2169, 0.004)
+radius = 0.0522
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p169"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.018, -0.2142, 0)
+b = Vector3(-0.018, -0.2142, 0.004)
+radius = 0.059
+bevel = 0.0016
+segs = 10
+
+[sub_resource type="Resource" id="p170"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.2636, -0.2226, 0)
+b = Vector3(-0.2636, -0.2226, 0.0495)
+radius = 0.1012
+radius2 = 0.0809
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p171"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.253, -0.2031, 0.047)
+b = Vector3(0, 0, 1)
+radius = 0.0678
+segs = 8
+
+[sub_resource type="Resource" id="p172"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.2818, -0.2261, 0.0431)
+b = Vector3(0, 0, 1)
+radius = 0.0583
+segs = 8
+
+[sub_resource type="Resource" id="p173"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.262, -0.2406, 0.0476)
+b = Vector3(0, 0, 1)
+radius = 0.0539
+segs = 8
+
+[sub_resource type="Resource" id="p174"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(-0.0863, 0.2215, 0)
+b = Vector3(-0.0863, 0.2215, 0.0468)
+radius = 0.0886
+radius2 = 0.0709
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p175"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(-0.0822, 0.1874, 0.0535)
+b = Vector3(0, 0, 1)
+radius = 0.0669
+segs = 8
+
+[sub_resource type="Resource" id="p176"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.0885, 0.2341, 0.0519)
+b = Vector3(0, 0, 1)
+radius = 0.0619
+segs = 8
+
+[sub_resource type="Resource" id="p177"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(-0.0768, 0.1923, 0.0516)
+b = Vector3(0, 0, 1)
+radius = 0.0511
+segs = 8
+
+[sub_resource type="Resource" id="p178"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_bush"
+a = Vector3(0.3081, -0.0119, 0)
+b = Vector3(0.3081, -0.0119, 0.0455)
+radius = 0.0891
+radius2 = 0.0713
+bevel = 0
+segs = 8
+
+[sub_resource type="Resource" id="p179"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_bush"
+a = Vector3(0.3349, -0.0209, 0.0573)
+b = Vector3(0, 0, 1)
+radius = 0.0516
+segs = 8
+
+[sub_resource type="Resource" id="p180"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.2859, -0.0478, 0.0414)
+b = Vector3(0, 0, 1)
+radius = 0.0644
+segs = 8
+
+[sub_resource type="Resource" id="p181"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_tip"
+a = Vector3(0.3088, -0.0235, 0.0584)
+b = Vector3(0, 0, 1)
+radius = 0.058
+segs = 8
+
+[sub_resource type="Resource" id="p182"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(0.0359, -0.4086, 0.006)
+b = Vector3(-0.0571, -0.3498, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p183"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(-0.1251, 0.3717, 0.006)
+b = Vector3(-0.0227, 0.4119, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p184"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"bar"
+material = &"sc_twig"
+a = Vector3(0.3183, 0.328, 0.006)
+b = Vector3(0.3043, 0.4371, 0.006)
+size = Vector3(0, 0.014, 0.012)
+bevel = 0.003
+
+[sub_resource type="Resource" id="p185"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.2429, -0.4037, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0255
+segs = 6
+
+[sub_resource type="Resource" id="p186"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.0916, -0.4174, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0223
+segs = 6
+
+[sub_resource type="Resource" id="p187"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.1883, -0.0647, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0283
+segs = 6
+
+[sub_resource type="Resource" id="p188"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.3505, -0.3814, 0)
+b = Vector3(0.3505, -0.3814, 0.005)
+radius = 0.014
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p189"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(-0.423, -0.2503, 0)
+b = Vector3(-0.423, -0.2503, 0.005)
+radius = 0.0131
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p190"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.3659, 0.3084, 0)
+b = Vector3(0.3659, 0.3084, 0.005)
+radius = 0.0158
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p191"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"sc_fleck"
+a = Vector3(0.1223, 0.1193, 0)
+b = Vector3(0.1223, 0.1193, 0.005)
+radius = 0.0151
+bevel = 0.002
+segs = 6
+
+[sub_resource type="Resource" id="p192"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.455, 0.003)
+size = Vector3(0.92, 0.13, 0)
+
+[sub_resource type="Resource" id="p193"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3383, -0.3804, 0.003)
+b = Vector3(0.3383, -0.3804, 0.008)
+radius = 0.0922
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p194"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.266, -0.2421, 0.003)
+b = Vector3(-0.266, -0.2421, 0.008)
+radius = 0.0794
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p195"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.194, -0.4581, 0.003)
+b = Vector3(0.194, -0.4581, 0.008)
+radius = 0.1048
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p196"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1479, -0.3133, 0.003)
+b = Vector3(-0.1479, -0.3133, 0.008)
+radius = 0.0789
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p197"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2899, -0.1727, 0.003)
+b = Vector3(-0.2899, -0.1727, 0.008)
+radius = 0.0613
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p198"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.1119, -0.4615, 0.003)
+b = Vector3(-0.1119, -0.4615, 0.008)
+radius = 0.1043
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p199"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.145, -0.2633, 0.003)
+b = Vector3(0.145, -0.2633, 0.008)
+radius = 0.0789
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p200"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2142, -0.4229, 0.003)
+b = Vector3(0.2142, -0.4229, 0.008)
+radius = 0.0942
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p201"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4053, -0.2386, 0.003)
+b = Vector3(-0.4053, -0.2386, 0.008)
+radius = 0.0654
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p202"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2251, -0.3207, 0.003)
+b = Vector3(-0.2251, -0.3207, 0.008)
+radius = 0.071
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p203"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0147, -0.4649, 0.003)
+b = Vector3(0.0147, -0.4649, 0.008)
+radius = 0.1028
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p204"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.0098, -0.4348, 0.003)
+b = Vector3(0.0098, -0.4348, 0.008)
+radius = 0.102
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p205"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3009, -0.3832, 0.003)
+b = Vector3(-0.3009, -0.3832, 0.008)
+radius = 0.0913
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p206"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0865, -0.4044, 0.003)
+b = Vector3(-0.0865, -0.4044, 0.008)
+radius = 0.0897
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p207"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2426, -0.458, 0.003)
+b = Vector3(-0.2426, -0.458, 0.008)
+radius = 0.1009
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p208"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3105, -0.3592, 0.003)
+b = Vector3(-0.3105, -0.3592, 0.008)
+radius = 0.0799
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p209"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3058, -0.4468, 0.003)
+b = Vector3(-0.3058, -0.4468, 0.008)
+radius = 0.1034
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p210"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1198, -0.4898, 0.003)
+b = Vector3(-0.1198, -0.4898, 0.008)
+radius = 0.1081
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p211"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1073, -0.1103, 0.003)
+b = Vector3(-0.1073, -0.1103, 0.008)
+radius = 0.035
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p212"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1653, -0.4836, 0.003)
+b = Vector3(-0.1653, -0.4836, 0.008)
+radius = 0.108
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p213"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0032, -0.3728, 0.003)
+b = Vector3(0.0032, -0.3728, 0.008)
+radius = 0.0835
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p214"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1424, -0.3916, 0.003)
+b = Vector3(-0.1424, -0.3916, 0.008)
+radius = 0.0894
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p215"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.1153, -0.4921, 0.003)
+b = Vector3(0.1153, -0.4921, 0.008)
+radius = 0.1087
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p216"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2063, -0.3403, 0.003)
+b = Vector3(0.2063, -0.3403, 0.008)
+radius = 0.0889
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p217"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3555, -0.319, 0.003)
+b = Vector3(-0.3555, -0.319, 0.008)
+radius = 0.0712
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p218"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1629, -0.4889, 0.003)
+b = Vector3(-0.1629, -0.4889, 0.008)
+radius = 0.1082
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p219"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1411, -0.3656, 0.003)
+b = Vector3(-0.1411, -0.3656, 0.008)
+radius = 0.0859
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p220"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.084, -0.3404, 0.003)
+b = Vector3(0.084, -0.3404, 0.008)
+radius = 0.0755
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p221"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0854, -0.4971, 0.003)
+b = Vector3(-0.0854, -0.4971, 0.008)
+radius = 0.1095
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p222"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.32, -0.4692, 0.003)
+b = Vector3(0.32, -0.4692, 0.008)
+radius = 0.1054
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p223"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.381, -0.41, 0.003)
+b = Vector3(0.381, -0.41, 0.008)
+radius = 0.0919
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p224"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3154, -0.3775, 0.003)
+b = Vector3(0.3154, -0.3775, 0.008)
+radius = 0.0855
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p225"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.387, -0.1922, 0.003)
+b = Vector3(-0.387, -0.1922, 0.008)
+radius = 0.0621
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p226"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2332, -0.481, 0.003)
+b = Vector3(-0.2332, -0.481, 0.008)
+radius = 0.1076
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p227"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4058, -0.3041, 0.003)
+b = Vector3(-0.4058, -0.3041, 0.008)
+radius = 0.0777
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p228"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2085, -0.4394, 0.003)
+b = Vector3(0.2085, -0.4394, 0.008)
+radius = 0.1024
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p229"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.408, -0.2663, 0.003)
+b = Vector3(0.408, -0.2663, 0.008)
+radius = 0.0585
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p230"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3574, -0.3278, 0.003)
+b = Vector3(-0.3574, -0.3278, 0.008)
+radius = 0.0802
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p231"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3573, -0.4391, 0.003)
+b = Vector3(-0.3573, -0.4391, 0.008)
+radius = 0.103
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p232"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.0225, -0.4544, 0.003)
+b = Vector3(0.0225, -0.4544, 0.008)
+radius = 0.1038
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p233"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.338, -0.4328, 0.003)
+b = Vector3(-0.338, -0.4328, 0.008)
+radius = 0.0974
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p234"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.1125, -0.4287, 0.003)
+b = Vector3(0.1125, -0.4287, 0.008)
+radius = 0.0949
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p235"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4001, -0.2997, 0.003)
+b = Vector3(0.4001, -0.2997, 0.008)
+radius = 0.0789
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p236"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.0334, -0.3539, 0.003)
+b = Vector3(-0.0334, -0.3539, 0.008)
+radius = 0.0851
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p237"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2187, -0.4555, 0.003)
+b = Vector3(-0.2187, -0.4555, 0.008)
+radius = 0.1049
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p238"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0546, -0.336, 0.003)
+b = Vector3(-0.0546, -0.336, 0.008)
+radius = 0.0778
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p239"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2908, -0.4885, 0.003)
+b = Vector3(-0.2908, -0.4885, 0.008)
+radius = 0.1087
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p240"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0593, -0.3142, 0.003)
+b = Vector3(0.0593, -0.3142, 0.008)
+radius = 0.0802
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p241"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2933, -0.2209, 0.003)
+b = Vector3(-0.2933, -0.2209, 0.008)
+radius = 0.0644
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p242"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3081, -0.3286, 0.003)
+b = Vector3(0.3081, -0.3286, 0.008)
+radius = 0.0733
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p243"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3464, -0.4034, 0.003)
+b = Vector3(0.3464, -0.4034, 0.008)
+radius = 0.0986
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p244"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2357, -0.4992, 0.003)
+b = Vector3(0.2357, -0.4992, 0.008)
+radius = 0.1099
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p245"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3749, -0.2513, 0.003)
+b = Vector3(0.3749, -0.2513, 0.008)
+radius = 0.072
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p246"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3193, -0.3775, 0.003)
+b = Vector3(-0.3193, -0.3775, 0.008)
+radius = 0.0838
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p247"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3893, -0.4036, 0.003)
+b = Vector3(0.3893, -0.4036, 0.008)
+radius = 0.0922
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p248"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1352, -0.4293, 0.003)
+b = Vector3(0.1352, -0.4293, 0.008)
+radius = 0.0982
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p249"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3382, -0.2215, 0.003)
+b = Vector3(-0.3382, -0.2215, 0.008)
+radius = 0.0592
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p250"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.1804, -0.4852, 0.003)
+b = Vector3(0.1804, -0.4852, 0.008)
+radius = 0.1073
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p251"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.1342, -0.3023, 0.003)
+b = Vector3(0.1342, -0.3023, 0.008)
+radius = 0.0693
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p252"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2084, -0.3414, 0.003)
+b = Vector3(0.2084, -0.3414, 0.008)
+radius = 0.0841
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p253"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.1548, -0.4765, 0.003)
+b = Vector3(0.1548, -0.4765, 0.008)
+radius = 0.1053
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p254"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0191, -0.2689, 0.003)
+b = Vector3(-0.0191, -0.2689, 0.008)
+radius = 0.0837
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p255"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2262, -0.492, 0.003)
+b = Vector3(0.2262, -0.492, 0.008)
+radius = 0.1084
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p256"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0828, -0.4765, 0.003)
+b = Vector3(-0.0828, -0.4765, 0.008)
+radius = 0.1068
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p257"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2744, -0.1728, 0.003)
+b = Vector3(0.2744, -0.1728, 0.008)
+radius = 0.0522
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p258"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3705, -0.3342, 0.003)
+b = Vector3(0.3705, -0.3342, 0.008)
+radius = 0.0803
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p259"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3799, -0.236, 0.003)
+b = Vector3(-0.3799, -0.236, 0.008)
+radius = 0.052
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p260"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1661, -0.202, 0.003)
+b = Vector3(-0.1661, -0.202, 0.008)
+radius = 0.0447
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p261"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1874, -0.203, 0.003)
+b = Vector3(-0.1874, -0.203, 0.008)
+radius = 0.0628
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p262"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.21, -0.4653, 0.003)
+b = Vector3(0.21, -0.4653, 0.008)
+radius = 0.1023
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p263"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.4006, -0.1992, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0211
+segs = 6
+
+[sub_resource type="Resource" id="p264"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3625, -0.2579, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0277
+segs = 6
+
+[sub_resource type="Resource" id="p265"]
+script = ExtResource("2_part")
+part = &"blend_side_ne"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.2346, -0.3191, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0226
+segs = 6
+
+[sub_resource type="Resource" id="p266"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.455, 0, 0.003)
+size = Vector3(0.13, 0.92, 0)
+
+[sub_resource type="Resource" id="p267"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2665, -0.2399, 0.003)
+b = Vector3(0.2665, -0.2399, 0.008)
+radius = 0.0814
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p268"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4621, 0.0398, 0.003)
+b = Vector3(0.4621, 0.0398, 0.008)
+radius = 0.102
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p269"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.383, -0.2619, 0.003)
+b = Vector3(0.383, -0.2619, 0.008)
+radius = 0.0903
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p270"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3266, -0.3765, 0.003)
+b = Vector3(0.3266, -0.3765, 0.008)
+radius = 0.0756
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p271"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3213, 0.1708, 0.003)
+b = Vector3(0.3213, 0.1708, 0.008)
+radius = 0.073
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p272"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2799, 0.225, 0.003)
+b = Vector3(0.2799, 0.225, 0.008)
+radius = 0.0607
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p273"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4609, -0.3314, 0.003)
+b = Vector3(0.4609, -0.3314, 0.008)
+radius = 0.1053
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p274"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2992, 0.0271, 0.003)
+b = Vector3(0.2992, 0.0271, 0.008)
+radius = 0.0862
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p275"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1477, 0.3765, 0.003)
+b = Vector3(0.1477, 0.3765, 0.008)
+radius = 0.0693
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p276"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2691, 0.0361, 0.003)
+b = Vector3(0.2691, 0.0361, 0.008)
+radius = 0.0717
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p277"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2137, 0.2473, 0.003)
+b = Vector3(0.2137, 0.2473, 0.008)
+radius = 0.0773
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p278"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4465, 0.2742, 0.003)
+b = Vector3(0.4465, 0.2742, 0.008)
+radius = 0.101
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p279"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.486, -0.3368, 0.003)
+b = Vector3(0.486, -0.3368, 0.008)
+radius = 0.1076
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p280"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2637, 0.2494, 0.003)
+b = Vector3(0.2637, 0.2494, 0.008)
+radius = 0.0798
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p281"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4863, -0.1143, 0.003)
+b = Vector3(0.4863, -0.1143, 0.008)
+radius = 0.1083
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p282"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4455, -0.2913, 0.003)
+b = Vector3(0.4455, -0.2913, 0.008)
+radius = 0.0979
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p283"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4399, -0.0426, 0.003)
+b = Vector3(0.4399, -0.0426, 0.008)
+radius = 0.1017
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p284"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4953, -0.3187, 0.003)
+b = Vector3(0.4953, -0.3187, 0.008)
+radius = 0.1095
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p285"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4557, -0.2373, 0.003)
+b = Vector3(0.4557, -0.2373, 0.008)
+radius = 0.1042
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p286"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2199, 0.1535, 0.003)
+b = Vector3(0.2199, 0.1535, 0.008)
+radius = 0.0744
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p287"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1965, -0.0816, 0.003)
+b = Vector3(0.1965, -0.0816, 0.008)
+radius = 0.0582
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p288"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2936, 0.1939, 0.003)
+b = Vector3(0.2936, 0.1939, 0.008)
+radius = 0.0644
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p289"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4365, 0.107, 0.003)
+b = Vector3(0.4365, 0.107, 0.008)
+radius = 0.0986
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p290"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4181, 0.2162, 0.003)
+b = Vector3(0.4181, 0.2162, 0.008)
+radius = 0.0992
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p291"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4847, 0.2543, 0.003)
+b = Vector3(0.4847, 0.2543, 0.008)
+radius = 0.1075
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p292"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.375, 0.3654, 0.003)
+b = Vector3(0.375, 0.3654, 0.008)
+radius = 0.0941
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p293"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3821, 0.1162, 0.003)
+b = Vector3(0.3821, 0.1162, 0.008)
+radius = 0.0883
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p294"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3369, -0.1312, 0.003)
+b = Vector3(0.3369, -0.1312, 0.008)
+radius = 0.0755
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p295"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2934, 0.2834, 0.003)
+b = Vector3(0.2934, 0.2834, 0.008)
+radius = 0.078
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p296"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4547, -0.0711, 0.003)
+b = Vector3(0.4547, -0.0711, 0.008)
+radius = 0.103
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p297"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1935, -0.1816, 0.003)
+b = Vector3(0.1935, -0.1816, 0.008)
+radius = 0.0683
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p298"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4452, -0.3679, 0.003)
+b = Vector3(0.4452, -0.3679, 0.008)
+radius = 0.1032
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p299"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.288, 0.4227, 0.003)
+b = Vector3(0.288, 0.4227, 0.008)
+radius = 0.0625
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p300"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4655, -0.1983, 0.003)
+b = Vector3(0.4655, -0.1983, 0.008)
+radius = 0.1058
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p301"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4003, -0.3478, 0.003)
+b = Vector3(0.4003, -0.3478, 0.008)
+radius = 0.0927
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p302"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2958, 0.1362, 0.003)
+b = Vector3(0.2958, 0.1362, 0.008)
+radius = 0.0757
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p303"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2739, 0.2575, 0.003)
+b = Vector3(0.2739, 0.2575, 0.008)
+radius = 0.0784
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p304"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2888, -0.1598, 0.003)
+b = Vector3(0.2888, -0.1598, 0.008)
+radius = 0.0679
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p305"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2907, 0.0144, 0.003)
+b = Vector3(0.2907, 0.0144, 0.008)
+radius = 0.082
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p306"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3306, -0.4007, 0.003)
+b = Vector3(0.3306, -0.4007, 0.008)
+radius = 0.0858
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p307"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4047, 0.161, 0.003)
+b = Vector3(0.4047, 0.161, 0.008)
+radius = 0.0976
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p308"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3635, 0.3022, 0.003)
+b = Vector3(0.3635, 0.3022, 0.008)
+radius = 0.084
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p309"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3061, 0.332, 0.003)
+b = Vector3(0.3061, 0.332, 0.008)
+radius = 0.0718
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p310"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4656, -0.1916, 0.003)
+b = Vector3(0.4656, -0.1916, 0.008)
+radius = 0.1053
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p311"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4793, 0.2334, 0.003)
+b = Vector3(0.4793, 0.2334, 0.008)
+radius = 0.1057
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p312"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4076, -0.1313, 0.003)
+b = Vector3(0.4076, -0.1313, 0.008)
+radius = 0.0917
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p313"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3408, -0.0623, 0.003)
+b = Vector3(0.3408, -0.0623, 0.008)
+radius = 0.075
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p314"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4284, 0.3155, 0.003)
+b = Vector3(0.4284, 0.3155, 0.008)
+radius = 0.1011
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p315"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4353, -0.2474, 0.003)
+b = Vector3(0.4353, -0.2474, 0.008)
+radius = 0.0995
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p316"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4517, 0.0048, 0.003)
+b = Vector3(0.4517, 0.0048, 0.008)
+radius = 0.102
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p317"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4918, 0.0437, 0.003)
+b = Vector3(0.4918, 0.0437, 0.008)
+radius = 0.1084
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p318"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4042, -0.39, 0.003)
+b = Vector3(0.4042, -0.39, 0.008)
+radius = 0.0897
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p319"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3997, -0.2908, 0.003)
+b = Vector3(0.3997, -0.2908, 0.008)
+radius = 0.0978
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p320"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4365, -0.0407, 0.003)
+b = Vector3(0.4365, -0.0407, 0.008)
+radius = 0.0959
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p321"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4756, -0.1863, 0.003)
+b = Vector3(0.4756, -0.1863, 0.008)
+radius = 0.1068
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p322"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4687, -0.3634, 0.003)
+b = Vector3(0.4687, -0.3634, 0.008)
+radius = 0.1041
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p323"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3663, -0.1363, 0.003)
+b = Vector3(0.3663, -0.1363, 0.008)
+radius = 0.0858
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p324"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4489, 0.0267, 0.003)
+b = Vector3(0.4489, 0.0267, 0.008)
+radius = 0.1002
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p325"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2729, 0.1974, 0.003)
+b = Vector3(0.2729, 0.1974, 0.008)
+radius = 0.0671
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p326"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2134, 0.1345, 0.003)
+b = Vector3(0.2134, 0.1345, 0.008)
+radius = 0.0621
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p327"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.4173, -0.1565, 0.003)
+b = Vector3(0.4173, -0.1565, 0.008)
+radius = 0.0925
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p328"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4359, 0.3559, 0.003)
+b = Vector3(0.4359, 0.3559, 0.008)
+radius = 0.097
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p329"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3655, -0.0929, 0.003)
+b = Vector3(0.3655, -0.0929, 0.008)
+radius = 0.0915
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p330"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4309, 0.2552, 0.003)
+b = Vector3(0.4309, 0.2552, 0.008)
+radius = 0.0992
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p331"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.168, -0.3974, 0.003)
+b = Vector3(0.168, -0.3974, 0.008)
+radius = 0.0433
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p332"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.4091, -0.2101, 0.003)
+b = Vector3(0.4091, -0.2101, 0.008)
+radius = 0.097
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p333"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2737, 0.2734, 0.003)
+b = Vector3(0.2737, 0.2734, 0.008)
+radius = 0.0798
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p334"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.192, 0.0644, 0.003)
+b = Vector3(0.192, 0.0644, 0.008)
+radius = 0.0646
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p335"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4078, -0.1388, 0.003)
+b = Vector3(0.4078, -0.1388, 0.008)
+radius = 0.0984
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p336"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1815, 0.0582, 0.003)
+b = Vector3(0.1815, 0.0582, 0.008)
+radius = 0.0729
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p337"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.2213, 0.1075, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0267
+segs = 6
+
+[sub_resource type="Resource" id="p338"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3499, 0.2924, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0294
+segs = 6
+
+[sub_resource type="Resource" id="p339"]
+script = ExtResource("2_part")
+part = &"blend_side_se"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3323, 0.1849, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0299
+segs = 6
+
+[sub_resource type="Resource" id="p340"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.455, 0.003)
+size = Vector3(0.92, 0.13, 0)
+
+[sub_resource type="Resource" id="p341"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0204, 0.4187, 0.003)
+b = Vector3(0.0204, 0.4187, 0.008)
+radius = 0.0971
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p342"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.0899, 0.4943, 0.003)
+b = Vector3(-0.0899, 0.4943, 0.008)
+radius = 0.109
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p343"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2848, 0.377, 0.003)
+b = Vector3(0.2848, 0.377, 0.008)
+radius = 0.0895
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p344"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.0893, 0.4896, 0.003)
+b = Vector3(0.0893, 0.4896, 0.008)
+radius = 0.1078
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p345"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0799, 0.2166, 0.003)
+b = Vector3(0.0799, 0.2166, 0.008)
+radius = 0.0468
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p346"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3598, 0.4232, 0.003)
+b = Vector3(0.3598, 0.4232, 0.008)
+radius = 0.0986
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p347"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2761, 0.4306, 0.003)
+b = Vector3(0.2761, 0.4306, 0.008)
+radius = 0.1019
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p348"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1483, 0.4461, 0.003)
+b = Vector3(-0.1483, 0.4461, 0.008)
+radius = 0.1025
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p349"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.0197, 0.361, 0.003)
+b = Vector3(-0.0197, 0.361, 0.008)
+radius = 0.0815
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p350"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1543, 0.2391, 0.003)
+b = Vector3(0.1543, 0.2391, 0.008)
+radius = 0.0526
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p351"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1078, 0.3639, 0.003)
+b = Vector3(-0.1078, 0.3639, 0.008)
+radius = 0.0799
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p352"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2306, 0.321, 0.003)
+b = Vector3(-0.2306, 0.321, 0.008)
+radius = 0.089
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p353"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1889, 0.1933, 0.003)
+b = Vector3(0.1889, 0.1933, 0.008)
+radius = 0.0444
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p354"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.247, 0.3054, 0.003)
+b = Vector3(0.247, 0.3054, 0.008)
+radius = 0.0686
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p355"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.0297, 0.3656, 0.003)
+b = Vector3(0.0297, 0.3656, 0.008)
+radius = 0.0869
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p356"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2982, 0.4322, 0.003)
+b = Vector3(-0.2982, 0.4322, 0.008)
+radius = 0.1015
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p357"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3355, 0.3631, 0.003)
+b = Vector3(-0.3355, 0.3631, 0.008)
+radius = 0.0933
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p358"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0947, 0.4147, 0.003)
+b = Vector3(-0.0947, 0.4147, 0.008)
+radius = 0.0938
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p359"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2595, 0.31, 0.003)
+b = Vector3(0.2595, 0.31, 0.008)
+radius = 0.0715
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p360"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3368, 0.3117, 0.003)
+b = Vector3(0.3368, 0.3117, 0.008)
+radius = 0.0771
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p361"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0603, 0.341, 0.003)
+b = Vector3(-0.0603, 0.341, 0.008)
+radius = 0.0913
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p362"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.1245, 0.4352, 0.003)
+b = Vector3(0.1245, 0.4352, 0.008)
+radius = 0.0964
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p363"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1188, 0.4876, 0.003)
+b = Vector3(-0.1188, 0.4876, 0.008)
+radius = 0.1078
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p364"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3296, 0.4184, 0.003)
+b = Vector3(0.3296, 0.4184, 0.008)
+radius = 0.0981
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p365"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.1752, 0.4826, 0.003)
+b = Vector3(-0.1752, 0.4826, 0.008)
+radius = 0.1074
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p366"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0407, 0.3853, 0.003)
+b = Vector3(0.0407, 0.3853, 0.008)
+radius = 0.0882
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p367"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.123, 0.3952, 0.003)
+b = Vector3(-0.123, 0.3952, 0.008)
+radius = 0.0906
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p368"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0357, 0.2927, 0.003)
+b = Vector3(0.0357, 0.2927, 0.008)
+radius = 0.0642
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p369"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.0196, 0.346, 0.003)
+b = Vector3(0.0196, 0.346, 0.008)
+radius = 0.0887
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p370"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.342, 0.3599, 0.003)
+b = Vector3(-0.342, 0.3599, 0.008)
+radius = 0.0847
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p371"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3707, 0.4964, 0.003)
+b = Vector3(0.3707, 0.4964, 0.008)
+radius = 0.1093
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p372"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2752, 0.2178, 0.003)
+b = Vector3(-0.2752, 0.2178, 0.008)
+radius = 0.0495
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p373"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.1823, 0.162, 0.003)
+b = Vector3(-0.1823, 0.162, 0.008)
+radius = 0.0364
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p374"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.1545, 0.3782, 0.003)
+b = Vector3(0.1545, 0.3782, 0.008)
+radius = 0.0958
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p375"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.0166, 0.3711, 0.003)
+b = Vector3(0.0166, 0.3711, 0.008)
+radius = 0.095
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p376"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0245, 0.3427, 0.003)
+b = Vector3(-0.0245, 0.3427, 0.008)
+radius = 0.0798
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p377"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.0945, 0.4373, 0.003)
+b = Vector3(-0.0945, 0.4373, 0.008)
+radius = 0.1015
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p378"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2783, 0.4777, 0.003)
+b = Vector3(-0.2783, 0.4777, 0.008)
+radius = 0.1058
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p379"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0686, 0.4974, 0.003)
+b = Vector3(-0.0686, 0.4974, 0.008)
+radius = 0.1097
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p380"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2004, 0.4249, 0.003)
+b = Vector3(-0.2004, 0.4249, 0.008)
+radius = 0.0994
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p381"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1599, 0.4578, 0.003)
+b = Vector3(-0.1599, 0.4578, 0.008)
+radius = 0.1011
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p382"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1028, 0.2931, 0.003)
+b = Vector3(-0.1028, 0.2931, 0.008)
+radius = 0.0862
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p383"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3183, 0.1952, 0.003)
+b = Vector3(0.3183, 0.1952, 0.008)
+radius = 0.0712
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p384"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.352, 0.498, 0.003)
+b = Vector3(-0.352, 0.498, 0.008)
+radius = 0.1097
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p385"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.261, 0.3179, 0.003)
+b = Vector3(0.261, 0.3179, 0.008)
+radius = 0.0718
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p386"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.3476, 0.4394, 0.003)
+b = Vector3(0.3476, 0.4394, 0.008)
+radius = 0.0988
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p387"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3005, 0.3599, 0.003)
+b = Vector3(-0.3005, 0.3599, 0.008)
+radius = 0.0867
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p388"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1767, 0.4683, 0.003)
+b = Vector3(-0.1767, 0.4683, 0.008)
+radius = 0.1036
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p389"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2295, 0.1902, 0.003)
+b = Vector3(0.2295, 0.1902, 0.008)
+radius = 0.0599
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p390"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3378, 0.2864, 0.003)
+b = Vector3(0.3378, 0.2864, 0.008)
+radius = 0.0701
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p391"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.289, 0.3916, 0.003)
+b = Vector3(-0.289, 0.3916, 0.008)
+radius = 0.0962
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p392"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1027, 0.4829, 0.003)
+b = Vector3(-0.1027, 0.4829, 0.008)
+radius = 0.1069
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p393"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.0096, 0.3156, 0.003)
+b = Vector3(0.0096, 0.3156, 0.008)
+radius = 0.0855
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p394"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2335, 0.1756, 0.003)
+b = Vector3(-0.2335, 0.1756, 0.008)
+radius = 0.0731
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p395"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1599, 0.4253, 0.003)
+b = Vector3(-0.1599, 0.4253, 0.008)
+radius = 0.0939
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p396"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3518, 0.3663, 0.003)
+b = Vector3(-0.3518, 0.3663, 0.008)
+radius = 0.083
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p397"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.169, 0.3185, 0.003)
+b = Vector3(0.169, 0.3185, 0.008)
+radius = 0.0729
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p398"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1, 0.3612, 0.003)
+b = Vector3(-0.1, 0.3612, 0.008)
+radius = 0.0891
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p399"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3693, 0.2565, 0.003)
+b = Vector3(-0.3693, 0.2565, 0.008)
+radius = 0.0657
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p400"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.0074, 0.2826, 0.003)
+b = Vector3(-0.0074, 0.2826, 0.008)
+radius = 0.0732
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p401"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.1319, 0.3831, 0.003)
+b = Vector3(0.1319, 0.3831, 0.008)
+radius = 0.088
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p402"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2869, 0.3207, 0.003)
+b = Vector3(0.2869, 0.3207, 0.008)
+radius = 0.088
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p403"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2945, 0.3711, 0.003)
+b = Vector3(-0.2945, 0.3711, 0.008)
+radius = 0.0877
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p404"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.1343, 0.2727, 0.003)
+b = Vector3(0.1343, 0.2727, 0.008)
+radius = 0.0628
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p405"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2535, 0.2797, 0.003)
+b = Vector3(-0.2535, 0.2797, 0.008)
+radius = 0.0814
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p406"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.0532, 0.1671, 0.003)
+b = Vector3(-0.0532, 0.1671, 0.008)
+radius = 0.0544
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p407"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.2135, 0.4897, 0.003)
+b = Vector3(0.2135, 0.4897, 0.008)
+radius = 0.1088
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p408"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.219, 0.3315, 0.003)
+b = Vector3(0.219, 0.3315, 0.008)
+radius = 0.0827
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p409"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.122, 0.2941, 0.003)
+b = Vector3(0.122, 0.2941, 0.008)
+radius = 0.0839
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p410"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.1013, 0.2984, 0.003)
+b = Vector3(-0.1013, 0.2984, 0.008)
+radius = 0.0853
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p411"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.088, 0.3845, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0204
+segs = 6
+
+[sub_resource type="Resource" id="p412"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.1331, 0.2285, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0297
+segs = 6
+
+[sub_resource type="Resource" id="p413"]
+script = ExtResource("2_part")
+part = &"blend_side_sw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.2131, 0.3804, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0232
+segs = 6
+
+[sub_resource type="Resource" id="p414"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.455, 0, 0.003)
+size = Vector3(0.13, 0.92, 0)
+
+[sub_resource type="Resource" id="p415"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3286, 0.1516, 0.003)
+b = Vector3(-0.3286, 0.1516, 0.008)
+radius = 0.0823
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p416"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.356, 0.1617, 0.003)
+b = Vector3(-0.356, 0.1617, 0.008)
+radius = 0.0793
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p417"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4346, 0.1334, 0.003)
+b = Vector3(-0.4346, 0.1334, 0.008)
+radius = 0.0994
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p418"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2677, 0.0229, 0.003)
+b = Vector3(-0.2677, 0.0229, 0.008)
+radius = 0.0727
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p419"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2034, 0.3835, 0.003)
+b = Vector3(-0.2034, 0.3835, 0.008)
+radius = 0.0557
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p420"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4946, 0.1581, 0.003)
+b = Vector3(-0.4946, 0.1581, 0.008)
+radius = 0.1093
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p421"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4631, 0.1426, 0.003)
+b = Vector3(-0.4631, 0.1426, 0.008)
+radius = 0.1055
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p422"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4937, 0.0844, 0.003)
+b = Vector3(-0.4937, 0.0844, 0.008)
+radius = 0.1088
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p423"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4833, 0.2086, 0.003)
+b = Vector3(-0.4833, 0.2086, 0.008)
+radius = 0.1079
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p424"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2449, 0.121, 0.003)
+b = Vector3(-0.2449, 0.121, 0.008)
+radius = 0.0677
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p425"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4444, -0.1016, 0.003)
+b = Vector3(-0.4444, -0.1016, 0.008)
+radius = 0.1019
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p426"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4803, 0.3746, 0.003)
+b = Vector3(-0.4803, 0.3746, 0.008)
+radius = 0.107
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p427"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4312, 0.0563, 0.003)
+b = Vector3(-0.4312, 0.0563, 0.008)
+radius = 0.1021
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p428"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2047, 0.4083, 0.003)
+b = Vector3(-0.2047, 0.4083, 0.008)
+radius = 0.075
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p429"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1754, -0.2482, 0.003)
+b = Vector3(-0.1754, -0.2482, 0.008)
+radius = 0.058
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p430"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3109, 0.0367, 0.003)
+b = Vector3(-0.3109, 0.0367, 0.008)
+radius = 0.0695
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p431"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3762, -0.3406, 0.003)
+b = Vector3(-0.3762, -0.3406, 0.008)
+radius = 0.0905
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p432"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3574, -0.28, 0.003)
+b = Vector3(-0.3574, -0.28, 0.008)
+radius = 0.0842
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p433"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.373, 0.1421, 0.003)
+b = Vector3(-0.373, 0.1421, 0.008)
+radius = 0.0876
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p434"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4423, -0.2391, 0.003)
+b = Vector3(-0.4423, -0.2391, 0.008)
+radius = 0.1002
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p435"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.314, -0.0647, 0.003)
+b = Vector3(-0.314, -0.0647, 0.008)
+radius = 0.0763
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p436"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2075, 0.2284, 0.003)
+b = Vector3(-0.2075, 0.2284, 0.008)
+radius = 0.0453
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p437"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3113, -0.0332, 0.003)
+b = Vector3(-0.3113, -0.0332, 0.008)
+radius = 0.0735
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p438"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2087, 0.0789, 0.003)
+b = Vector3(-0.2087, 0.0789, 0.008)
+radius = 0.0499
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p439"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4919, -0.316, 0.003)
+b = Vector3(-0.4919, -0.316, 0.008)
+radius = 0.1085
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p440"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3504, -0.4003, 0.003)
+b = Vector3(-0.3504, -0.4003, 0.008)
+radius = 0.0837
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p441"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4845, 0.1729, 0.003)
+b = Vector3(-0.4845, 0.1729, 0.008)
+radius = 0.1082
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p442"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3965, -0.1479, 0.003)
+b = Vector3(-0.3965, -0.1479, 0.008)
+radius = 0.0925
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p443"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.432, 0.2822, 0.003)
+b = Vector3(-0.432, 0.2822, 0.008)
+radius = 0.0972
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p444"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.339, 0.1972, 0.003)
+b = Vector3(-0.339, 0.1972, 0.008)
+radius = 0.0793
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p445"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4627, -0.3131, 0.003)
+b = Vector3(-0.4627, -0.3131, 0.008)
+radius = 0.1021
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p446"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4812, -0.0463, 0.003)
+b = Vector3(-0.4812, -0.0463, 0.008)
+radius = 0.1072
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p447"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4848, 0.3046, 0.003)
+b = Vector3(-0.4848, 0.3046, 0.008)
+radius = 0.1072
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p448"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3074, 0.0888, 0.003)
+b = Vector3(-0.3074, 0.0888, 0.008)
+radius = 0.0668
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p449"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2496, 0.228, 0.003)
+b = Vector3(-0.2496, 0.228, 0.008)
+radius = 0.0759
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p450"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4464, -0.3172, 0.003)
+b = Vector3(-0.4464, -0.3172, 0.008)
+radius = 0.0995
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p451"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3749, -0.3515, 0.003)
+b = Vector3(-0.3749, -0.3515, 0.008)
+radius = 0.0914
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p452"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3311, 0.3115, 0.003)
+b = Vector3(-0.3311, 0.3115, 0.008)
+radius = 0.0803
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p453"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4465, -0.1684, 0.003)
+b = Vector3(-0.4465, -0.1684, 0.008)
+radius = 0.1001
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p454"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3439, -0.2831, 0.003)
+b = Vector3(-0.3439, -0.2831, 0.008)
+radius = 0.084
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p455"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3961, 0.1714, 0.003)
+b = Vector3(-0.3961, 0.1714, 0.008)
+radius = 0.0918
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p456"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2801, -0.2322, 0.003)
+b = Vector3(-0.2801, -0.2322, 0.008)
+radius = 0.0648
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p457"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3996, 0.3716, 0.003)
+b = Vector3(-0.3996, 0.3716, 0.008)
+radius = 0.092
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p458"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2324, 0.3663, 0.003)
+b = Vector3(-0.2324, 0.3663, 0.008)
+radius = 0.0686
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p459"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3606, 0.3888, 0.003)
+b = Vector3(-0.3606, 0.3888, 0.008)
+radius = 0.0819
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p460"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3908, -0.3204, 0.003)
+b = Vector3(-0.3908, -0.3204, 0.008)
+radius = 0.0899
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p461"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3453, 0.0969, 0.003)
+b = Vector3(-0.3453, 0.0969, 0.008)
+radius = 0.0876
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p462"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4481, -0.2166, 0.003)
+b = Vector3(-0.4481, -0.2166, 0.008)
+radius = 0.1033
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p463"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2284, 0.1173, 0.003)
+b = Vector3(-0.2284, 0.1173, 0.008)
+radius = 0.0696
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p464"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4301, 0.0516, 0.003)
+b = Vector3(-0.4301, 0.0516, 0.008)
+radius = 0.1004
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p465"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4894, 0.2207, 0.003)
+b = Vector3(-0.4894, 0.2207, 0.008)
+radius = 0.1078
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p466"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2867, 0.0777, 0.003)
+b = Vector3(-0.2867, 0.0777, 0.008)
+radius = 0.0661
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p467"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.4819, 0.1986, 0.003)
+b = Vector3(-0.4819, 0.1986, 0.008)
+radius = 0.1065
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p468"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.1605, -0.2836, 0.003)
+b = Vector3(-0.1605, -0.2836, 0.008)
+radius = 0.0517
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p469"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4601, -0.1666, 0.003)
+b = Vector3(-0.4601, -0.1666, 0.008)
+radius = 0.1025
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p470"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.2073, -0.1662, 0.003)
+b = Vector3(-0.2073, -0.1662, 0.008)
+radius = 0.0644
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p471"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2627, 0.1684, 0.003)
+b = Vector3(-0.2627, 0.1684, 0.008)
+radius = 0.0816
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p472"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.2532, -0.276, 0.003)
+b = Vector3(-0.2532, -0.276, 0.008)
+radius = 0.0606
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p473"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.4613, 0.073, 0.003)
+b = Vector3(-0.4613, 0.073, 0.008)
+radius = 0.1038
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p474"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.474, 0.1473, 0.003)
+b = Vector3(-0.474, 0.1473, 0.008)
+radius = 0.1059
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p475"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4752, 0.2635, 0.003)
+b = Vector3(-0.4752, 0.2635, 0.008)
+radius = 0.1059
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p476"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2475, -0.3248, 0.003)
+b = Vector3(-0.2475, -0.3248, 0.008)
+radius = 0.0731
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p477"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4228, 0.337, 0.003)
+b = Vector3(-0.4228, 0.337, 0.008)
+radius = 0.099
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p478"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.23, -0.3694, 0.003)
+b = Vector3(-0.23, -0.3694, 0.008)
+radius = 0.0534
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p479"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.346, 0.1174, 0.003)
+b = Vector3(-0.346, 0.1174, 0.008)
+radius = 0.084
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p480"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4474, 0.0066, 0.003)
+b = Vector3(-0.4474, 0.0066, 0.008)
+radius = 0.1011
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p481"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.2917, -0.4088, 0.003)
+b = Vector3(-0.2917, -0.4088, 0.008)
+radius = 0.0752
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p482"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.253, -0.0284, 0.003)
+b = Vector3(-0.253, -0.0284, 0.008)
+radius = 0.0709
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p483"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.391, -0.3042, 0.003)
+b = Vector3(-0.391, -0.3042, 0.008)
+radius = 0.0895
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p484"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.4304, -0.0322, 0.003)
+b = Vector3(-0.4304, -0.0322, 0.008)
+radius = 0.0999
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p485"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3119, 0.3144, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0243
+segs = 6
+
+[sub_resource type="Resource" id="p486"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3975, -0.3914, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0278
+segs = 6
+
+[sub_resource type="Resource" id="p487"]
+script = ExtResource("2_part")
+part = &"blend_side_nw"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.2062, -0.0776, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0249
+segs = 6
+
+[sub_resource type="Resource" id="p488"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.396, -0.396, 0)
+size = Vector3(0.2, 0.2, 0)
+
+[sub_resource type="Resource" id="p489"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3, -0.3, 0.003)
+b = Vector3(-0.3, -0.3, 0.006)
+radius = 0.11
+bevel = 0.0012
+segs = 14
+
+[sub_resource type="Resource" id="p490"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3969, -0.3301, 0.003)
+b = Vector3(-0.3969, -0.3301, 0.008)
+radius = 0.0714
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p491"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3531, -0.2505, 0.003)
+b = Vector3(-0.3531, -0.2505, 0.008)
+radius = 0.0745
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p492"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(-0.3187, -0.3924, 0.003)
+b = Vector3(-0.3187, -0.3924, 0.008)
+radius = 0.0822
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p493"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3606, -0.2947, 0.003)
+b = Vector3(-0.3606, -0.2947, 0.008)
+radius = 0.0667
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p494"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3412, -0.3246, 0.003)
+b = Vector3(-0.3412, -0.3246, 0.008)
+radius = 0.0817
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p495"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.314, -0.3623, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0273
+segs = 6
+
+[sub_resource type="Resource" id="p496"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3839, -0.3415, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0201
+segs = 6
+
+[sub_resource type="Resource" id="p497"]
+script = ExtResource("2_part")
+part = &"blend_corner_n"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.4092, -0.2798, 0)
+b = Vector3(0, 0, 1)
+radius = 0.021
+segs = 6
+
+[sub_resource type="Resource" id="p498"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.396, -0.396, 0)
+size = Vector3(0.2, 0.2, 0)
+
+[sub_resource type="Resource" id="p499"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3, -0.3, 0.003)
+b = Vector3(0.3, -0.3, 0.006)
+radius = 0.11
+bevel = 0.0012
+segs = 14
+
+[sub_resource type="Resource" id="p500"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3435, -0.3549, 0.003)
+b = Vector3(0.3435, -0.3549, 0.008)
+radius = 0.0635
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p501"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3374, -0.2015, 0.003)
+b = Vector3(0.3374, -0.2015, 0.008)
+radius = 0.0573
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p502"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.2845, -0.3141, 0.003)
+b = Vector3(0.2845, -0.3141, 0.008)
+radius = 0.0663
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p503"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.3291, -0.3221, 0.003)
+b = Vector3(0.3291, -0.3221, 0.008)
+radius = 0.057
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p504"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3833, -0.3404, 0)
+b = Vector3(0, 0, 1)
+radius = 0.027
+segs = 6
+
+[sub_resource type="Resource" id="p505"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.2256, -0.393, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0208
+segs = 6
+
+[sub_resource type="Resource" id="p506"]
+script = ExtResource("2_part")
+part = &"blend_corner_e"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.2715, -0.3681, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0234
+segs = 6
+
+[sub_resource type="Resource" id="p507"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.396, 0.396, 0)
+size = Vector3(0.2, 0.2, 0)
+
+[sub_resource type="Resource" id="p508"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.3, 0.3, 0.003)
+b = Vector3(0.3, 0.3, 0.006)
+radius = 0.11
+bevel = 0.0012
+segs = 14
+
+[sub_resource type="Resource" id="p509"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(0.365, 0.3627, 0.003)
+b = Vector3(0.365, 0.3627, 0.008)
+radius = 0.0846
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p510"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(0.2242, 0.4165, 0.003)
+b = Vector3(0.2242, 0.4165, 0.008)
+radius = 0.0671
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p511"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"cylinder"
+material = &"sc_light"
+a = Vector3(0.4071, 0.1916, 0.003)
+b = Vector3(0.4071, 0.1916, 0.008)
+radius = 0.035
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p512"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3225, 0.3966, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0253
+segs = 6
+
+[sub_resource type="Resource" id="p513"]
+script = ExtResource("2_part")
+part = &"blend_corner_s"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(0.3568, 0.2865, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0274
+segs = 6
+
+[sub_resource type="Resource" id="p514"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.396, 0.396, 0)
+size = Vector3(0.2, 0.2, 0)
+
+[sub_resource type="Resource" id="p515"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3, 0.3, 0.003)
+b = Vector3(-0.3, 0.3, 0.006)
+radius = 0.11
+bevel = 0.0012
+segs = 14
+
+[sub_resource type="Resource" id="p516"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"cylinder"
+material = &"ground"
+a = Vector3(-0.3642, 0.2315, 0.003)
+b = Vector3(-0.3642, 0.2315, 0.008)
+radius = 0.0583
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p517"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"cylinder"
+material = &"sc_dark"
+a = Vector3(-0.3094, 0.3135, 0.003)
+b = Vector3(-0.3094, 0.3135, 0.008)
+radius = 0.0501
+bevel = 0.002
+segs = 9
+
+[sub_resource type="Resource" id="p518"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.4184, 0.4061, 0)
+b = Vector3(0, 0, 1)
+radius = 0.025
+segs = 6
+
+[sub_resource type="Resource" id="p519"]
+script = ExtResource("2_part")
+part = &"blend_corner_w"
+shape = &"dome"
+material = &"sc_stone"
+a = Vector3(-0.3582, 0.2768, 0)
+b = Vector3(0, 0, 1)
+radius = 0.028
+segs = 6
+
+[resource]
+script = ExtResource("3_model")
+art_id = &"scrub"
+faction = &"terrain"
+variation_seed = 656
+materials = Array[ExtResource("1_mat")]([SubResource("m_ground"), SubResource("m_sc_dark"), SubResource("m_sc_light"), SubResource("m_sc_bush"), SubResource("m_sc_tip"), SubResource("m_sc_twig"), SubResource("m_sc_stone"), SubResource("m_sc_fleck")])
+parts = Array[ExtResource("2_part")]([SubResource("p0"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7"), SubResource("p8"), SubResource("p9"), SubResource("p10"), SubResource("p11"), SubResource("p12"), SubResource("p13"), SubResource("p14"), SubResource("p15"), SubResource("p16"), SubResource("p17"), SubResource("p18"), SubResource("p19"), SubResource("p20"), SubResource("p21"), SubResource("p22"), SubResource("p23"), SubResource("p24"), SubResource("p25"), SubResource("p26"), SubResource("p27"), SubResource("p28"), SubResource("p29"), SubResource("p30"), SubResource("p31"), SubResource("p32"), SubResource("p33"), SubResource("p34"), SubResource("p35"), SubResource("p36"), SubResource("p37"), SubResource("p38"), SubResource("p39"), SubResource("p40"), SubResource("p41"), SubResource("p42"), SubResource("p43"), SubResource("p44"), SubResource("p45"), SubResource("p46"), SubResource("p47"), SubResource("p48"), SubResource("p49"), SubResource("p50"), SubResource("p51"), SubResource("p52"), SubResource("p53"), SubResource("p54"), SubResource("p55"), SubResource("p56"), SubResource("p57"), SubResource("p58"), SubResource("p59"), SubResource("p60"), SubResource("p61"), SubResource("p62"), SubResource("p63"), SubResource("p64"), SubResource("p65"), SubResource("p66"), SubResource("p67"), SubResource("p68"), SubResource("p69"), SubResource("p70"), SubResource("p71"), SubResource("p72"), SubResource("p73"), SubResource("p74"), SubResource("p75"), SubResource("p76"), SubResource("p77"), SubResource("p78"), SubResource("p79"), SubResource("p80"), SubResource("p81"), SubResource("p82"), SubResource("p83"), SubResource("p84"), SubResource("p85"), SubResource("p86"), SubResource("p87"), SubResource("p88"), SubResource("p89"), SubResource("p90"), SubResource("p91"), SubResource("p92"), SubResource("p93"), SubResource("p94"), SubResource("p95"), SubResource("p96"), SubResource("p97"), SubResource("p98"), SubResource("p99"), SubResource("p100"), SubResource("p101"), SubResource("p102"), SubResource("p103"), SubResource("p104"), SubResource("p105"), SubResource("p106"), SubResource("p107"), SubResource("p108"), SubResource("p109"), SubResource("p110"), SubResource("p111"), SubResource("p112"), SubResource("p113"), SubResource("p114"), SubResource("p115"), SubResource("p116"), SubResource("p117"), SubResource("p118"), SubResource("p119"), SubResource("p120"), SubResource("p121"), SubResource("p122"), SubResource("p123"), SubResource("p124"), SubResource("p125"), SubResource("p126"), SubResource("p127"), SubResource("p128"), SubResource("p129"), SubResource("p130"), SubResource("p131"), SubResource("p132"), SubResource("p133"), SubResource("p134"), SubResource("p135"), SubResource("p136"), SubResource("p137"), SubResource("p138"), SubResource("p139"), SubResource("p140"), SubResource("p141"), SubResource("p142"), SubResource("p143"), SubResource("p144"), SubResource("p145"), SubResource("p146"), SubResource("p147"), SubResource("p148"), SubResource("p149"), SubResource("p150"), SubResource("p151"), SubResource("p152"), SubResource("p153"), SubResource("p154"), SubResource("p155"), SubResource("p156"), SubResource("p157"), SubResource("p158"), SubResource("p159"), SubResource("p160"), SubResource("p161"), SubResource("p162"), SubResource("p163"), SubResource("p164"), SubResource("p165"), SubResource("p166"), SubResource("p167"), SubResource("p168"), SubResource("p169"), SubResource("p170"), SubResource("p171"), SubResource("p172"), SubResource("p173"), SubResource("p174"), SubResource("p175"), SubResource("p176"), SubResource("p177"), SubResource("p178"), SubResource("p179"), SubResource("p180"), SubResource("p181"), SubResource("p182"), SubResource("p183"), SubResource("p184"), SubResource("p185"), SubResource("p186"), SubResource("p187"), SubResource("p188"), SubResource("p189"), SubResource("p190"), SubResource("p191"), SubResource("p192"), SubResource("p193"), SubResource("p194"), SubResource("p195"), SubResource("p196"), SubResource("p197"), SubResource("p198"), SubResource("p199"), SubResource("p200"), SubResource("p201"), SubResource("p202"), SubResource("p203"), SubResource("p204"), SubResource("p205"), SubResource("p206"), SubResource("p207"), SubResource("p208"), SubResource("p209"), SubResource("p210"), SubResource("p211"), SubResource("p212"), SubResource("p213"), SubResource("p214"), SubResource("p215"), SubResource("p216"), SubResource("p217"), SubResource("p218"), SubResource("p219"), SubResource("p220"), SubResource("p221"), SubResource("p222"), SubResource("p223"), SubResource("p224"), SubResource("p225"), SubResource("p226"), SubResource("p227"), SubResource("p228"), SubResource("p229"), SubResource("p230"), SubResource("p231"), SubResource("p232"), SubResource("p233"), SubResource("p234"), SubResource("p235"), SubResource("p236"), SubResource("p237"), SubResource("p238"), SubResource("p239"), SubResource("p240"), SubResource("p241"), SubResource("p242"), SubResource("p243"), SubResource("p244"), SubResource("p245"), SubResource("p246"), SubResource("p247"), SubResource("p248"), SubResource("p249"), SubResource("p250"), SubResource("p251"), SubResource("p252"), SubResource("p253"), SubResource("p254"), SubResource("p255"), SubResource("p256"), SubResource("p257"), SubResource("p258"), SubResource("p259"), SubResource("p260"), SubResource("p261"), SubResource("p262"), SubResource("p263"), SubResource("p264"), SubResource("p265"), SubResource("p266"), SubResource("p267"), SubResource("p268"), SubResource("p269"), SubResource("p270"), SubResource("p271"), SubResource("p272"), SubResource("p273"), SubResource("p274"), SubResource("p275"), SubResource("p276"), SubResource("p277"), SubResource("p278"), SubResource("p279"), SubResource("p280"), SubResource("p281"), SubResource("p282"), SubResource("p283"), SubResource("p284"), SubResource("p285"), SubResource("p286"), SubResource("p287"), SubResource("p288"), SubResource("p289"), SubResource("p290"), SubResource("p291"), SubResource("p292"), SubResource("p293"), SubResource("p294"), SubResource("p295"), SubResource("p296"), SubResource("p297"), SubResource("p298"), SubResource("p299"), SubResource("p300"), SubResource("p301"), SubResource("p302"), SubResource("p303"), SubResource("p304"), SubResource("p305"), SubResource("p306"), SubResource("p307"), SubResource("p308"), SubResource("p309"), SubResource("p310"), SubResource("p311"), SubResource("p312"), SubResource("p313"), SubResource("p314"), SubResource("p315"), SubResource("p316"), SubResource("p317"), SubResource("p318"), SubResource("p319"), SubResource("p320"), SubResource("p321"), SubResource("p322"), SubResource("p323"), SubResource("p324"), SubResource("p325"), SubResource("p326"), SubResource("p327"), SubResource("p328"), SubResource("p329"), SubResource("p330"), SubResource("p331"), SubResource("p332"), SubResource("p333"), SubResource("p334"), SubResource("p335"), SubResource("p336"), SubResource("p337"), SubResource("p338"), SubResource("p339"), SubResource("p340"), SubResource("p341"), SubResource("p342"), SubResource("p343"), SubResource("p344"), SubResource("p345"), SubResource("p346"), SubResource("p347"), SubResource("p348"), SubResource("p349"), SubResource("p350"), SubResource("p351"), SubResource("p352"), SubResource("p353"), SubResource("p354"), SubResource("p355"), SubResource("p356"), SubResource("p357"), SubResource("p358"), SubResource("p359"), SubResource("p360"), SubResource("p361"), SubResource("p362"), SubResource("p363"), SubResource("p364"), SubResource("p365"), SubResource("p366"), SubResource("p367"), SubResource("p368"), SubResource("p369"), SubResource("p370"), SubResource("p371"), SubResource("p372"), SubResource("p373"), SubResource("p374"), SubResource("p375"), SubResource("p376"), SubResource("p377"), SubResource("p378"), SubResource("p379"), SubResource("p380"), SubResource("p381"), SubResource("p382"), SubResource("p383"), SubResource("p384"), SubResource("p385"), SubResource("p386"), SubResource("p387"), SubResource("p388"), SubResource("p389"), SubResource("p390"), SubResource("p391"), SubResource("p392"), SubResource("p393"), SubResource("p394"), SubResource("p395"), SubResource("p396"), SubResource("p397"), SubResource("p398"), SubResource("p399"), SubResource("p400"), SubResource("p401"), SubResource("p402"), SubResource("p403"), SubResource("p404"), SubResource("p405"), SubResource("p406"), SubResource("p407"), SubResource("p408"), SubResource("p409"), SubResource("p410"), SubResource("p411"), SubResource("p412"), SubResource("p413"), SubResource("p414"), SubResource("p415"), SubResource("p416"), SubResource("p417"), SubResource("p418"), SubResource("p419"), SubResource("p420"), SubResource("p421"), SubResource("p422"), SubResource("p423"), SubResource("p424"), SubResource("p425"), SubResource("p426"), SubResource("p427"), SubResource("p428"), SubResource("p429"), SubResource("p430"), SubResource("p431"), SubResource("p432"), SubResource("p433"), SubResource("p434"), SubResource("p435"), SubResource("p436"), SubResource("p437"), SubResource("p438"), SubResource("p439"), SubResource("p440"), SubResource("p441"), SubResource("p442"), SubResource("p443"), SubResource("p444"), SubResource("p445"), SubResource("p446"), SubResource("p447"), SubResource("p448"), SubResource("p449"), SubResource("p450"), SubResource("p451"), SubResource("p452"), SubResource("p453"), SubResource("p454"), SubResource("p455"), SubResource("p456"), SubResource("p457"), SubResource("p458"), SubResource("p459"), SubResource("p460"), SubResource("p461"), SubResource("p462"), SubResource("p463"), SubResource("p464"), SubResource("p465"), SubResource("p466"), SubResource("p467"), SubResource("p468"), SubResource("p469"), SubResource("p470"), SubResource("p471"), SubResource("p472"), SubResource("p473"), SubResource("p474"), SubResource("p475"), SubResource("p476"), SubResource("p477"), SubResource("p478"), SubResource("p479"), SubResource("p480"), SubResource("p481"), SubResource("p482"), SubResource("p483"), SubResource("p484"), SubResource("p485"), SubResource("p486"), SubResource("p487"), SubResource("p488"), SubResource("p489"), SubResource("p490"), SubResource("p491"), SubResource("p492"), SubResource("p493"), SubResource("p494"), SubResource("p495"), SubResource("p496"), SubResource("p497"), SubResource("p498"), SubResource("p499"), SubResource("p500"), SubResource("p501"), SubResource("p502"), SubResource("p503"), SubResource("p504"), SubResource("p505"), SubResource("p506"), SubResource("p507"), SubResource("p508"), SubResource("p509"), SubResource("p510"), SubResource("p511"), SubResource("p512"), SubResource("p513"), SubResource("p514"), SubResource("p515"), SubResource("p516"), SubResource("p517"), SubResource("p518"), SubResource("p519")])

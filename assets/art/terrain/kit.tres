@@ -1,0 +1,121 @@
+[gd_resource type="Resource" script_class="TerrainKitDef" format=3]
+
+[ext_resource type="Script" path="res://game/view/TerrainKitDef.gd" id="1_kit"]
+
+; The terrain kit's art mapping (ADR 0053 section 7, plan row P656c): which PNG draws which terrain,
+; kind and mask or variant. Art only, no balance number. The masks are the neighbours that differ
+; (edge neighbours ne, se, sw, nw; diagonal ones n, e, s, w):
+;   blend  side_<edge>: that edge neighbour is a higher-priority terrain; corner_<diag>: only that
+;          diagonal neighbour is. Drawn on the lower terrain's cell, in the higher terrain's look.
+;   lip    (rock) and shore (water), on the rock or water cell itself, towards the other terrain:
+;          side_<edge> one edge neighbour differs, outer_<diag> the two edge neighbours at that
+;          corner differ, inner_<diag> only the diagonal neighbour differs.
+;   road   <edge>_<edge>: the road leaves the cell through those two edges; it replaces the base.
+; priority: highest first. A higher terrain's blend is drawn on the cells of a lower one.
+
+[resource]
+script = ExtResource("1_kit")
+terrains = PackedStringArray("grass", "sand", "scrub", "rock", "water", "ore")
+variants = 4
+priority = PackedStringArray("ore", "scrub", "sand", "grass")
+masks = Dictionary[StringName, PackedStringArray]({
+&"base": PackedStringArray("0", "1", "2", "3"),
+&"blend": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "corner_n", "corner_e", "corner_s", "corner_w"),
+&"lip": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "outer_n", "outer_e", "outer_s", "outer_w", "inner_n", "inner_e", "inner_s", "inner_w"),
+&"shore": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "outer_n", "outer_e", "outer_s", "outer_w", "inner_n", "inner_e", "inner_s", "inner_w"),
+&"road": PackedStringArray("nw_se", "ne_sw", "nw_ne", "ne_se", "se_sw", "sw_nw")
+})
+kinds = Dictionary[StringName, PackedStringArray]({
+&"grass": PackedStringArray("base", "road"),
+&"sand": PackedStringArray("base", "blend", "road"),
+&"scrub": PackedStringArray("base", "blend"),
+&"rock": PackedStringArray("base", "lip"),
+&"water": PackedStringArray("base", "shore"),
+&"ore": PackedStringArray("base", "blend")
+})
+pieces = Dictionary[StringName, String]({
+&"grass/base/0": "grass_base_0.png",
+&"grass/base/1": "grass_base_1.png",
+&"grass/base/2": "grass_base_2.png",
+&"grass/base/3": "grass_base_3.png",
+&"grass/road/nw_se": "road_grass_nw_se.png",
+&"grass/road/ne_sw": "road_grass_ne_sw.png",
+&"grass/road/nw_ne": "road_grass_nw_ne.png",
+&"grass/road/ne_se": "road_grass_ne_se.png",
+&"grass/road/se_sw": "road_grass_se_sw.png",
+&"grass/road/sw_nw": "road_grass_sw_nw.png",
+&"sand/base/0": "sand_base_0.png",
+&"sand/base/1": "sand_base_1.png",
+&"sand/base/2": "sand_base_2.png",
+&"sand/base/3": "sand_base_3.png",
+&"sand/blend/side_ne": "sand_blend_side_ne.png",
+&"sand/blend/side_se": "sand_blend_side_se.png",
+&"sand/blend/side_sw": "sand_blend_side_sw.png",
+&"sand/blend/side_nw": "sand_blend_side_nw.png",
+&"sand/blend/corner_n": "sand_blend_corner_n.png",
+&"sand/blend/corner_e": "sand_blend_corner_e.png",
+&"sand/blend/corner_s": "sand_blend_corner_s.png",
+&"sand/blend/corner_w": "sand_blend_corner_w.png",
+&"sand/road/nw_se": "road_sand_nw_se.png",
+&"sand/road/ne_sw": "road_sand_ne_sw.png",
+&"sand/road/nw_ne": "road_sand_nw_ne.png",
+&"sand/road/ne_se": "road_sand_ne_se.png",
+&"sand/road/se_sw": "road_sand_se_sw.png",
+&"sand/road/sw_nw": "road_sand_sw_nw.png",
+&"scrub/base/0": "scrub_base_0.png",
+&"scrub/base/1": "scrub_base_1.png",
+&"scrub/base/2": "scrub_base_2.png",
+&"scrub/base/3": "scrub_base_3.png",
+&"scrub/blend/side_ne": "scrub_blend_side_ne.png",
+&"scrub/blend/side_se": "scrub_blend_side_se.png",
+&"scrub/blend/side_sw": "scrub_blend_side_sw.png",
+&"scrub/blend/side_nw": "scrub_blend_side_nw.png",
+&"scrub/blend/corner_n": "scrub_blend_corner_n.png",
+&"scrub/blend/corner_e": "scrub_blend_corner_e.png",
+&"scrub/blend/corner_s": "scrub_blend_corner_s.png",
+&"scrub/blend/corner_w": "scrub_blend_corner_w.png",
+&"rock/base/0": "rock_base_0.png",
+&"rock/base/1": "rock_base_1.png",
+&"rock/base/2": "rock_base_2.png",
+&"rock/base/3": "rock_base_3.png",
+&"rock/lip/side_ne": "rock_lip_side_ne.png",
+&"rock/lip/side_se": "rock_lip_side_se.png",
+&"rock/lip/side_sw": "rock_lip_side_sw.png",
+&"rock/lip/side_nw": "rock_lip_side_nw.png",
+&"rock/lip/outer_n": "rock_lip_outer_n.png",
+&"rock/lip/outer_e": "rock_lip_outer_e.png",
+&"rock/lip/outer_s": "rock_lip_outer_s.png",
+&"rock/lip/outer_w": "rock_lip_outer_w.png",
+&"rock/lip/inner_n": "rock_lip_inner_n.png",
+&"rock/lip/inner_e": "rock_lip_inner_e.png",
+&"rock/lip/inner_s": "rock_lip_inner_s.png",
+&"rock/lip/inner_w": "rock_lip_inner_w.png",
+&"water/base/0": "water_base_0.png",
+&"water/base/1": "water_base_1.png",
+&"water/base/2": "water_base_2.png",
+&"water/base/3": "water_base_3.png",
+&"water/shore/side_ne": "water_shore_side_ne.png",
+&"water/shore/side_se": "water_shore_side_se.png",
+&"water/shore/side_sw": "water_shore_side_sw.png",
+&"water/shore/side_nw": "water_shore_side_nw.png",
+&"water/shore/outer_n": "water_shore_outer_n.png",
+&"water/shore/outer_e": "water_shore_outer_e.png",
+&"water/shore/outer_s": "water_shore_outer_s.png",
+&"water/shore/outer_w": "water_shore_outer_w.png",
+&"water/shore/inner_n": "water_shore_inner_n.png",
+&"water/shore/inner_e": "water_shore_inner_e.png",
+&"water/shore/inner_s": "water_shore_inner_s.png",
+&"water/shore/inner_w": "water_shore_inner_w.png",
+&"ore/base/0": "ore_base_0.png",
+&"ore/base/1": "ore_base_1.png",
+&"ore/base/2": "ore_base_2.png",
+&"ore/base/3": "ore_base_3.png",
+&"ore/blend/side_ne": "ore_blend_side_ne.png",
+&"ore/blend/side_se": "ore_blend_side_se.png",
+&"ore/blend/side_sw": "ore_blend_side_sw.png",
+&"ore/blend/side_nw": "ore_blend_side_nw.png",
+&"ore/blend/corner_n": "ore_blend_corner_n.png",
+&"ore/blend/corner_e": "ore_blend_corner_e.png",
+&"ore/blend/corner_s": "ore_blend_corner_s.png",
+&"ore/blend/corner_w": "ore_blend_corner_w.png"
+})

@@ -25,6 +25,19 @@ static func box(
 	box_t(m, mat, Transform3D(Basis.IDENTITY, centre), size, bevel)
 
 
+## One flat face facing up at the height of `centre`, `size` across (x, y), with no sides and no
+## bevel: the terrain kit's ground, which must not show an edge below the diamond.
+static func quad(m: BakeMesh, mat: StringName, centre: Vector3, size: Vector2) -> void:
+	var h: Vector3 = Vector3(size.x, size.y, 0.0) * 0.5
+	var corners: PackedVector3Array = [
+		centre + Vector3(-h.x, -h.y, 0.0),
+		centre + Vector3(h.x, -h.y, 0.0),
+		centre + Vector3(h.x, h.y, 0.0),
+		centre + Vector3(-h.x, h.y, 0.0),
+	]
+	m.shell(mat, [corners], PackedVector3Array([Vector3.BACK]), 0.0)
+
+
 ## A long thin box from `a` to `b`: `w` across, `h` along z.
 static func bar(
 	m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, w: float, h: float, bevel: float = 0.0
