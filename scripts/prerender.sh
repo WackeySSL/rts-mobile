@@ -146,7 +146,14 @@ if [ "$1" = "--check" ]; then
   while IFS='|' read -r png _ _ _ sources exposure; do
     model="$(tr ';' '\n' <<<"$sources" | sed -n 's/=.*//; /_detail\.tres$/p')"
     sheet="$(tr ';' '\n' <<<"$sources" | sed -n 's/=.*//; /_sheet\.tres$/p')"
-    here="$tmp/$(basename "$model")"
+    if [ -z "$model" ]; then
+      echo "prerender: DIFFERS $png (no _detail.tres source listed)" >&2
+      differ=$((differ + 1))
+      continue
+    fi
+    # One bake per (model, sheet, exposure): kit pieces of one model share it, while unit
+    # entries re-published at another exposure or from another sheet get their own.
+    here="$tmp/$(printf '%s|%s|%s' "$model" "$sheet" "$exposure" | sha256sum | cut -c1-16)"
     if [ ! -d "$here/post" ] && [ -z "$sheet" ]; then
       PRERENDER_SKIP_IMPORT=1 bash "${BASH_SOURCE[0]}" --kit --model "$model" --out "$here" --exposure "$exposure" >/dev/null || exit $?
       mv "$here/$(basename "$model" _detail.tres)/post" "$here/post"

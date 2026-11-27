@@ -7,8 +7,11 @@ extends "res://tools/prerender/bake_model.gd"
 ##   --model res://assets/art/models/terrain/<id>_detail.tres  --out DIR  [--scale 8] [--no-ssao]
 ## Exit 0 done, 1 a model or a piece failed (a piece over the rise limit is named), 2 usage.
 
-const DIAMOND: Vector2i = Vector2i(128, 64)  ## One ground tile, texels at 1x (ADR 0053 section 3).
-const RISE_MAX: int = 36  ## ADR 0053 section 7: a piece rises at most 18 world px = 36 texels.
+const KitDef: GDScript = preload("res://game/view/TerrainKitDef.gd")
+## One ground tile and the rise limit, texels at 1x (ADR 0053 sections 3 and 7), read from the kit's
+## schema so the bake and the kit tests can't drift apart.
+const DIAMOND: Vector2i = KitDef.TILE
+const RISE_MAX: int = KitDef.RISE_MAX
 ## What reaches less than this (tiles) lies on the ground and casts no baked shadow.
 const SHADOW_MIN_TOP: float = 0.02
 
