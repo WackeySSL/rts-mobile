@@ -43,9 +43,10 @@ func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_wide = _open(wide_path)
 	_tall = _open(tall_path)
-	var shade: Texture2D = get_theme_icon(&"shade", &"MenuScrim")
-	if _wide == null or _tall == null or shade == null:
+	# `get_theme_icon` never returns null (a missing icon gives the empty fallback), so ask first.
+	if _wide == null or _tall == null or not has_theme_icon(&"shade", &"MenuScrim"):
 		return
+	var shade: Texture2D = get_theme_icon(&"shade", &"MenuScrim")
 	_picture = _layer(&"Picture", _wide)
 	_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
