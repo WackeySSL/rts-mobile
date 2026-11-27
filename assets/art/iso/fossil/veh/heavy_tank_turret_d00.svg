@@ -35,9 +35,9 @@
 <polygon points="119,82.6 95,82.6 95,79.4 119,79.4" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="95,82.6 78,74.1 78,70.9 95,79.4" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="119,50.5 136,58.9 136,70.9 119,79.4 95,79.4 78,70.9 78,58.9 95,50.5" fill="url(#s1)" stroke="#919490"/>
-<polygon points="131.4,59.2 82.6,59.2 82.6,49.8 131.4,49.8" fill="#FF6E1F" stroke="#73320E"/>
+<polygon points="131.4,59.2 82.6,59.2 82.6,49.8 131.4,49.8" fill="#D234D2" stroke="#9A1F9A"/>
 <polygon points="107.6,59.2 106.4,59.2 106.4,49.8 107.6,49.8" fill="#000000" fill-opacity="0.25"/>
-<polygon points="131.4,44.7 131.4,49.8 82.6,49.8 82.6,44.7" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="131.4,44.7 131.4,49.8 82.6,49.8 82.6,44.7" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="81.6,57.3 80.2,58.4 80.2,42.8 81.6,41.6" fill="#51574D" stroke="#30342E"/>
 <polygon points="80.2,58.4 77.6,58.4 77.6,42.8 80.2,42.8" fill="#6B7366" stroke="#30342E"/>
 <polygon points="77.6,58.4 76.3,57.3 76.3,41.6 77.6,42.8" fill="#6B7366" stroke="#30342E"/>
@@ -50,9 +50,9 @@
 <polygon points="82.6,47.3 82.6,65.4 80.8,65.4 80.8,47.3" fill="#828C7C" stroke="#B4BAB1"/>
 <polygon points="133.2,71.6 131.4,71.6 131.4,65.4 133.2,65.4" fill="#6B7366" stroke="#30342E"/>
 <polygon points="133.2,47.3 133.2,65.4 131.4,65.4 131.4,47.3" fill="#828C7C" stroke="#B4BAB1"/>
-<polygon points="131.4,80 82.6,80 82.6,70.6 131.4,70.6" fill="#FF6E1F" stroke="#73320E"/>
+<polygon points="131.4,80 82.6,80 82.6,70.6 131.4,70.6" fill="#D234D2" stroke="#9A1F9A"/>
 <polygon points="107.6,80 106.4,80 106.4,70.6 107.6,70.6" fill="#000000" fill-opacity="0.25"/>
-<polygon points="131.4,49.8 131.4,70.6 82.6,70.6 82.6,49.8" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="131.4,49.8 131.4,70.6 82.6,70.6 82.6,49.8" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="131.4,59.6 131.4,60.8 82.6,60.8 82.6,59.6" fill="#000000" fill-opacity="0.25"/>
 <polygon points="107.6,49.8 107.6,70.6 106.4,70.6 106.4,49.8" fill="#000000" fill-opacity="0.25"/>
 <polygon points="126.9,51.1 125.2,52.5 125.2,50.2 126.9,48.7" fill="#51574D" stroke="#30342E"/>

@@ -67,10 +67,10 @@
 <polygon points="124.9,36.8 124.9,48.7 108,48.7 108,36.8" fill="#FFFFFF" fill-opacity="0.06"/>
 <polygon points="108.9,30.4 110,29.3 111.1,30.4 110,31.5" fill="#000000" fill-opacity="0.45"/>
 <polygon points="121.9,68.2 123,67.1 124.1,68.2 123,69.3" fill="#000000" fill-opacity="0.45"/>
-<polygon points="123.7,26.7 42.3,26.7 42.3,17.3 123.7,17.3" fill="#FF6E1F" stroke="#73320E"/>
+<polygon points="123.7,26.7 42.3,26.7 42.3,17.3 123.7,17.3" fill="#D234D2" stroke="#9A1F9A"/>
 <polygon points="97.2,26.7 96,26.7 96,17.3 97.2,17.3" fill="#000000" fill-opacity="0.25"/>
 <polygon points="70,26.7 68.8,26.7 68.8,17.3 70,17.3" fill="#000000" fill-opacity="0.25"/>
-<polygon points="123.7,16.7 123.7,17.3 42.3,17.3 42.3,16.7" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="123.7,16.7 123.7,17.3 42.3,17.3 42.3,16.7" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="107.4,85.3 58.6,85.3 58.6,72 107.4,72" fill="url(#s0)" stroke="#1B1C1A"/>
 <polygon points="83.6,85.3 82.4,85.3 82.4,72 83.6,72" fill="#000000" fill-opacity="0.25"/>
 <polygon points="99.5,83.4 100.6,82.3 101.7,83.4 100.6,84.5" fill="#000000" fill-opacity="0.45"/>
@@ -113,8 +113,8 @@
 <polygon points="42.3,23.4 42.3,59.6 40.5,59.6 40.5,23.4" fill="#828C7C" stroke="#B4BAB1"/>
 <polygon points="125.5,65.5 123.7,65.5 123.7,59.6 125.5,59.6" fill="#6B7366" stroke="#30342E"/>
 <polygon points="125.5,23.4 125.5,59.6 123.7,59.6 123.7,23.4" fill="#828C7C" stroke="#B4BAB1"/>
-<polygon points="121.9,64.8 44.1,64.8 44.1,61.6 121.9,61.6" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="121.9,18.2 121.9,61.6 44.1,61.6 44.1,18.2" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="121.9,64.8 44.1,64.8 44.1,61.6 121.9,61.6" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="121.9,18.2 121.9,61.6 44.1,61.6 44.1,18.2" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="121.9,32.1 121.9,33.3 44.1,33.3 44.1,32.1" fill="#000000" fill-opacity="0.25"/>
 <polygon points="121.9,46.6 121.9,47.8 44.1,47.8 44.1,46.6" fill="#000000" fill-opacity="0.25"/>
 <polygon points="96.6,18.2 96.6,61.6 95.4,61.6 95.4,18.2" fill="#000000" fill-opacity="0.25"/>
