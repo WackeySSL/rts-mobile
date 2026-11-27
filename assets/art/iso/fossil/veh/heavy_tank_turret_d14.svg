@@ -54,16 +54,16 @@
 <polygon points="119.8,33.8 116.6,35.4 116.6,32.3 119.8,30.7" fill="#C1B6A2" stroke="#736C60"/>
 <polygon points="116.6,35.4 113.4,33.8 113.4,30.7 116.6,32.3" fill="#FFF1D6" stroke="#736C60"/>
 <polygon points="116.6,29.1 119.8,30.7 116.6,32.3 113.4,30.7" fill="#FFFFFF" stroke="#FFFFFF"/>
-<polygon points="117.2,52 82.7,69.3 82.7,59.9 117.2,42.6" fill="#C15317" stroke="#73320E"/>
+<polygon points="117.2,52 82.7,69.3 82.7,59.9 117.2,42.6" fill="#9A1F9A" stroke="#9A1F9A"/>
 <polygon points="100.5,60.4 99.4,60.9 99.4,51.5 100.5,51" fill="#000000" fill-opacity="0.25"/>
-<polygon points="82.7,69.3 62.2,59 82.7,59.9" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="96.8,41.8 117.2,42.6 82.7,59.9 62.2,59" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="82.7,69.3 62.2,59 82.7,59.9" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="96.8,41.8 117.2,42.6 82.7,59.9 62.2,59" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="80,50.1 100.5,51 99.4,51.5 78.9,50.7" fill="#000000" fill-opacity="0.25"/>
-<polygon points="146.7,66.7 112.1,84 112.1,74.6 146.7,57.3" fill="#C15317" stroke="#73320E"/>
+<polygon points="146.7,66.7 112.1,84 112.1,74.6 146.7,57.3" fill="#9A1F9A" stroke="#9A1F9A"/>
 <polygon points="129.9,75.1 128.9,75.6 128.9,66.2 129.9,65.7" fill="#000000" fill-opacity="0.25"/>
-<polygon points="112.1,84 82.7,69.3 82.7,59.9 112.1,74.6" fill="#FF6E1F" stroke="#73320E"/>
+<polygon points="112.1,84 82.7,69.3 82.7,59.9 112.1,74.6" fill="#D234D2" stroke="#9A1F9A"/>
 <polygon points="97.9,76.9 96.9,76.4 96.9,67 97.9,67.5" fill="#000000" fill-opacity="0.25"/>
-<polygon points="117.2,42.6 146.7,57.3 112.1,74.6 82.7,59.9" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="117.2,42.6 146.7,57.3 112.1,74.6 82.7,59.9" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="131.4,49.7 132.5,50.2 97.9,67.5 96.9,67" fill="#000000" fill-opacity="0.25"/>
 <polygon points="100.5,51 129.9,65.7 128.9,66.2 99.4,51.5" fill="#000000" fill-opacity="0.25"/>
 <polygon points="116.8,46.8 115.9,48.4 115.9,46 116.8,44.4" fill="#51574D" stroke="#30342E"/>

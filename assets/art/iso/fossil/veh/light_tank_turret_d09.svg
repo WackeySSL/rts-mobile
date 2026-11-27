@@ -20,14 +20,14 @@
 <polygon points="71.8,50.9 60,53.3 60,50.2 71.8,47.8" fill="#2D302B" stroke="#1B1C1A"/>
 <polygon points="60,53.3 48.2,50.9 48.2,47.8 60,50.2" fill="#3B3F39" stroke="#1B1C1A"/>
 <polygon points="48.2,47.8 43.3,41.9 48.2,36 60,33.5 71.8,36 76.7,41.9 71.8,47.8 60,50.2" fill="url(#s0)" stroke="#919490"/>
-<polygon points="46.8,48.4 41.4,41.9 41.4,39.1 46.8,45.7" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="78.6,41.9 73.2,48.4 73.2,45.7 78.6,39.1" fill="#C15317" stroke="#73320E"/>
-<polygon points="73.2,48.4 60,51.2 60,48.4 73.2,45.7" fill="#C15317" stroke="#73320E"/>
-<polygon points="60,51.2 46.8,48.4 46.8,45.7 60,48.4" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="46.8,45.7 41.4,39.1 46.8,32.5 60,29.8 73.2,32.5 78.6,39.1 73.2,45.7 60,48.4" fill="#FF8626" stroke="#FFB67D"/>
-<polygon points="80.1,35 68.3,49.2 68.3,41.3 80.1,27.1" fill="#C15317" stroke="#73320E"/>
-<polygon points="68.3,49.2 39.9,43.3 39.9,35.4 68.3,41.3" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="39.9,35.4 51.7,21.2 80.1,27.1 68.3,41.3" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="46.8,48.4 41.4,41.9 41.4,39.1 46.8,45.7" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="78.6,41.9 73.2,48.4 73.2,45.7 78.6,39.1" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="73.2,48.4 60,51.2 60,48.4 73.2,45.7" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="60,51.2 46.8,48.4 46.8,45.7 60,48.4" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="46.8,45.7 41.4,39.1 46.8,32.5 60,29.8 73.2,32.5 78.6,39.1 73.2,45.7 60,48.4" fill="#F07AF0" stroke="#F07AF0"/>
+<polygon points="80.1,35 68.3,49.2 68.3,41.3 80.1,27.1" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="68.3,49.2 39.9,43.3 39.9,35.4 68.3,41.3" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="39.9,35.4 51.7,21.2 80.1,27.1 68.3,41.3" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="64.9,38.5 66,37.4 67.1,38.5 66,39.6" fill="#000000" fill-opacity="0.45"/>
 <polygon points="52.9,24 54,22.9 55.1,24 54,25.1" fill="#000000" fill-opacity="0.45"/>
 <polygon points="78.1,27.2 67.7,39.7 67.7,38.2 78.1,25.6" fill="#2D302B" stroke="#1B1C1A"/>

@@ -144,9 +144,9 @@
 <polygon points="83,53.2 103.3,43.1 121.4,52.1 101.1,62.2" fill="#000000" fill-opacity="0.06"/>
 <polygon points="65.9,23.3 86.2,13.2 104.3,22.3 84.1,32.4" fill="#000000" fill-opacity="0.06"/>
 <polygon points="104.3,42.5 124.6,32.4 142.7,41.5 122.5,51.6" fill="#FFFFFF" fill-opacity="0.06"/>
-<polygon points="141.2,41.5 79.8,72.2 79.8,69 141.2,38.3" fill="#C15317" stroke="#73320E"/>
-<polygon points="79.8,72.2 24.8,44.7 24.8,41.5 79.8,69" fill="#FF6E1F" stroke="#73320E"/>
-<polygon points="24.8,41.5 86.2,10.8 141.2,38.3 79.8,69" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="141.2,41.5 79.8,72.2 79.8,69 141.2,38.3" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="79.8,72.2 24.8,44.7 24.8,41.5 79.8,69" fill="#D234D2" stroke="#9A1F9A"/>
+<polygon points="24.8,41.5 86.2,10.8 141.2,38.3 79.8,69" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="44.7,31.5 45.8,31 100.8,58.5 99.7,59.1" fill="#000000" fill-opacity="0.25"/>
 <polygon points="65.2,21.3 66.3,20.8 121.3,48.3 120.2,48.8" fill="#000000" fill-opacity="0.25"/>
 <polygon points="42.6,50.4 104,19.7 105.1,20.2 43.6,51" fill="#000000" fill-opacity="0.25"/>
@@ -172,8 +172,8 @@
 <polygon points="138.7,49.6 87.5,75.2 87.5,69.3 138.7,43.7" fill="#51574D" stroke="#30342E"/>
 <polygon points="87.5,75.2 86.2,74.6 86.2,68.7 87.5,69.3" fill="#6B7366" stroke="#30342E"/>
 <polygon points="86.2,68.7 137.4,43.1 138.7,43.7 87.5,69.3" fill="url(#s2)" stroke="#B4BAB1"/>
-<polygon points="79.8,79.7 65.7,86.8 79.8,70.3" fill="#C15317" stroke="#73320E"/>
-<polygon points="8.1,58 22.2,41.5 79.8,70.3 65.7,86.8" fill="#FF8626" stroke="#FFB67D"/>
+<polygon points="79.8,79.7 65.7,86.8 79.8,70.3" fill="#9A1F9A" stroke="#9A1F9A"/>
+<polygon points="8.1,58 22.2,41.5 79.8,70.3 65.7,86.8" fill="#F07AF0" stroke="#F07AF0"/>
 <polygon points="26.8,67.3 40.9,50.8 41.9,51.4 27.9,67.8" fill="#000000" fill-opacity="0.25"/>
 <polygon points="46,76.9 60.1,60.4 61.1,61 47.1,77.4" fill="#000000" fill-opacity="0.25"/>
 <polygon points="67.3,97.6 62.8,99.8 62.8,82.6 67.3,80.3" fill="#2D302B" stroke="#1B1C1A"/>
