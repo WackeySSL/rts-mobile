@@ -70,7 +70,8 @@ if [ "$RUN_STATIC" -eq 1 ] && [ ${#GD_DIRS[@]} -gt 0 ]; then
   fi
 fi
 
-if ! python3 -I -c 'import numpy, PIL' >/dev/null 2>&1; then
+# The pre-render post's tests need them; the checks job (--no-tests) runs no suite and has no Python pins.
+if [ "$RUN_TESTS" -eq 1 ] && ! python3 -I -c 'import numpy, PIL' >/dev/null 2>&1; then
   echo "numpy or Pillow missing: python3 -m pip install -r tools/prerender/requirements.txt"
   FAILED+=("numpy or Pillow missing")
 fi
