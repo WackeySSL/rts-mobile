@@ -80,6 +80,13 @@ stand-alone pictures (menus, portraits, store art). §5's two per-faction key tr
 one sentinel key: the factions get fixed colours, and the team colour moves to a small marker
 (ADR 0050 §3). No accepted text changed.
 
+Status note (2026-11-27, P654 docs; ADR 0053 accepted 2026-11-27, Michael "Godkend alle 7 (anbefalet)"):
+§5's generator SVG frames no longer cover terrain and buildings. Those two are pre-rendered PNG
+from our own 3D model data (`tools/prerender/`, ADR 0053), at the sorted world's density and with
+the team colour recoloured once per player at match start. Units, fields, effects, glyphs and
+icons stay §5's SVG. The projection, the anchors and the one sorted page (§1, §2) are unchanged.
+No accepted text changed.
+
 ## Decisions in short
 | # | Topic | Decision |
 | --- | --- | --- |
