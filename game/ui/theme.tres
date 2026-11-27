@@ -917,6 +917,30 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.2, 0.2627451, 0.29019608, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_tagged"]
+content_margin_left = 8.0
+content_margin_top = 15.0
+content_margin_right = 72.0
+content_margin_bottom = 15.0
+bg_color = Color(0.03137255, 0.05490196, 0.07058824, 0.5)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_tagged_down"]
+content_margin_left = 8.0
+content_margin_top = 15.0
+content_margin_right = 72.0
+content_margin_bottom = 15.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_on"]
 content_margin_left = 8.0
 content_margin_top = 15.0
@@ -1531,6 +1555,15 @@ MenuFooterLink/styles/pressed = SubResource("StyleBoxFlat_menu_footer_link_down"
 MenuFooterHint/base_type = &"Label"
 MenuFooterHint/colors/font_color = Color(0.45, 0.5, 0.55, 1)
 MenuFooterHint/font_sizes/font_size = 14
+; MenuItemTagged: a MenuItem with 72 dp kept free at its right end for a tag over the row (the
+; Tutorial list's "+40 XP", P674b); MenuTag: that tag, the eyebrow look in the money amber.
+MenuItemTagged/base_type = &"MenuItem"
+MenuItemTagged/styles/disabled = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/hover = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_tagged_down")
+MenuItemTagged/styles/normal = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/pressed = SubResource("StyleBoxFlat_menu_item_tagged_down")
+MenuTag/base_type = &"MenuEyebrow"
 MenuItemOn/base_type = &"MenuItem"
 MenuItemOn/styles/hover = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_on")
