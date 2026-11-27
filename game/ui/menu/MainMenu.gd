@@ -53,6 +53,7 @@ var _numbers: Dictionary[Button, Label] = {}
 var _arrows: Dictionary[Button, TextureRect] = {}
 var _grid: GridContainer
 var _footer: Button
+var _rank_item: Button
 var _progression: ProgressionScript
 var _sides: HBoxContainer
 var _names: Array[Label] = []
@@ -70,7 +71,7 @@ func _ready() -> void:
 	_continue = _route_button(MainMenuText.CONTINUE, MenuRoutes.CONTINUE)  # P515.
 	_route_button(MainMenuText.SKIRMISH, MenuRoutes.SKIRMISH)  # P525.
 	_route_button(MainMenuText.TUTORIAL, MenuRoutes.TUTORIAL)  # P544.
-	_route_button(MainMenuText.RANK_ITEM, MenuRoutes.RANK)  # P664 (RankScreen).
+	_rank_item = _route_button(MainMenuText.RANK_ITEM, MenuRoutes.RANK)  # P664 (RankScreen).
 	_route_button(MainMenuText.HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)  # P527.
 	_route_button(MainMenuText.SETTINGS, MenuRoutes.SETTINGS)  # P526.
 	var notice: StringName = take_notice.call()
@@ -135,7 +136,7 @@ func _refresh() -> void:
 	_refresh_profile()
 
 
-## The profile line: "COMMANDER · RANK 1 RECRUIT · 0 / 100 XP".
+## The profile line "COMMANDER · RANK 1 · 0 / 100 XP", and the title as the Rank item's hint.
 func _refresh_profile() -> void:
 	var rank: int = _progression.rank()
 	var total: int = _progression.xp()
@@ -145,7 +146,8 @@ func _refresh_profile() -> void:
 		if next_xp <= _progression.rank_floor_xp()
 		else tr(MainMenuText.XP) % [total, next_xp]
 	)
-	_footer.text = tr(MainMenuText.PROFILE) % [rank, _progression.title(rank).to_upper(), xp]
+	_footer.text = tr(MainMenuText.PROFILE) % [rank, xp]
+	_rank_item.text = tr(MainMenuText.RANK_HINT) % _progression.title(rank).to_upper()
 
 
 func _open(route: StringName) -> void:

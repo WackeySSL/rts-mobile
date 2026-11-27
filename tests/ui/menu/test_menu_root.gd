@@ -58,7 +58,7 @@ func _check_defaults() -> void:
 		if button != null and not button.disabled:
 			enabled.append(button.text)
 	assert_array(enabled).is_equal(
-		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK", "HOW TO PLAY", "SETTINGS"]
+		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK · RECRUIT", "HOW TO PLAY", "SETTINGS"]
 	)
 	for button: Button in main.items():
 		if button.text == "HOW TO PLAY":

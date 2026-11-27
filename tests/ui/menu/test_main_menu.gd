@@ -289,7 +289,7 @@ func test_the_rows_are_in_order_and_there_is_no_rank_block() -> void:
 		words.append(item.text)
 		numbers.append(_main._numbers[item].text)
 	assert_array(words).is_equal(
-		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK", "HOW TO PLAY", "SETTINGS"]
+		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK · RECRUIT", "HOW TO PLAY", "SETTINGS"]
 	)
 	assert_array(numbers).is_equal(["01", "02", "03", "04", "05", "06"])
 	assert_array(_all_of(_main.column, ProgressBar)).is_empty()  # No XP bar on the front page.
@@ -305,7 +305,7 @@ func test_the_rank_row_opens_the_rank_screen_through_the_routes() -> void:
 	_routes.register(MenuRoutes.RANK, RankScreen.new)
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
 	for item: Button in _main.items():
-		if item.text == "RANK":
+		if item.text.begins_with("RANK"):
 			item.pressed.emit()
 	assert_object(_stack.current()).is_instanceof(RankScreen)
 
@@ -348,9 +348,10 @@ func test_the_profile_line_shows_the_rank_and_xp_and_opens_the_rank_screen() -> 
 	_save.call("set_section", &"progress", {"xp": 100})
 	_routes.register(MenuRoutes.RANK, RankScreen.new)
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
-	assert_str(_main._footer.text).is_equal("COMMANDER · RANK 2 SCOUT · 100 / 250 XP")
+	assert_str(_main._footer.text).is_equal("COMMANDER · RANK 2 · 100 / 250 XP")
 	var rect: Rect2 = _main._footer.get_global_rect()
 	assert_float(rect.size.y).is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
 	assert_float(rect.end.y).is_less_equal(_main.slot.get_global_rect().position.y + TOLERANCE_PX)
+	assert_str(_main._rank_item.text).is_equal("RANK · SCOUT")
 	_main._footer.pressed.emit()
 	assert_object(_stack.current()).is_instanceof(RankScreen)
