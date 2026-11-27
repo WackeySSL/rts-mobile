@@ -263,6 +263,18 @@ jobs:
             ${{ env.SCONS_CACHE }}
           key: ${{ steps.native-key.outputs.key }}
 
+      # The pre-render post's Python pins (P656b, #699): a shard may hold tests/tools/prerender/test_prerender_post.gd,
+      # so every shard has them. Skipped while tools/prerender/requirements.txt does not exist. The checks job runs
+      # no suite and needs none of this.
+      - if: hashFiles('tools/prerender/requirements.txt') != ''
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+
+      - if: hashFiles('tools/prerender/requirements.txt') != ''
+        name: Install the pre-render post's Python pins
+        run: python3 -m pip install -r tools/prerender/requirements.txt
+
       # Fails when the shards do not cover the suite list exactly once (a file in no shard or in two).
       - name: Check that the shards cover every suite file once
         env:

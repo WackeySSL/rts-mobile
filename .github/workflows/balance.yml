@@ -138,7 +138,7 @@ jobs:
           key="$(bash scripts/build-native.sh --print-cache-key)"
           echo "key=$key" >> "$GITHUB_OUTPUT"
 
-      # Restore only: ci.yml's verify job saves this key on every push to main.
+      # Restore only: ci.yml's checks job and tests shards save this key on every push to main.
       - name: Restore godot-cpp and the SCons object cache
         uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

@@ -61,6 +61,30 @@ func test_the_test_sharding_is_checked_in_the_checks_job_and_in_every_shard() ->
 	assert_bool(FileAccess.file_exists("res://scripts/ci/shard-tests.py")).is_true()
 
 
+## Every shard (not the checks job) has the pre-render post's Python pins once #699's requirements
+## file exists, and the steps are skipped while it does not.
+func test_every_shard_installs_the_prerender_python_pins_when_the_file_exists() -> void:
+	var lines: PackedStringArray = _lines()
+	var tests: String = "\n".join(_job(lines, TESTS_JOB))
+	var checks: String = "\n".join(_job(lines, CHECKS_JOB))
+	var guard: String = "      - if: hashFiles('tools/prerender/requirements.txt') != ''\n"
+	var setup: String = (
+		guard
+		+ "        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0\n"
+		+ "        with:\n"
+		+ '          python-version: "3.13"\n'
+	)
+	var install: String = (
+		guard
+		+ "        name: Install the pre-render post's Python pins\n"
+		+ "        run: python3 -m pip install -r tools/prerender/requirements.txt\n"
+	)
+	assert_bool(tests.contains(setup)).is_true()
+	assert_bool(tests.contains(install)).is_true()
+	assert_int(tests.find(install)).is_less(tests.find("- name: " + SHARD_VERIFY_STEP))
+	assert_bool(checks.contains("setup-python")).is_false()
+
+
 func _lines() -> PackedStringArray:
 	var file: FileAccess = FileAccess.open(WORKFLOW, FileAccess.READ)
 	assert_object(file).is_not_null()
