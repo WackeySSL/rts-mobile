@@ -113,6 +113,20 @@ func clear_at(at: Vector2) -> bool:
 	return true
 
 
+## Whether the box `box` (what the hint draws at a start: its press ring or its hand) is clear of
+## every visible card button grown by `THROUGH_BAND_DP` and every HUD rect but the card's, as of the
+## last `update`. A drawn ring or hand over Next would read as "tap Next" (plan row P593b-5).
+func clear_box(box: Rect2) -> bool:
+	var band: float = THROUGH_BAND_DP * _dp
+	for rect: Rect2 in _buttons:
+		if rect.grow(band).intersects(box):
+			return false
+	for key: StringName in _hud:
+		if key != HudCorners.CARD and _hud[key].intersects(box):
+			return false
+	return true
+
+
 ## Appends the rects `clear_at` refuses (buttons and HUD rects, grown by the band) to `out`: the
 ## edges a free point is looked for along.
 func edge_rects(out: Array[Rect2]) -> void:
