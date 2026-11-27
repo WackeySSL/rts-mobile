@@ -51,7 +51,10 @@ jobs:
     # and PR #486 was cancelled twice at the 45 min limit; 75 leaves room again.
     # Treadline art (about 8150 cases): the L2 vehicle and squad frames (P638-P640) put verify at
     # 58-73 min on PR runs, and PR #673 was cancelled at the 75 min limit; 100 leaves room again.
-    timeout-minutes: 100
+    # Guide proof and pre-render (about 8300 cases): P595's lead-in suites and P593b-4's drag proof
+    # put verify at 60-97 min on PR runs (PR #696 ran 97 min, PR #692 90 min); 130 leaves room while
+    # the job is split (follow-up #87).
+    timeout-minutes: 130
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
