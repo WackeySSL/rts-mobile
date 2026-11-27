@@ -976,7 +976,7 @@ id = &"menus-main"
 title = "The main menu"
 body = "The main menu is a numbered list of big buttons, each with its arrow: Continue, when a game can be resumed, then Skirmish, Tutorial, Rank, How to play and Settings. The numbers count the buttons shown, and the first is amber. They stand in two columns where the screen is wide enough. A thin line at the foot shows your rank and XP; tap it, or Rank, to open your commander screen. On a short screen the column scrolls."
 
-[sub_resource type="Resource" id="e153"]
+[sub_resource type="Resource" id="e154"]
 script = ExtResource("3_ent")
 id = &"menus-rank"
 title = "Your rank"
@@ -1050,11 +1050,17 @@ id = &"menus-tutorial-end"
 title = "Finish or leave a lesson"
 body = "When you finish the last card, tap Skip lesson on the first card, or tap Leave tutorial in the pause menu (at any time), the Tutorial screen opens again. A lesson you finished is marked DONE."
 
+[sub_resource type="Resource" id="e153"]
+script = ExtResource("3_ent")
+id = &"menus-scroll-page"
+title = "Scrolling a page"
+body = "When a menu page is longer than the screen, drag it up or down with one finger. It follows your finger and carries on a little when you let go. A quick tap still presses a button, and a drag that starts on a button scrolls the page without pressing it."
+
 [sub_resource type="Resource" id="s18"]
 script = ExtResource("2_sec")
 id = &"menus"
 title = "Menus"
-entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e153"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149"), SubResource("e22t1"), SubResource("e22t3"), SubResource("e22t2")])
+entries = Array[ExtResource("3_ent")]([SubResource("e141"), SubResource("e142"), SubResource("e143"), SubResource("e154"), SubResource("e144"), SubResource("e145"), SubResource("e151"), SubResource("e146"), SubResource("e147"), SubResource("e152"), SubResource("e148"), SubResource("e149"), SubResource("e22t1"), SubResource("e22t3"), SubResource("e22t2"), SubResource("e153")])
 
 [sub_resource type="Resource" id="e150"]
 script = ExtResource("3_ent")
