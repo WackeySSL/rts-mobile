@@ -217,9 +217,14 @@ func _after(beat: TutorialBeatDef, carried: Dictionary) -> Dictionary:
 ## point at (ADR 0048 section 5). A beat with no lead-in is its own anchor.
 func _aimed(beat: TutorialBeatDef) -> TutorialLeadInDef:
 	var ctx: TutorialContext = TutorialContext.new()
+	ctx.snapshot = _director.runner.snapshot  # A SELECTED step reads the selection's types.
 	ctx.hud = _feed.state
 	ctx.selection = _selection
 	ctx.drawer_tab = _sidebar.tab
+	if not _director.running():
+		# The state met the beat's condition already (a saved group), so the director shows no
+		# chain and the mark judges the card on the beat's own anchor (`_show`).
+		return TutorialChain.final_step(beat)
 	var step: int = TutorialChain.active(beat, ctx)
 	return beat.lead_in[step] if step < beat.lead_in.size() else TutorialChain.final_step(beat)
 
@@ -328,6 +333,7 @@ func _checks(
 		target == null
 		and aim.anchor == TutorialBeatDef.Anchor.CONTROL
 		and not beat.lead_in.is_empty()
+		and _director.running()
 	):
 		lines.append(
 			(
