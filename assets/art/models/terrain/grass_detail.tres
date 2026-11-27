@@ -7,28 +7,35 @@
 [sub_resource type="Resource" id="m_ground"]
 script = ExtResource("1_mat")
 id = &"ground"
-base = Color(0.6158, 0.6131, 0.4419, 1)
+base = Color(0.6128, 0.6188, 0.4443, 1)
 roughness = 0.92
 kind = 6
 
 [sub_resource type="Resource" id="m_g_dark"]
 script = ExtResource("1_mat")
 id = &"g_dark"
-base = Color(0.5788, 0.5763, 0.4154, 1)
+base = Color(0.5761, 0.5816, 0.4176, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_g_light"]
 script = ExtResource("1_mat")
 id = &"g_light"
-base = Color(0.6527, 0.6499, 0.4684, 1)
+base = Color(0.6496, 0.6559, 0.4709, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_g_shade"]
+script = ExtResource("1_mat")
+id = &"g_shade"
+base = Color(0.5516, 0.5569, 0.3998, 1)
 roughness = 0.9
 kind = 6
 
 [sub_resource type="Resource" id="m_g_boulder"]
 script = ExtResource("1_mat")
 id = &"g_boulder"
-base = Color(0.4898, 0.4516, 0.4018, 1)
+base = Color(0.3971, 0.366, 0.3257, 1)
 roughness = 0.85
 kind = 6
 
@@ -155,12 +162,45 @@ size = Vector3(0.96, 0.02, 0)
 [sub_resource type="Resource" id="p15"]
 script = ExtResource("2_part")
 part = &"base_2"
-shape = &"solid"
-material = &"g_boulder"
-bevel = 0.012
-planes = PackedVector4Array(0, 0, -1, 0, -0.0638, -0.0374, 0.9973, 0.0992, -0.4793, -0.8764, 0.0476, 0.3299, -0.0861, -0.995, 0.0507, 0.3597, 0.1294, -0.9838, 0.124, 0.3385, 0.8487, -0.5097, 0.1411, 0.2866, 0.9892, -0.1291, 0.0692, 0.1743, 0.9595, 0.2787, 0.0404, 0.0923, 0.4311, 0.8924, 0.133, -0.139, -0.1277, 0.9838, 0.1258, -0.1563, -0.558, 0.8291, 0.0333, -0.1466, -0.8376, 0.5387, 0.0907, -0.0759, -0.8907, 0.4165, 0.1821, -0.0253, -0.7141, -0.6884, 0.127, 0.2287)
+shape = &"cylinder"
+material = &"g_shade"
+a = Vector3(0.0562, -0.2383, 0.002)
+b = Vector3(0.0562, -0.2383, 0.005)
+radius = 0.1468
+bevel = 0.0012
+segs = 14
 
 [sub_resource type="Resource" id="p16"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(0.0442, -0.2503, 0)
+b = Vector3(0, 0, 1)
+radius = 0.1468
+segs = 12
+
+[sub_resource type="Resource" id="p17"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(-0.0192, -0.2134, 0)
+b = Vector3(0, 0, 1)
+radius = 0.083
+segs = 10
+
+[sub_resource type="Resource" id="p18"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(-0.0076, -0.1984, 0)
+b = Vector3(0, 0, 1)
+radius = 0.095
+segs = 10
+
+[sub_resource type="Resource" id="p19"]
 script = ExtResource("2_part")
 part = &"base_3"
 shape = &"quad"
@@ -168,7 +208,7 @@ material = &"ground"
 a = Vector3(0, 0, 0)
 size = Vector3(1, 1, 0)
 
-[sub_resource type="Resource" id="p17"]
+[sub_resource type="Resource" id="p20"]
 script = ExtResource("2_part")
 part = &"base_3"
 shape = &"quad"
@@ -176,7 +216,7 @@ material = &"ground"
 a = Vector3(-0.51, 0, 0)
 size = Vector3(0.02, 0.96, 0)
 
-[sub_resource type="Resource" id="p18"]
+[sub_resource type="Resource" id="p21"]
 script = ExtResource("2_part")
 part = &"base_3"
 shape = &"quad"
@@ -184,7 +224,7 @@ material = &"ground"
 a = Vector3(0, -0.51, 0)
 size = Vector3(0.96, 0.02, 0)
 
-[sub_resource type="Resource" id="p19"]
+[sub_resource type="Resource" id="p22"]
 script = ExtResource("2_part")
 part = &"base_3"
 shape = &"quad"
@@ -192,7 +232,7 @@ material = &"ground"
 a = Vector3(0.51, 0, 0)
 size = Vector3(0.02, 0.96, 0)
 
-[sub_resource type="Resource" id="p20"]
+[sub_resource type="Resource" id="p23"]
 script = ExtResource("2_part")
 part = &"base_3"
 shape = &"quad"
@@ -205,5 +245,5 @@ script = ExtResource("3_model")
 art_id = &"grass"
 faction = &"terrain"
 variation_seed = 656
-materials = Array[ExtResource("1_mat")]([SubResource("m_ground"), SubResource("m_g_dark"), SubResource("m_g_light"), SubResource("m_g_boulder")])
-parts = Array[ExtResource("2_part")]([SubResource("p0"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7"), SubResource("p8"), SubResource("p9"), SubResource("p10"), SubResource("p11"), SubResource("p12"), SubResource("p13"), SubResource("p14"), SubResource("p15"), SubResource("p16"), SubResource("p17"), SubResource("p18"), SubResource("p19"), SubResource("p20")])
+materials = Array[ExtResource("1_mat")]([SubResource("m_ground"), SubResource("m_g_dark"), SubResource("m_g_light"), SubResource("m_g_shade"), SubResource("m_g_boulder")])
+parts = Array[ExtResource("2_part")]([SubResource("p0"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7"), SubResource("p8"), SubResource("p9"), SubResource("p10"), SubResource("p11"), SubResource("p12"), SubResource("p13"), SubResource("p14"), SubResource("p15"), SubResource("p16"), SubResource("p17"), SubResource("p18"), SubResource("p19"), SubResource("p20"), SubResource("p21"), SubResource("p22"), SubResource("p23")])

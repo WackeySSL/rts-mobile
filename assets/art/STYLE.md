@@ -3235,8 +3235,8 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 | --- | --- | --- | --- | --- |
 | `base` | every terrain | variant 0 to 3 (the cell hash picks one; they differ in where details sit, not in hue) | 24 | 128 x 64 |
 | `blend` | a lower terrain, in the look of the higher one (sand, scrub, ore) | `side_ne/se/sw/nw`, `corner_n/e/s/w` | 24 | 128 x 64 |
-| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 94 |
-| `shore` | water | the same twelve | 12 | 128 x 64 |
+| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 95 |
+| `shore` | water | the same twelve | 12 | 128 x 64 to 66 |
 | `road` | grass or sand, replaces the base | `nw_se`, `ne_sw`, `nw_ne`, `ne_se`, `se_sw`, `sw_nw` | 12 | 128 x 64 |
 
 - **Masks** name the neighbours that differ. Edge neighbours are `ne` (grid y - 1), `se` (x + 1),
@@ -3253,7 +3253,7 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 - **Lip rule.** A flat piece (base, blend, road) is exactly 64 texels tall. Only a rock lip or a
   water shore rises above its diamond's top corner, by at most 36 texels (the bake refuses a piece
   that reaches the canvas top, 36 above the corner; `tests/art/test_terrain_kit.gd` pins 64 to 100).
-  Shipped: lips rise 0 to 30 texels, shores 0 (a flat rim). Rock and water are the cells that cost 0 for
+  Shipped: lips rise 0 to 31 texels, shores 0 to 2. Rock and water are the cells that cost 0 for
   all three move classes, so no unit stands behind a rising part. Nothing under 2 art px across is
   modelled.
 - **Seamless.** The ground reaches 0.02 tile (about 1 texel) past each edge, never past a corner,
@@ -3264,27 +3264,33 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
   dark; his reference is the P653 prototype's terrain, `docs/proto/p653/terrain_z1.png`). A base piece
   is a flat sheet in the terrain's colour with a soft grain (three scales, whole periods per tile,
   amplitude about 5 % of the value): no stones, bushes, flecks or rings. Only one of the four grass
-  variants (`base_2`) and one of the four rock variants (`base_3`) carry a boulder, one each, a
-  rounded chunk 0.22 to 0.28 tile wide and 6 to 9 texels tall. Scrub is the grass tone a step
+  variants (`base_2`) and one of the four rock variants (`base_3`) carry one boulder: three
+  overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide) on a soft contact patch. **P656d's cell hash
+  should give the boulder variant one cell in eight** (the other three variants share the rest),
+  as the proof sheets do; no other base piece has a stone, fleck or ring. Scrub is the grass tone a step
   darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, with
-  cliff walls of narrow vertical columns in three tones under a lighter cap (front walls 47 texels
-  tall, back walls 33). Water is a calm blue sheet, a wet bank on the water cell's open side and a
-  thin light foam rim in front of it. Roads are asphalt with a worn dashed line and a gravel
+  cliff walls of faceted columns of varied width (3 to 9 texels), depth, height and tilt in four
+  strata tones, a ragged top with an uneven, slightly overhanging cap and a dark crevice behind
+  (front walls up to 47 texels tall, back walls up to 33; the first and last column at a tile edge
+  are fixed, so neighbouring pieces join). Water is a calm blue sheet; a shore is a wet bank on the water cell's open side with a thin
+  light foam line, and every shore and blend piece has a curved, seeded edge inside its tile (zero
+  offset at the tile edges, so a run of pieces meets and reads as one coast). The scrub blend is
+  the widest and softest (a mid tone between scrub and grass at its rim). Roads are asphalt with a worn dashed line and a gravel
   shoulder. Hues follow P653's (grass olive-khaki, hue 62), not today's diamonds'.
 - **Palette** (mean over the four base pieces of a terrain, rendered sRGB; P653's terrain areas
   measured the same way in brackets, `-` where P653 has no such area):
 
 | Terrain | Mean | Hue | Saturation | Value |
 | --- | --- | --- | --- | --- |
-| grass | #93946F | 62 (60) | 0.25 (0.22 to 0.28) | 0.58 (0.58 to 0.60) |
+| grass | #939670 | 65 (61 to 63) | 0.25 (0.22 to 0.28) | 0.59 (0.58 to 0.60) |
 | sand | #C7B58F | 41 (-) | 0.28 (-) | 0.78 (-) |
 | scrub | #7D8561 | 73 (-) | 0.27 (-) | 0.52 (-) |
 | rock | #756C62 | 32 (33) | 0.16 (0.18) | 0.46 (0.44) |
 | water | #3E6479 | 201 (202) | 0.49 (0.49) | 0.48 (0.48) |
 | ore | #605044 | 26 (-) | 0.29 (-) | 0.38 (-) |
 
-  Rock cliff walls (the 12 lips) measure saturation 0.13, value 0.44 (P653's cliff 0.10 and 0.45 to
-  0.48). The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
+  Rock cliff walls (the 12 lips) measure saturation 0.09, value 0.36 (P653's cliff 0.10 and 0.45 to
+  0.48): the crevices and the faces turned from the sun are darker than P653's. The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
   key band (hue 300 +- 20 degrees, saturation 0.30 or more).
 - **Water is over the ground ceiling.** Water's mean saturation is 0.49, as P653's, so it is above
   ADR 0053 section 8's 0.30 and in the route triad's blue hue band (100 % of it at saturation 0.35
@@ -3295,15 +3301,15 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 
 | Terrain | Mean saturation | In a route triad's hue band | Edges per 100 px2 (P653's) | Lowest 32 px greyscale spread (at least 80) |
 | --- | --- | --- | --- | --- |
-| grass | 0.248 | 0.00 % | 4.7 (3.4 to 7.4) | 118.1 |
-| sand | 0.281 | 0.00 % | 12.3 (-) | 136.2 |
-| scrub | 0.270 | 0.00 % | 7.8 (-) | 115.1 |
-| rock | 0.162 | 0.00 % | 1.2 (18.6 on P653's grainier plateau) | 113.9 |
+| grass | 0.252 | 0.00 % | 4.5 (3.4 to 7.4) | 118.4 |
+| sand | 0.281 | 0.00 % | 12.1 (-) | 135.8 |
+| scrub | 0.270 | 0.00 % | 7.9 (-) | 115.1 |
+| rock | 0.162 | 0.00 % | 0.7 (18.6 on P653's grainier plateau) | 114.0 |
 | water | 0.486 | 100 % | 0.0 (0.0) | 113.6 |
-| ore | 0.291 | 0.00 % | 4.5 (-) | 114.3 |
+| ore | 0.289 | 0.00 % | 4.5 (-) | 114.3 |
 
-- **Budgets.** The 84 files total 0.43 MB (the ADR's budget is 5 MB; the largest piece is 12.7 KB);
-  packed with a 2 px gutter into rows of 4096 px they take 228 rows (the budget is 512).
+- **Budgets.** The 84 files total 0.46 MB (the ADR's budget is 5 MB; the largest piece is 11.3 KB);
+  packed with a 2 px gutter into rows of 4096 px they take 229 rows (the budget is 512).
 
 ## Map looks (P551 and P553, plan answer 5)
 A map may carry its own ground look: `MapDef.ground_look`, a folder name under

@@ -7,14 +7,14 @@
 [sub_resource type="Resource" id="m_ground"]
 script = ExtResource("1_mat")
 id = &"ground"
-base = Color(0.6158, 0.6131, 0.4419, 1)
+base = Color(0.6128, 0.6188, 0.4443, 1)
 roughness = 0.92
 kind = 6
 
 [sub_resource type="Resource" id="m_ground_sand"]
 script = ExtResource("1_mat")
 id = &"ground_sand"
-base = Color(0.8239, 0.7434, 0.5739, 1)
+base = Color(0.8207, 0.741, 0.5717, 1)
 roughness = 0.92
 kind = 6
 
