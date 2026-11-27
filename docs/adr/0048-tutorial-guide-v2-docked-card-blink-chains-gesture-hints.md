@@ -775,3 +775,69 @@ target. The table is the default, and the PR says why for any change.
 5. **The hand with Reduced effects on.** A still hand in the gesture's pose, with arrows
    (recommended: Reduced effects keeps what tells the player something). Or no hand at all.
    **Answer: a still hand with arrows.**
+
+## Implementation note (as built, 2026-11-27)
+Written in plan row P596 (branch `claude/p596-guide-closeout`, base `main` at 555f6b58). It
+records what was built and merged. It changes no decision above.
+
+**Status.** The status above stands as it is.
+Phone check (P596): pending Michael's yes.
+
+### Rows and PRs
+The PR numbers are the squash subjects' `(#NNN)` on `main` at 555f6b58.
+
+| Row | PR | What was built |
+| --- | --- | --- |
+| P582, P583 | #634 | This ADR and the plan; Michael's answers ("Ja til alle"); the dated note in ADR 0044 §2 |
+| P584 | #648 | `GuideDock`: the pure dock rect from the `HudCorners` rects, the field point and the fold rule for no room |
+| P585 | #641 | `GuideSettingsDef` and `guide_settings.tres`, the `GuideTokens` theme type, the blinking frame |
+| P586 | #637 | Chained targets: `TutorialLeadInDef`, `TutorialChain.active`, Kind 18 `STRIKE_AIMING`, the director's `active_target` and `target_changed` |
+| P587 | #640 | The two hand glyphs, point and pinch, with their `assets/CREDITS.md` entries |
+| P588 | #657 | The card stands in the dock, see-through over the ring; the folded tab's slot; P543g's search removed |
+| P589 | #661 | The tab with the `n/N` counter and the fold; the wide and narrow forms; Skip on the first card only |
+| P589b | #663 | Hotfix: Skip and Next show their whole word at every size (`CoachButtonWidth`) |
+| P590 | #649 | `GestureHint`: the hand that plays each gesture, a pure `pose()`, a still key pose with Reduced effects |
+| P591 | #667 | The ring follows the chain; `BuildSidebar.reveal_tile`; the chain sweep; the training beats end on the item card |
+| P591b | #669 | The chain sweep drives the seven mid-play beats with real fixtures; the `NEEDS_PLAY` list removed |
+| P592 | #671 | The hand wired to the mark: at the target, at the field point, or a drag toward an off-screen tile |
+| P593 | #672 | Lesson chains: four tab beats merged, lead-ins to every card, the aim chain, selection lead-ins |
+| P593c | #676 | Every prompt fits its card without scrolling; `SCROLLS` and `SCROLLS_PORTRAIT` deleted |
+| P594 | #674 | Each tile and camera beat names its gesture for the hand |
+| §13 (plan rows P593b-0 to P593b-2) | #677 | This ADR's §13, unit anchors |
+| P593b-0 | #678 | The card's node tree and sizing moved to `GuideCardFit` (`CoachMark.gd` from 999 to 801 lines) |
+| P593b-1a | #680 | The `UNIT` anchor's data (`TutorialUnitPickDef`), `tap_point` on both layers, `GuideUnitAnchor`, the ring on a unit |
+| P593b-1b | #683 | The hand and card rules on a `UNIT` anchor; the see-through band; `TutorialHost` wiring |
+| P593b-2 | #690 | The six unit beats in the lesson data; the bot taps the ring on each `UNIT` step |
+| P593b-3 | #694 | The card's visible Next, Skip and tab hide the field, with hysteresis |
+| P593b-4 | #696 | A unit's drag hint starts on free map, never on a card button or a HUD rect |
+| P593b-5 | pending | The drag start clears every button and HUD rect by the band plus the drawn press ring's radius |
+| P595 | #695 | Guide proof: the lead-in states per lesson, the view-only replay proof, the shots scene |
+| P596 | not merged | This note, the `touch-ui-rules` draft, the phone check (pending) |
+
+### Deviations as built
+- §13.2: the selector's enum is `Whose` (`OWN`, `ENEMY`), not `Side`, which collides with Godot's global `Side` enum.
+- §13.5: the ring on a unit is round (radius `half`, at least 24 dp), not the tile's 2:1 ground ellipse.
+- §13.5: for a `UNIT` aim the card turns back from see-through only once the ring's box grown by 8 dp (`THROUGH_BAND_DP`) and the hand's bounds are clear (a hysteresis band, P593b-1b).
+- P593b-3: the card's visible Next, Skip and tab hide the field: under once inside the plain rect, clear only outside the rect grown by `THROUGH_BAND_DP`.
+- P593b-4: the DRAG start moves to the nearest free map point, along one axis only, `START_GAP_DP` (1 dp) past a blocked rect grown by the band; the vector is kept; no free point gives no hand.
+- P593b-1 was built as two PRs, P593b-1a (#680) and P593b-1b (#683).
+- §4 and §7: `blink_low_alpha_pct` is 50, not 25 (P591: 3:1 against the HUD panel).
+- §3 (P588 refinement): no prompt scrolls; P593c shortened six prompts, and the sweep fails any prompt that scrolls.
+- §2 (P589): a landscape dock always takes the wide form; only a portrait dock under `card_wide_dp` is narrow.
+- §5 (P591): `reveal_tile` is asked once per step entry, after the card's rect has held for 2 looks.
+- §5 (P593): a build beat ends on its item card; the placement beat (`basics/placed`) takes the placement.
+- §13.6 (P593b-2): `groups` needed no drawer-closing step; `groups` and `attack` take the `AllArmy` lead-in with `SELECTED rifle_squad`; no prompt changed.
+- P594 and P593b-2: the gesture and unit-beat data tests are in new suites (`test_lesson_gestures.gd`, `test_lesson_unit_beats.gd`), because `test_lesson_data.gd` is at gdlint's public-method cap.
+- P595: the lead-in state tests are split by lesson (`test_coach_mark_lead_in_states_basics.gd`, `_support.gd`, `_air.gd`), because one file ran about 10 min; they share `support/chain_rig.gd`.
+- §9 (P595): view only is proven by replay hash: the guide on twice and the guide on with Reduced effects, landscape and portrait phone, each with a golden (1193 and 1220 ticks), each replayed from the scenario and the seed to the same hash.
+- P595: two real-time couplings of the bot were removed: the test gives each camera `zoom_snap_ms` 0 (the zoom snap is a Tween), and the runner's `_process` is turned off at once, before the bot takes it over.
+
+### Open items
+- Press ring overlapping NEXT at the DRAG start (support/mine, Web 2400x912): fixed in P593b-5. The start now clears every button and HUD rect by the band plus the drawn ring radius.
+- Free-start search: it moves the start along one axis only and fails safe (no hand) where the x move and the y move each land in a blocked rect.
+- CI verify time: about 97 min against the 100-min timeout; the lead is raising the timeout.
+- View-only proof: "guide off" is not compared, because the bot finds its taps through the mark (P595).
+- See-through card over a world target on short landscape screens: Michael's phone check judges it (plan risk 1).
+- P560's new-player gate on Michael's phone runs after P596, so the new guide is judged (plan risk 9).
+- The `touch-ui-rules` "Tutorial guide" paragraph (§12): drafted in `docs/plans/2026-11-27-touch-ui-rules-tutorial-guide-draft.md`; the skill changes only after Michael's yes.
+- Closed: P593b-2's open item (the guide did not count the card's buttons as hiding the field) was closed by P593b-3 (#694).
