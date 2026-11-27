@@ -93,6 +93,16 @@ func is_unlocked(kind: StringName, id: StringName) -> bool:
 	return rank() >= unlock_rank(kind, id)
 
 
+## The XP a lesson pays once (`ProgressionDef.lesson_xp`); 0 while the tuning is unusable.
+func lesson_xp() -> int:
+	return _def.lesson_xp if _def != null else 0
+
+
+## True once the lesson has paid its XP (the `lessons` list of the progression section).
+func is_lesson_paid(lesson_id: StringName) -> bool:
+	return _def != null and (_read()["lessons"] as Array).has(String(lesson_id))
+
+
 ## One of the last awards as saved (its `bonus_applied` is current), or null.
 func get_award(award_id: StringName) -> XpAward:
 	if _def == null:
