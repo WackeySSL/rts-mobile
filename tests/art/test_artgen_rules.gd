@@ -203,7 +203,7 @@ func test_a_material_is_its_mid_tone_and_the_team_is_the_sentinel_triad() -> voi
 			ArtPalette.KEYS[faction][2]
 		)
 	# One sentinel triad, magenta at hue 300, for both factions; the faction colours are fixed
-	# materials (Nordvaern orange, Facet blue) that the bake never touches.
+	# materials (Ironward orange, Facet blue) that the bake never touches.
 	assert_array(ArtPalette.KEYS[&"fossil"]).is_equal(["#F07AF0", "#D234D2", "#9A1F9A"])
 	assert_array(ArtPalette.KEYS[&"renew"]).is_equal(ArtPalette.KEYS[&"fossil"])
 	assert_str(ArtPalette.tone(&"fossil", ArtPalette.FACTION, ArtPalette.LEFT)).is_equal("#FF6E1F")

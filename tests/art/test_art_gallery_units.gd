@@ -129,7 +129,7 @@ func test_team_a_is_drawn_in_the_signal_triad_and_team_b_in_kobolt() -> void:
 					var own: int = _pixels_in(images, SIGNAL if is_a else KOBOLT)
 					var other: int = _pixels_in(images, KOBOLT if is_a else SIGNAL)
 					assert_int(own).override_failure_message(path).is_greater(0)
-					# Signal's tones sit inside the fixed Nordvaern orange, so a redrawn Nordvaern
+					# Signal's tones sit inside the fixed Ironward orange, so a redrawn Ironward
 					# unit of team B cannot be free of them (ADR 0050 section 3).
 					if is_a or not _has_fixed_orange(String(rig.name).to_snake_case()):
 						assert_int(other).override_failure_message(path).is_equal(0)

@@ -261,7 +261,7 @@ func test_the_facet_accent_is_a_blue_pair() -> void:
 	assert_str(_hex(theme, &"on_accent", &"AccentRenew")).is_equal("05090c")
 
 
-func test_the_nordvaern_accent_is_an_orange_pair() -> void:
+func test_the_ironward_accent_is_an_orange_pair() -> void:
 	var theme: Theme = HudThemes.source()
 	assert_str(_hex(theme, &"accent", &"AccentFossil")).is_equal("ff6e1f")
 	assert_str(_hex(theme, &"light", &"AccentFossil")).is_equal("ffa06a")

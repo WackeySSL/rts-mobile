@@ -2,7 +2,7 @@ class_name SameSceneBands
 extends Resource
 ## The roster, scene layout and tolerance bands of the same-scene check (ADR 0050 section 8,
 ## `tools/artgen/same_scene.tres`). It lives outside `data/`, so a band change starts no balance
-## run. `scene` is a unit, a building, a unit, a building: Nordvaern, then Facet.
+## run. `scene` is a unit, a building, a unit, a building: Ironward, then Facet.
 
 @export_group("Scene")
 @export var scene: PackedStringArray = PackedStringArray()
@@ -31,7 +31,7 @@ extends Resource
 
 @export_group("Faction classifier")
 ## A pixel is faction material (not the neutral body) when its hue is within `faction_hue_band`
-## degrees of one of `faction_hues` (the mid tones of Nordvaern orange and Facet blue) and its
+## degrees of one of `faction_hues` (the mid tones of Ironward orange and Facet blue) and its
 ## saturation is at least `faction_sat_min`; a pixel within `key_tolerance` (summed channels, 0 to
 ## 3) of the sentinel or a route triad is the team marker. Both are left out of `tone_sat`.
 @export var faction_hues: PackedFloat32Array = PackedFloat32Array()

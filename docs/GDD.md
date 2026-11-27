@@ -22,13 +22,13 @@ funded by optional rewarded ads and capped post-match interstitials.
 ## Match setup (MVP)
 - 1 vs 1 against the AI on Easy, Normal or Hard.
 - Two original factions, both playable, each with its own buildings, units and superweapon
-  (ADR 0023): the **Nordværn**, an oil and gas bloc (concrete, riveted steel, olive vehicles,
+  (ADR 0023): the **Ironward**, an oil and gas bloc (concrete, riveted steel, olive vehicles,
   gas spheres, flare stacks, pumpjacks; heavy, robust, slow), and the **Facet**, a
   green-energy alliance (white ceramic, glass, wind turbines, solar panels, blue-grey vehicles;
   fast, precise, fragile). Invented energy blocs with original lore: no geography, no flags, stars
   or real insignia, no link to existing franchises. Mirror matches are allowed.
 - Team colours: eight three-tone colours. By default each player takes its side's colour, which
-  is also its HUD's accent: Nordværn orange, Facet cyan; in a mirror match player 2
+  is also its HUD's accent: Ironward orange, Facet cyan; in a mirror match player 2
   takes the other one (ADR 0025, Michael's answer 7 of 2026-11-02).
 - Start: one Headquarters, 2 000 credits and 2 rifle squads of the player's faction.
 - Victory: the enemy has neither a Headquarters nor a production building left.
@@ -48,7 +48,7 @@ Structures are ordered in the build drawer, built in the queue and placed when t
 (ADR 0017, ADR 0019). ADR 0026's place-first path (a site that rises on the spot, 75 % refund on
 cancel) is in the sim but not used (Michael, 2026-11-05).
 
-| Role | Nordværn | Facet | Size | Cost | Power | Requires | Purpose |
+| Role | Ironward | Facet | Size | Cost | Power | Requires | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Headquarters | Rigworks | Grid Hub | 3x3 | - | +20 | - | Builds structures |
 | Power | Turbine Hall | Wind Park | 2x2 | 300 (Wind Park 250) | +100 (Wind Park +80) | Headquarters | Power |
@@ -63,7 +63,7 @@ cancel) is in the sim but not used (Michael, 2026-11-05).
 Starting points for balance runs; the real numbers live in `data/*.tres`. Phase 4b adds seven
 more per faction (13 in all) in the two sections named above.
 
-| Role | Nordværn | Facet | Cost | HP | Speed (tiles/s) | Range (tiles) | Strong against | Weak against |
+| Role | Ironward | Facet | Cost | HP | Speed (tiles/s) | Range (tiles) | Strong against | Weak against |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Rifle squad | Rig Hands | Linemen | 100 | 100 | 1.0 | 4 | Infantry | Vehicles |
 | Rocket squad | Wildcatters | Breakers | 300 | 90 | 0.9 | 5 | Vehicles, buildings | Infantry |
@@ -72,7 +72,7 @@ more per faction (13 in all) in the two sections named above.
 | Artillery | Mortar Rig | Arcline | 900 | 200 | 1.0 | 9 (minimum 3) | Buildings, groups | Anything close |
 | Tanker | Tanker | Fuel Runner | 1 200 | 800 | 1.1 | - | - | Everything |
 
-The numbers are Nordværn's: heavy, robust, slow. Facet is fast, precise and
+The numbers are Ironward's: heavy, robust, slow. Facet is fast, precise and
 fragile: Linemen 1.1 tiles/s and 70 HP, Breakers range 5.5, Swift 2.2 tiles/s and 220 HP, Torque
 1.4 tiles/s and 520 HP, Arcline range 10 and 160 HP, Fuel Runner 1.4 tiles/s carrying 450. Squads
 show three figures. Artillery needs a radar.
@@ -110,7 +110,7 @@ Buildings show the damage in their shape, not only in their colour:
 ## Superweapons (MVP)
 One per faction, built after the radar. It charges for 5 minutes from completion; then the player
 taps its button and a spot and confirms:
-- **Deep Bore** (Nordværn): after a 3-second warning every player sees, the ground splits
+- **Deep Bore** (Ironward): after a 3-second warning every player sees, the ground splits
   and everything within 3 tiles, own units and buildings included, takes heavy damage.
 - **Dusk Array** (Facet): at once and with no warning, every enemy building within 4
   tiles takes an overload hit (200 damage, enough to finish off a badly damaged building) and
@@ -209,23 +209,23 @@ Everything below is a starting value for the balance runs. The real numbers live
 
 **Buildings (12 per faction with these four)**
 
-| Role | Nordværn | Facet | Size | Cost | Power | Requires | Purpose |
+| Role | Ironward | Facet | Size | Cost | Power | Requires | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Airfield | Flight Yard | Glide Deck | 3x3 | 1 500 | -40 | Radar | Builds aircraft (Flight tab); 4 pads: reload, repair |
 | Anti-air | Burst Stack | Sky Needle | 1x1 | 700 | -20 | Barracks | Shoots high and low air only |
 | Engineering centre | Draft Shop | Lens Works | 2x2 | 1 200 | -40 | Airfield | Research tab: bomber upgrades |
 | Space centre | Skyrig | Zenith | 3x3 | 2 000 | -60 | Radar | Satellite (Survey Eye, Sunward): the whole map visible until it falls |
 
-**Units (Nordværn numbers, then Facet's take)**
+**Units (Ironward numbers, then Facet's take)**
 
-| Role | Nordværn | Facet | Cost | HP | Speed (tiles/s) | Range (tiles) | Hits | Notes |
+| Role | Ironward | Facet | Cost | HP | Speed (tiles/s) | Range (tiles) | Hits | Notes |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Fighter | Torchjet | Glint | 900 | 260 | 3.0 | 5 | air | No ammo limit. Facet: 3.6 tiles/s, 200 HP |
 | Bomber | Drillhead | Sunfall | 1 400 | 500 | 1.8 | 3 | ground | 2 bombs, then home to reload. Facet: 2.2 tiles/s, 380 HP |
 | Transport | Skyhauler | Ferrywing | 1 000 | 600 | 1.6 | - | - | 3 squads. Facet: 800 credits, 380 HP, 2.4 tiles/s, 2 squads |
 | Drone squad | Hoist Crew | Kite Crew | 350 | 140 | 1.4 | 4 | ground | Flies low. Facet: 300 credits, 90 HP, 2.0 tiles/s |
 
-**Upgrades:** Heavy Bombs and Plated Hull (Nordværn), Focus Bombs and Glaze Hull (Facet). The names are Michael's first choices (answer 1 A, ADR 0036 §16); Phase 7's trademark
+**Upgrades:** Heavy Bombs and Plated Hull (Ironward), Focus Bombs and Glaze Hull (Facet). The names are Michael's first choices (answer 1 A, ADR 0036 §16); Phase 7's trademark
 search checks them.
 
 Note (2026-11-13, P26bw, the lead's correctness fix; Michael may object): the bomber's range is 3
@@ -244,7 +244,7 @@ values; P255's balance run tunes them.
   upgrade and the hull upgrade are a pair of equals, so they cost the same.
 
 **Looks, in each faction's own style**
-- **Nordværn:** riveted olive steel, gas bottles and flare-stack exhausts.
+- **Ironward:** riveted olive steel, gas bottles and flare-stack exhausts.
   - The fighter is a stubby delta with one big intake.
   - The bomber is a fat twin-boom lifting body with a drill-bit nose.
   - The transport is a boxy armoured hull on four ducted fans.
@@ -301,13 +301,13 @@ ADR 0037, accepted 2026-11-09 (answers 1 A, 2 A, 3 A, 4 B, 5 A). Plan:
 
 **Buildings (13 per faction with the repair building)**
 
-| Role | Nordværn | Facet | Size | Cost | Power | Requires | Purpose |
+| Role | Ironward | Facet | Size | Cost | Power | Requires | Purpose |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Repair building | Weld Shed | Drone Dock | 2x2 | 800 | -20 (Drone Dock -30) | Vehicle factory | Repairs vehicles; Weld Shed: 2 at a time, fast, short reach; Drone Dock: 4 at a time, slower, wide reach |
 
 **Units (13 types per faction, 26 in all)**
 
-| Role | Nordværn | Facet | Cost | From | Notes |
+| Role | Ironward | Facet | Cost | From | Notes |
 | --- | --- | --- | --- | --- | --- |
 | Medic squad | Patchers | Menders | 300 | Barracks | Unarmed. Patchers 110 HP, heal 1 squad; Menders 70 HP, 1.2 tiles/s, heal 2 squads in a wider reach |
 | Ground carrier | Bunk Wagon | Linecar | 700 (Linecar 500) | Vehicle factory | Unarmed. Bunk Wagon tracked, 700 HP, 1.0 tiles/s, 4 squads; Linecar wheeled, 320 HP, 2.0 tiles/s, 2 squads |

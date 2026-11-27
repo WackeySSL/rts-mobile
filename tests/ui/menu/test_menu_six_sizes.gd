@@ -36,7 +36,7 @@ const LICENCES_LIST: StringName = &"licences_list"
 const LICENCES_TEXT: StringName = &"licences_text"
 const TUTORIAL: StringName = &"tutorial"
 ## The profile whose safe width is narrower than the side row: its names wrap. P607 re-pin: the
-## names NORDVÆRN and FACET are shorter than DERRICK LEAGUE and LUMEN ACCORD, so the row fits at
+## names IRONWARD and FACET are shorter than DERRICK LEAGUE and LUMEN ACCORD, so the row fits at
 ## every size and none wraps. A later longer name sets it again (the wrap branch below stays).
 const WRAPPING_PROFILE: StringName = &""
 ## Profiles whose row is wider than the asked column but fits the safe width: the column grows.

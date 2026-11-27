@@ -26,7 +26,7 @@ func test_the_sheet_builds_headless_with_every_zoom_both_factions_and_the_hud_st
 ## silhouette and differs only where the marker is, a part of the body (the old models paint their
 ## whole team areas in it, 5 to 12 %, and its anti-aliased edges count too).
 func test_the_mirror_row_differs_only_in_the_marker() -> void:
-	for at: int in [0, 2]:  # The sheet's mirror row: a Nordvaern and a Facet unit.
+	for at: int in [0, 2]:  # The sheet's mirror row: an Ironward and a Facet unit.
 		var id: StringName = StringName(_bands.scene[at])
 		var own: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0)
 		var other: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0, SameScene.mirror_of(id))
