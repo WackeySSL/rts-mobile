@@ -176,7 +176,7 @@ func test_a_hosted_band_lines_up_at_the_safe_bottom_at_the_six_sizes() -> void:
 		await await_idle_frame()
 		await await_idle_frame()
 		AdBandAsserts.assert_lines_up(
-			self, band, _service, _screen.scroll, band.gap_dp(), str(size)
+			self, band, _service, _screen.footer, band.gap_dp(), str(size)
 		)
 		_close()
 		UiScale.clear_override()

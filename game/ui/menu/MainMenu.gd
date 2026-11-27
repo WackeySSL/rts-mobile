@@ -200,5 +200,10 @@ func _label(text: String, variation: StringName) -> Label:
 	return label
 
 
+## The name the footer link of a screen over this one shows.
+func screen_name() -> String:
+	return tr("MAIN MENU")
+
+
 func _version() -> String:
 	return str(ProjectSettings.get_setting(VERSION_SETTING, "")).strip_edges()
