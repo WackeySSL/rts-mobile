@@ -7,6 +7,8 @@
 #        in byte order of the path (LC_ALL=C), and gdUnit4 runs the suites in the order it is
 #        given them. The arguments keep the caller's order; a file, a path that does not exist
 #        and every other flag pass as given.
+#        --shard I/N (CI follow-up #87, first and alone, no -a with it) runs shard I of N of the suite files
+#        that scripts/ci/shard-tests.py assigns by a stable rule; every file is in exactly one shard.
 # Env:   GODOT=<binary> (default: godot)
 #        RUN_TESTS_SKIP_IMPORT=1 skips the import step when the caller just ran it.
 # Exit:  0 only if at least one test ran and none failed, errored or leaked orphans.
@@ -55,6 +57,23 @@ mkdir -p "$REPORT_DIR"
 : >reports/.gdignore
 
 ARGS=("$@")
+if [ "${ARGS[0]:-}" = "--shard" ]; then
+  if [ ${#ARGS[@]} -ne 2 ]; then
+    echo "run-tests: --shard I/N takes no other argument (usage: bash scripts/run-tests.sh --shard 2/4)" >&2
+    exit 2
+  fi
+  command -v python3 >/dev/null 2>&1 || { echo "run-tests: python3 is missing (--shard needs it)" >&2; exit 3; }
+  shard_spec="${ARGS[1]}"
+  shard_files="$(python3 -I scripts/ci/shard-tests.py --shard "$shard_spec")" || exit 2
+  ARGS=()
+  while IFS= read -r file; do
+    [ -z "$file" ] || ARGS+=(-a "res://$file")
+  done <<<"$shard_files"
+  if [ ${#ARGS[@]} -eq 0 ]; then
+    echo "run-tests: shard ${shard_spec} holds no suite file" >&2
+    exit 1
+  fi
+fi
 if [ ${#ARGS[@]} -eq 0 ]; then ARGS=(-a res://tests); fi
 
 # Appends `-a <script>` to GD_ARGS for each .gd file below the local directory $1, in byte order of
