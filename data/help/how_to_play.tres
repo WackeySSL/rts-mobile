@@ -80,7 +80,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e7"), SubResource("e8"), Sub
 script = ExtResource("3_ent")
 id = &"units-look"
 title = "Your units"
-body = "Each unit has a shadow on the ground. On the redrawn units the large panels wear your team colour over a neutral body: steel and iron for Ironward's vehicles, squads, carrier, minelayer and aircraft, white and graphite for Facet's vehicles and squads, graphite, titanium and white for Facet's carrier, minelayer and aircraft. Two players, even on one side, are told apart by the colour of those panels. The two sides are told apart by shape: Ironward's units are heavy and boxy, Facet's low and faceted. Tap a unit to select it. The bar at the bottom left shows what you selected."
+body = "Each unit has a shadow on the ground. On the redrawn units the large panels wear your team colour over a neutral body: dark gunmetal for Ironward's vehicles, squads, carrier, minelayer and aircraft, white and dark gunmetal for Facet's vehicles and squads, graphite, titanium and white for Facet's carrier, minelayer and aircraft. Two players, even on one side, are told apart by the colour of those panels. The two sides are told apart by shape: Ironward's units are heavy and boxy, Facet's low and faceted. Tap a unit to select it. The bar at the bottom left shows what you selected."
 
 [sub_resource type="Resource" id="e12"]
 script = ExtResource("3_ent")
@@ -98,7 +98,7 @@ body = "Open the Flight tab of the build drawer. The cards stay locked until you
 script = ExtResource("3_ent")
 id = &"units-look-aircraft"
 title = "Your aircraft"
-body = "An aircraft hovers above its shadow. Ironward's Torchjet and Drillhead are steel and iron, and their large panels (body, fin and booms) wear your team colour; Facet's Glint and Sunfall are titanium and white and wear it on their wings, solar panels and wing tips. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
+body = "An aircraft hovers above its shadow. Ironward's Torchjet and Drillhead are dark gunmetal, and their large panels (body, fin and booms) wear your team colour; Facet's Glint and Sunfall are titanium and white and wear it on their wings, solar panels and wing tips. An aircraft that is shot down falls and bursts on the ground. You see an enemy aircraft only where you can see the ground under it."
 
 [sub_resource type="Resource" id="e15"]
 script = ExtResource("3_ent")
@@ -110,7 +110,7 @@ body = "Carriers are built at a vehicle factory, on the Vehicles tab. A carrier 
 script = ExtResource("3_ent")
 id = &"units-look-carrier"
 title = "Your carriers"
-body = "The Bunk Wagon's large panels, the deck, the nose and the roof, wear your team colour over a steel and iron body; the Linecar wears it on its whole lower body, nose and roof plate over graphite and white. A carrier shows its seats as small squares in its card at the bottom left. A square is filled for each squad aboard. You cannot see what an enemy carrier holds."
+body = "The Bunk Wagon's large panels, the deck, the nose and the roof, wear your team colour over a dark gunmetal body; the Linecar wears it on its whole lower body, nose and roof plate over graphite and white. A carrier shows its seats as small squares in its card at the bottom left. A square is filled for each squad aboard. You cannot see what an enemy carrier holds."
 
 [sub_resource type="Resource" id="e17"]
 script = ExtResource("3_ent")
@@ -122,7 +122,7 @@ body = "Minelayers are built at a vehicle factory, on the Vehicles tab, once you
 script = ExtResource("3_ent")
 id = &"units-look-minelayer"
 title = "Your minelayers"
-body = "The Shot Truck is a steel and iron flatbed truck with a drill mast and shot cans, and its large panels (cab, bed and cans) wear your team colour. The Seeder is a planter on a graphite chassis with a tall glass hopper, and wears your team colour on its cab, deck and hopper collar."
+body = "The Shot Truck is a dark gunmetal flatbed truck with a drill mast and shot cans, and its large panels (cab, bed and cans) wear your team colour. The Seeder is a planter on a graphite chassis with a tall glass hopper, and wears your team colour on its cab, deck and hopper collar."
 
 [sub_resource type="Resource" id="e19"]
 script = ExtResource("3_ent")
@@ -134,7 +134,7 @@ body = "Medics are built at a barracks, on the Infantry tab, like any squad. A m
 script = ExtResource("3_ent")
 id = &"units-medic-squad-look"
 title = "Your medics"
-body = "A medic squad is two figures. The Patchers wear steel-grey coveralls and carry a kit chest and a roll of patch line. The Menders wear white and graphite suits and carry white cases ringed in mint. The hard hats and shoulder plates of the Patchers and the helmets and shoulder plates of the Menders wear your team colour."
+body = "A medic squad is two figures. The Patchers wear dark gunmetal coveralls and carry a kit chest and a roll of patch line. The Menders wear white and gunmetal suits and carry white cases ringed in mint. The hard hats and shoulder plates of the Patchers and the helmets and shoulder plates of the Menders wear your team colour."
 
 [sub_resource type="Resource" id="s2"]
 script = ExtResource("2_sec")
@@ -1004,7 +1004,7 @@ body = "Open Settings on the main menu to set Sound and Music from 0 to 10, and 
 script = ExtResource("3_ent")
 id = &"menus-deploy"
 title = "Starting a match"
-body = "When you tap START on Skirmish, or start a lesson, a still card covers the screen while the match is made. It shows the game icon, the word DEPLOYING and the map's name. It goes away by itself when the match is ready, and also if the match could not start."
+body = "When you tap START on Skirmish, or start a lesson, a still card covers the screen while the match is made. It shows a picture, the word DEPLOYING, the map's name and one tip line, a new tip each time. It goes away by itself when the match is ready, and also if the match could not start."
 
 [sub_resource type="Resource" id="e149"]
 script = ExtResource("3_ent")

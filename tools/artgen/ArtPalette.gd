@@ -20,6 +20,11 @@ const SENTINEL: Array[String] = ["#F07AF0", "#D234D2", "#9A1F9A"]
 const KEYS: Dictionary[StringName, Array] = {&"fossil": SENTINEL, &"renew": SENTINEL}
 ## The fixed faction material: Ironward orange, Facet blue (the HUD accents' hues, STYLE.md).
 const FACTION: StringName = &"faction"
+## The gunmetal family (P658): the neutral dark bodies of the detail-2 units under the team panels,
+## `gunmetal` the dark running gear and trim, `gunbody` the hull slab, `gunsteel` the metal that
+## shows (guns, rims, wheel hubs). They sit apart from `iron`, `steel` and `olive`, which the
+## buildings and the older models still use. Facet has the first and the last (graphite and
+## titanium darkened).
 ## ADR 0023 section 6 as changed by the key band: rust #6E5D50, lamp #FFF1D6 (warm white), glass
 ## #B4C8CF and mint #A8F5B0 replace the canvas colours that fell in a key colour's hue band.
 const MATERIALS: Dictionary[StringName, Dictionary] = {
@@ -31,6 +36,9 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"iron": "#3B3F39",
 		&"lamp": "#FFF1D6",
 		&"olive": "#7D8562",
+		&"gunmetal": "#2B2E32",
+		&"gunsteel": "#5C6066",
+		&"gunbody": "#4A4D52",
 		&"faction": "#FF6E1F",
 	},
 	&"renew":
@@ -40,6 +48,8 @@ const MATERIALS: Dictionary[StringName, Dictionary] = {
 		&"titanium": "#8A9398",
 		&"glass": "#B4C8CF",
 		&"bluegrey": "#7D8B96",
+		&"gunmetal": "#2B2E32",
+		&"gunsteel": "#5C6066",
 		&"mint": "#A8F5B0",
 		&"faction": "#40A3FF",
 	},

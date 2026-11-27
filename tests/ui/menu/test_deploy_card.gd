@@ -274,7 +274,7 @@ func test_the_card_covers_the_screen_inside_the_safe_area_at_the_six_sizes() -> 
 		get_window().size = size
 		await _frames(1)
 		_fake.match_loading.emit(_setup())
-		await _frames(1)
+		await _frames(2)  # The wrapped tip settles its height a frame later.
 		var label: String = str(size)
 		var root: Control = _card.get_node("Root") as Control
 		var full: Rect2 = get_viewport().get_visible_rect()
@@ -289,9 +289,19 @@ func test_the_card_covers_the_screen_inside_the_safe_area_at_the_six_sizes() -> 
 			. override_failure_message(label + " safe")
 			. is_true()
 		)
-		assert_float(box.get_center().x).override_failure_message(label).is_equal_approx(
-			full.get_center().x, 2.0
+		var backdrop: MenuBackdrop = _card.find_child("MenuBackdrop", true, false) as MenuBackdrop
+		assert_object(backdrop).override_failure_message(label).is_not_null()
+		assert_bool(backdrop.is_tall).override_failure_message(label).is_equal(
+			full.size.x < full.size.y
 		)
+		if backdrop.is_tall:  # The text sits at the top, centred; in the wide crop, at the left.
+			assert_float(box.get_center().x).override_failure_message(label).is_equal_approx(
+				full.get_center().x, 2.0
+			)
+		else:
+			assert_float(box.get_center().y).override_failure_message(label).is_equal_approx(
+				full.get_center().y, 2.0
+			)
 		UiScale.clear_override()
 		_fake.match_start_finished.emit(ERR_CANT_CREATE)
 
@@ -307,12 +317,12 @@ func test_it_takes_every_touch_and_has_no_ad_and_no_animation() -> void:
 	assert_int(get_tree().get_processed_tweens().size()).is_equal(tweens)
 
 
-## The union of the icon and the labels: the visible content of the card.
+## The union of the visible labels: the text of the card.
 func _content_rect() -> Rect2:
 	var box: Rect2 = Rect2()
 	var first: bool = true
 	for node: Node in _card.find_children("*", "Control", true, false):
-		if node is TextureRect or (node is Label and (node as Label).visible):
+		if node is Label and (node as Label).visible:
 			var rect: Rect2 = (node as Control).get_global_rect()
 			box = rect if first else box.merge(rect)
 			first = false

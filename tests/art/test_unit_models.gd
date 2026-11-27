@@ -35,7 +35,7 @@ const ARMED: Array[String] = [
 ]
 ## What a gun is made of, by faction.
 const GUN_MATERIALS: Dictionary[String, Array] = {
-	"fossil": [&"steel", &"iron"], "renew": [&"titanium", &"graphite"]
+	"fossil": [&"gunsteel", &"gunmetal"], "renew": [&"gunsteel", &"gunmetal"]
 }
 ## The length of a vehicle's whole picture, gun straight ahead, by art id: the size classes of
 ## STYLE.md "Scale" (a Lumen Accord unit stands in the class of its Derrick League twin).
@@ -171,9 +171,8 @@ func test_each_unit_stands_in_its_size_class() -> void:
 
 
 ## The muzzle is the centre of what reaches farthest along +x (STYLE.md "Generated art"), so the
-## gun units need that to be a barrel (steel or iron for the Derrick League, titanium or graphite
-## for the Lumen Accord), not a hull plate; a tank's barrel reaches at least a third of a tile past
-## the front of its hull.
+## gun units need that to be a barrel (gunsteel or gunmetal, P658), not a hull plate; a tank's
+## barrel reaches at least a third of a tile past the front of its hull.
 func test_the_gun_of_an_armed_vehicle_is_what_reaches_farthest_forward() -> void:
 	for id: String in ARMED:
 		var model: ArtModel = _model(id)
@@ -216,8 +215,8 @@ func test_the_lumen_accord_guns_are_single_barrels_on_the_centre_line() -> void:
 
 
 ## Three details that were lost at 32 px in greyscale and are pinned so they stay (P102 fix round):
-## the Torque's barrel is graphite, not titanium (titanium is the grey of the hull), and a thicker
-## graphite block stands at its muzzle; the Fuel Runner's glass tank is round, not a hexagonal
+## the Torque's barrel is gunmetal, not gunsteel (gunsteel is the grey of the hull), and a thicker
+## gunmetal block stands at its muzzle; the Fuel Runner's glass tank is round, not a hexagonal
 ## box, with a hatch dome standing above its top, so it is a tanker and not a white van; and the
 ## Linemen's cable-reel hub is wider than its team flanges, so a dark rim shows round each.
 func test_the_torque_barrel_the_fuel_runner_tank_and_the_linemen_reel_read_at_32_px() -> void:
@@ -229,8 +228,8 @@ func test_the_torque_barrel_the_fuel_runner_tank_and_the_linemen_reel_read_at_32
 			barrel = prim
 		if muzzle == null or prim.aabb().end.x > muzzle.aabb().end.x:
 			muzzle = prim
-	assert_bool(barrel.material == &"graphite").is_true()
-	assert_bool(muzzle.material == &"graphite").is_true()
+	assert_bool(barrel.material == &"gunmetal").is_true()
+	assert_bool(muzzle.material == &"gunmetal").is_true()
 	assert_float(barrel.size.y).is_greater_equal(0.08)
 	assert_float(muzzle.size.y).is_greater_equal(barrel.size.y + 0.05)
 	assert_float(muzzle.size.z).is_greater_equal(barrel.size.z + 0.03)
@@ -251,13 +250,13 @@ func test_the_torque_barrel_the_fuel_runner_tank_and_the_linemen_reel_read_at_32
 	var flange: float = 0.0
 	for prim: ArtPrim in _model("renew_rifle").primitives(&"hull"):
 		if prim.shape == &"prism" and prim.axis == 1:
-			if prim.material == &"graphite":
+			if prim.material == &"gunmetal":
 				hub = minf(hub, prim.size.x)
 			if prim.material == &"team":
 				flange = maxf(flange, prim.size.x)
-	# P641 rebuilt the reel with a 0.17 hub inside 0.13 flanges (0.02 of dark rim a side). The flanges
-	# were `faction` then, so this read 0.0 and passed by accident; from P652 they are `team`.
-	assert_float(hub - flange).is_greater_equal(0.035)
+	# P641 built the reel with a 0.17 hub inside 0.13 flanges (0.02 of dark rim a side), P652 had to
+	# lower this to 0.035; P658 widens the hub to 0.19, so a rim of 0.03 a side shows (gap 0.06).
+	assert_float(hub - flange).is_greater_equal(0.05)
 
 
 ## The Lumen Accord's form language (ADR 0023 section 6): hexagons (a helmet, a turret ring, the

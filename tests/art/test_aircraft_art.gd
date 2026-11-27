@@ -32,13 +32,10 @@ const NAMES: Dictionary[StringName, String] = {
 ## The rule's band in the default view of zoom 1, and the band every other direction keeps.
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
-## A model at detail 2 (P642) wears the team colour on its large panels: 30 to 65 % of the default
-## view and 25 to 75 % in every direction (ADR 0050 amendment A3, `Support.TEAM_BAND`).
-## One exception, measured in P652 (A3 had only estimated P642's four): the Drillhead seen head-on
-## (d08) reads 23.3 %, 1.7 points under the floor, and every other direction of it 40.6 to 54.1 %.
-## Its booms and fins are narrow end-on and the swap cannot widen them; a model change would (a
-## separate row, the lead's call). The floor is 22 % for that one direction until then.
-const WIDE_FLOOR_ID: Dictionary[StringName, float] = {&"fossil_bomber": 0.22}
+# A model at detail 2 (P642) wears the team colour on its large panels: 30 to 65 % of the default
+# view and 25 to 75 % in every direction (ADR 0050 amendment A3, `Support.TEAM_BAND`). P658 lifted
+# the Drillhead's head-on view (23.3 % in P652) into it with a wider body and booms.
+
 ## The hover a sheet may ask for, world px at zoom 1: high enough to clear the shadow and the ring
 ## under it, low enough that the hull still belongs to them. `AirLayer.DEFAULT_FLY_PX` is 28.
 const FLY_PX: Vector2i = Vector2i(16, 36)
@@ -248,10 +245,7 @@ func _drawn_widths(id: StringName) -> Vector2:
 
 ## The team share band of `id`: the key band's at detail 2 or more, else the old one.
 func _band(id: StringName, wide: bool) -> Vector2:
-	var band: Vector2 = Support.model_band(_model(id), wide, SHARE_WIDE if wide else SHARE)
-	if wide and WIDE_FLOOR_ID.has(id):
-		band.x = WIDE_FLOOR_ID[id]
-	return band
+	return Support.model_band(_model(id), wide, SHARE_WIDE if wide else SHARE)
 
 
 func _model(id: StringName) -> ArtModel:

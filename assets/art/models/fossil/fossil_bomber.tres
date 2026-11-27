@@ -11,24 +11,24 @@ silhouette = "Drillhead: a fat orange lifting body with a stepped steel and iron
 fly_px = 22
 detail = 2
 prims = PackedStringArray(
-"box hull steel -0.62 0 0.54 0.2 1.0 0.04",
+"box hull gunsteel -0.62 0 0.54 0.2 1.0 0.04",
 "wedge hull team -0.62 -0.46 0.54 0.24 0.04 0.16 slope=1 detail=1",
 "wedge hull team -0.62 0.46 0.54 0.24 0.04 0.16 slope=1 detail=1",
-"prism hull team -0.2 -0.46 0.4 0.8 0.14 0.14 axis=x sides=8 detail=1",
-"prism hull team -0.2 0.46 0.4 0.8 0.14 0.14 axis=x sides=8 detail=1",
-"prism hull iron 0.26 -0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
-"prism hull iron 0.26 0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
-"prism hull steel 0.4 -0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
-"prism hull steel 0.4 0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
+"prism hull team -0.2 -0.46 0.395 0.8 0.15 0.15 axis=x sides=8 detail=1",
+"prism hull team -0.2 0.46 0.395 0.8 0.15 0.15 axis=x sides=8 detail=1",
+"prism hull gunmetal 0.26 -0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
+"prism hull gunmetal 0.26 0.46 0.36 0.26 0.22 0.22 axis=x sides=8",
+"prism hull gunsteel 0.4 -0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
+"prism hull gunsteel 0.4 0.46 0.36 0.05 0.24 0.24 axis=x sides=8",
 "box hull concrete 0.0 0 0.46 0.36 1.28 0.04",
 "box hull team -0.02 -0.56 0.5 0.2 0.14 0.012",
 "box hull team -0.02 0.56 0.5 0.2 0.14 0.012",
-"prism hull team -0.04 0 0.34 0.74 0.5 0.28 axis=x sides=8 detail=1",
-"box hull iron -0.1 0 0.62 0.36 0.14 0.03",
-"prism hull steel 0.45 0 0.37 0.24 0.38 0.22 axis=x sides=8",
-"prism hull iron 0.62 0 0.385 0.12 0.3 0.19 axis=x sides=8",
-"prism hull steel 0.72 0 0.4 0.12 0.22 0.15 axis=x sides=8",
-"prism hull iron 0.8 0 0.42 0.1 0.12 0.11 axis=x sides=8"
+"prism hull team -0.04 0 0.33 0.74 0.56 0.30 axis=x sides=8 detail=1",
+"box hull gunmetal -0.1 0 0.63 0.36 0.14 0.03",
+"prism hull gunsteel 0.45 0 0.37 0.24 0.38 0.22 axis=x sides=8",
+"prism hull gunmetal 0.62 0 0.385 0.12 0.3 0.19 axis=x sides=8",
+"prism hull gunsteel 0.72 0 0.4 0.12 0.22 0.15 axis=x sides=8",
+"prism hull gunmetal 0.8 0 0.42 0.1 0.12 0.11 axis=x sides=8"
 )
 emitters = PackedStringArray(
 "exhaust -0.7 0 0.5",
