@@ -2246,7 +2246,7 @@ Theme looks only (`game/ui/theme.tres`); no layout, no new screen. The Figma rea
 | --- | --- | --- |
 | Corner radius of every `Menu*` plate, tab, toggle, card, row, badge, track and fill, and of the pause card, buttons, primary, chip and focus ring | 4, 8 or 12 dp | 0 (the round `PauseBadge` emblem and `PauseCheck` circle stay round: shapes, not plates) |
 | White font and icon colours of `CapsButton`, `CapsTitle`, `CapsBigTitle`, `MenuTabOn`, `PauseButton` disabled, `PauseStarting` disabled, and the `PauseButton` focus ring | #FFFFFF | `HudTokens.text` #E9ECE7 (the same value, as a literal in the theme) |
-| `MenuItem` (Button, base `CapsButton`, 18 dp, 14 dp padding, so at least 48 dp) | new | ground at 50 percent, 1 px `border` edge; pressed `panel_raised` |
+| `MenuItem` (Button, base `CapsButton` at 15 dp, 15 dp padding above and below, 8 dp at the sides; 48 dp) | new | ground at 50 percent, 1 px `border` edge; pressed `panel_raised` |
 | `MenuItemOn` (base `MenuItem`) | new | selected: `action_wash` fill, 2 px `money` edge |
 | `MenuPrimary` (Button, base `CapsButton`) | new | `money` fill, `ground_deep` word (11:1); pressed #F9CC85 |
 | `MenuEyebrow` (Label) | new | Plex Mono 14 sp, 2 px tracking, `money` |
