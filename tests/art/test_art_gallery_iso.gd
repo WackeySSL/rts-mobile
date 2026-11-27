@@ -35,7 +35,7 @@ func test_the_iso_page_is_built_when_it_is_first_shown_and_names_the_first_type(
 	assert_str((gallery.get_node("%PageButton") as Button).text).is_equal("Iso")
 	var paths: Array[String] = ArtGen.model_paths()
 	assert_str((page.get_node("Title") as Label).text).is_equal(
-		"1 / %d  Nordværn: artillery (veh)" % paths.size()
+		"1 / %d  Ironward: artillery (veh)" % paths.size()
 	)
 	for ground: String in ["Grass", "Sand"]:
 		var names: Array[StringName] = []
@@ -222,7 +222,7 @@ func test_a_turret_sits_at_its_mount_and_a_frame_carries_the_triad_of_its_row() 
 	var kobolt_hull: Image = (kobolt.get_node("Hull") as Sprite2D).texture.get_image()
 	# The team marker is a flat plate (ADR 0050 section 3), so its light tone is the face that
 	# shows. The mid tones cannot tell the rows apart: Signal's mid tone sits inside the fixed
-	# Nordvaern orange, whose edges blend into it.
+	# Ironward orange, whose edges blend into it.
 	assert_bool(_has_colour(signal_hull, SIGNAL_KEYS[0])).is_true()
 	assert_bool(_has_colour(signal_hull, KOBOLT_KEYS[0])).is_false()
 	assert_bool(_has_colour(kobolt_hull, KOBOLT_KEYS[0])).is_true()

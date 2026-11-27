@@ -23,7 +23,7 @@ const ZOOM_OF: Dictionary[String, float] = {"Zoom100": 1.0, "Zoom75": 0.75, "Zoo
 const TRIAD_OF: Dictionary[String, int] = {"Signal": 0, "Kobolt": 1}
 const SIGNAL_MID: String = "E8681F"
 const KOBOLT_MID: String = "3F6FE0"
-const NORDVAERN_ORANGE: String = "FF6E1F"  ## The faction's fixed colour, the emblem's tint.
+const IRONWARD_ORANGE: String = "FF6E1F"  ## The faction's fixed colour, the emblem's tint.
 const FACET_BLUE: String = "40A3FF"
 const ART_SCALE: float = 0.5
 ## Buildings of both factions the scene is checked on, each with the tank of its faction, and the
@@ -97,7 +97,7 @@ func test_the_page_steps_through_every_building_of_both_factions_with_two_big_bu
 	await _show(page, "barracks")
 	var emblem: TextureRect = page.get_node("Emblem")
 	assert_str(emblem.texture.resource_path).ends_with("icons/emblem_fossil.svg")
-	assert_that(emblem.modulate).is_equal(Color(NORDVAERN_ORANGE))
+	assert_that(emblem.modulate).is_equal(Color(IRONWARD_ORANGE))
 	assert_str((page.get_node("Icon") as TextureRect).texture.resource_path).ends_with(
 		"item_barracks.svg"
 	)

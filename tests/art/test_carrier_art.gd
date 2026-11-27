@@ -22,7 +22,7 @@ const OTHERS: Dictionary[StringName, Array] = {
 }
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
-## A model at detail 2 (P642, the Nordvaern side) wears a small marker in the key colour: the
+## A model at detail 2 (P642, the Ironward side) wears a small marker in the key colour: the
 ## general rule of 2 to 12 % in the default view (ADR 0050 section 3), and in the other directions
 ## a band from 1 % (a plate or a band seen from behind or below is thin).
 const SHARE_OPTED: Vector2 = Vector2(0.02, 0.12)
