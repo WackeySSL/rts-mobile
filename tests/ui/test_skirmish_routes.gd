@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The two Skirmish routes (plan P90, rev 5, ADR 0025 answer 7): the dev menu has
-## "Skirmish (Nordværn)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
+## "Skirmish (Ironward)" and "Skirmish (Facet)" first; each opens the main scene on Kestrel Flats
 ## with the player on that side as player 1, the computer of the other side as
 ## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
 ## and the player's units in its side's colour, the other player's in the other side's (orange for
@@ -14,7 +14,7 @@ const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const ROUTES: Array[Dictionary] = [
 	{
 		"button": "SkirmishDerrickButton",
-		"text": "Skirmish (Nordværn)",
+		"text": "Skirmish (Ironward)",
 		"scenario": "res://data/scenarios/skirmish_kestrel_flats.tres",
 		"opponent": &"opponent_renew",
 		"own_hq": &"headquarters",

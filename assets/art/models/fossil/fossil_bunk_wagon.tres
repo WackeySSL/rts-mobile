@@ -7,7 +7,7 @@ script = ExtResource("1_model")
 art_id = &"fossil_bunk_wagon"
 faction = &"fossil"
 category = &"veh"
-silhouette = "Bunk Wagon: a tall riveted crew box in Nordværn orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank."
+silhouette = "Bunk Wagon: a tall riveted crew box in Ironward orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank."
 detail = 2
 prims = PackedStringArray(
 "tracks hull iron 0 -0.37 0 1.16 0.2 0.2 wheels=5 wheel=steel",

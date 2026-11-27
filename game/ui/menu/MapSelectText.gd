@@ -28,7 +28,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	STARTING: "STARTING…",
 	LOCKED: "%s  (RANK %d)",
 	CHOSEN: "> %s",
-	SIDE_FOSSIL: "NORDVÆRN",
+	SIDE_FOSSIL: "IRONWARD",
 	SIDE_RENEW: "FACET",
 	EASY: "EASY",
 	NORMAL: "NORMAL",

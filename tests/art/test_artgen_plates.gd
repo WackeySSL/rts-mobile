@@ -21,7 +21,7 @@ const CAP: float = 0.3  ## A team primitive covering this share of its support i
 const SLAB: float = 0.2  ## Square tiles: a larger open top face is a slab, whatever it rests on.
 ## Square tiles: the most a rimmed marker plate covers (ADR 0050 section 3).
 const MARKER: float = 0.1
-## The materials of a marker's light line and dark rim: Nordvaern's, then Facet's (P639).
+## The materials of a marker's light line and dark rim: Ironward's, then Facet's (P639).
 const LINES: Array[StringName] = [&"lamp", &"ceramic"]
 const RIMS: Array[StringName] = [&"iron", &"graphite"]
 

@@ -88,7 +88,7 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## mirror page fighter shadows spill into a new 70-row shelf). Page 1 has left 854 rows on the
 ## cross-faction page, 927 on the Derrick League mirror and 986 on the Lumen Accord mirror; page 2
 ## has left 1074, 2128 and 2106.
-## P638 (the Nordvaern ground vehicles, rebuilt at detail 2 with fixed faction panels: the same
+## P638 (the Ironward ground vehicles, rebuilt at detail 2 with fixed faction panels: the same
 ## 16-direction hull, turret and shadow sets, new tight boxes) moved page 1 from 2730, 2657 and 2598
 ## to 2731, 2582 and 2598 (+1, -75 and 0: the Derrick mirror's shelves fall differently, the
 ## packer never goes back to an earlier shelf) and page 2 from 2510, 1456 and 1478 to 2512, 1458
@@ -107,7 +107,7 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## push shorter cells on, on the cross page's trailing shelves). Page 1 has left 836 rows on the
 ## cross-faction page, 969 on the Derrick League mirror and 1048 on the Lumen Accord mirror; page 2
 ## has left 990, 2126 and 2104.
-## P642 (the Nordvaern Bunk Wagon, Shot Truck, Torchjet and Drillhead, rebuilt at detail 2 on the
+## P642 (the Ironward Bunk Wagon, Shot Truck, Torchjet and Drillhead, rebuilt at detail 2 on the
 ## same hulls) left page 1 at 2748, 2615 and 2536 (the hulls keep their tight boxes' sizes) and
 ## moved page 2 from 2594, 1458 and 1480 to 2600, 1478 and 1480 (+6, +20 and 0). It comes from the
 ## shadows of the two ground units (the Bunk Wagon's canvas grew from 218 x 112 to 230 x 118, and

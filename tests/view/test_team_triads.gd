@@ -47,6 +47,6 @@ func test_the_atlas_players_wear_the_triads_the_scenario_names() -> void:
 	assert_str(sorted.mid_colour(0).to_html(false)).is_equal(sorted.mid_colour(1).to_html(false))
 	assert_object(sorted.bake(scenario)).is_same(atlas)
 	var plain: ScenarioDef = load("res://data/scenarios/skirmish_kestrel_flats.tres")
-	sorted.bake(plain)  # Nordvaern first: orange for player 1, Facet's blue (Kobolt) for player 2.
+	sorted.bake(plain)  # Ironward first: orange for player 1, Facet's blue (Kobolt) for player 2.
 	assert_str(sorted.mid_colour(1).to_html(false)).is_equal(Color("E8681F").to_html(false))
 	assert_str(sorted.mid_colour(2).to_html(false)).is_equal(Color("3F6FE0").to_html(false))

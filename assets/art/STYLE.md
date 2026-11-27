@@ -395,7 +395,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   only `svg`, `g` and `polygon` are used, every part has one canvas, a building is anchored at its
   back corner, the key band holds, every type has a team share in its band in its default view (2 to
   12 % below detail 2, 30 to 65 % in the key band at detail 2 and up), no model paints the fixed
-  `faction` material, no team primitive of a model below detail 2 is a roof plate, a Nordvaern and a
+  `faction` material, no team primitive of a model below detail 2 is a roof plate, a Ironward and a
   Facet model of one role overlap less than 0.85 at 32 px in d06 and d10, and each default view has
   a body and a spread of tones at 32 px in greyscale. `test_artgen_shadows.gd` pins the drop (+gx, 0.8 per tile of height, the same
   way at every yaw, a sphere's ellipse, one group at 35 %), `test_artgen_sheets.gd` each sheet
@@ -409,7 +409,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   muted materials are free.
 - **The sentinel key triad** (P632, P652): light #F07AF0, mid #D234D2, dark #9A1F9A, magenta at hue
   300. It is the material `team`, in both factions, and from P652 it covers the large panels of every
-  model at detail 2 and up (ADR 0050 amendment A2): Nordvaern's hoods, cab and turret flanks, hard
+  model at detail 2 and up (ADR 0050 amendment A2): Ironward's hoods, cab and turret flanks, hard
   hats, shoulder plates and pack panels, and Facet's helmets, plates and cases. The small rimmed
   plates and the aircraft's stripes and bands may stay; they are part of the team area. It is never
   seen in the game: the match-start bake replaces these three strings with the player's triad, in
@@ -417,7 +417,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   other material never holds a sentinel hex (ADR 0050 section 1). The item cards are no player's,
   so they draw the panels in the faction's colour.
 - **The fixed faction colours** (P632, P652): material `faction`, never replaced by the bake.
-  Nordvaern (`fossil`) orange #FF6E1F, Facet (`renew`) blue #40A3FF, as the mid tone of the left
+  Ironward (`fossil`) orange #FF6E1F, Facet (`renew`) blue #40A3FF, as the mid tone of the left
   face; the top and the right face follow the ladder (100 % and 62 % of the top). They are the hues
   of the HUD accents `AccentFossil` and `AccentRenew`. From P652 they are for the item cards and the
   HUD only: no model paints `faction` on the map (a test over every model), because a fixed orange
@@ -435,7 +435,7 @@ generator is GDScript in `tools/artgen/` and runs in the pinned Godot headless.
   `tone_sat_all_max` in the sheet). A mirror match reads like any other: two colours, one per
   player. The model descriptions below that say orange or blue panels describe what the default
   colours show (each side's own); the panels are the team colour. There is no fixed-colour share
-  any more (FACTION_SHARE is retired): the faction reads from **shape**. For each Nordvaern and
+  any more (FACTION_SHARE is retired): the faction reads from **shape**. For each Ironward and
   Facet model of one role, both at detail 2 or more, the 32 px silhouettes overlap less than 0.85
   in d06 and in d10 (`test_artgen_readability.gd`; the pairs are the same positions in the batch
   lists `docs/art/treadline-batches.json`). Measured on the 18 models at detail 2 (P652): 42.3 to
@@ -550,7 +550,7 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
   turns away: the team share changes little as the aircraft turns. Share of the default view at zoom 1: 9.0 %
   (Torchjet), 9.4 % (Drillhead), 11.1 % (Glint) and 10.6 % (Sunfall), in the rule's 8 to 12 %; in every direction
   7.4 to 15.5 % (`tests/art/test_aircraft_art.gd` holds 5 to 16 %).
-  **P642:** the Torchjet and the Drillhead are redrawn at detail 2 (fixed Nordværn orange on the fuselage, booms,
+  **P642:** the Torchjet and the Drillhead are redrawn at detail 2 (fixed Ironward orange on the fuselage, booms,
   fin and every other slab, steel, iron and concrete elsewhere; olive and rust are retired for them) and keep only
   a small team marker: a stripe on the tail fin and a band on each wing tip (the Torchjet), a band on each wing tip
   (the Drillhead). Aircraft keep stripes and bands instead of P638's rimmed plate: they are thin, flat slabs
@@ -568,7 +568,7 @@ zoom 1. They follow the tanker in each faction's roster (fighter, then bomber), 
   after P266 (about +420), P204 (about +630) and the remaining building shadows. `perf_air` and `perf_ai_4b` use
   the shipped type ids, so they now bake these frames: their `atlas_page2`, texture MiB and bake ms are larger by
   design, not a regression.
-  **P642:** the two Nordværn aircraft keep their canvases, so they add 0 rows to page 2 on every page (measured with
+  **P642:** the two Ironward aircraft keep their canvases, so they add 0 rows to page 2 on every page (measured with
   the old models in place: the same 2600 and 1478).
 - **Emitters.** An `exhaust` at the tail and a `damage` point on the hull; no `hang` and no scar (`scar_milli` 0): a
   flyer does not use the neutral overlays, and the Iso page's Damage rows skip it.
@@ -584,7 +584,7 @@ the aircraft in each faction's roster (Vehicles tab). The minelayers follow them
 
 | Model | Silhouette |
 | --- | --- |
-| `fossil_bunk_wagon` | A tall riveted crew box in Nordværn orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
+| `fossil_bunk_wagon` | A tall riveted crew box in Ironward orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. |
 | `renew_linecar` | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. |
 
 - **Apart from the neighbours.** The Bunk Wagon is a box with a hatch and no turret or gun, taller than the Bullhead and
@@ -1112,7 +1112,7 @@ by ADR 0050 amendment A8) judges saturation twice, because the team panels are s
   out.
 - `tone_sat_all_max` (0.55) is the mean over **every** opaque pixel, so a sprite that is nearly all
   panel still fails. The team key is included here.
-- Faction material, to the classifier, is a hue within 15 degrees of Nordvaern orange or Facet blue
+- Faction material, to the classifier, is a hue within 15 degrees of Ironward orange or Facet blue
   at a saturation of 0.35 or more (`faction_hues`, `faction_hue_band`, `faction_sat_min`), which
   takes in the panels' light and dark tones and their edges but not rust, olive or bluegrey, whose
   saturation is under 0.30. The sentinel and the route triads (Signal, Kobolt) count as the team
@@ -1165,7 +1165,7 @@ by ADR 0050 amendment A8) judges saturation twice, because the team panels are s
 | HUD ok and income (v3) | #AFC58D | 181 |
 | HUD text on the dark panel (v3) | #E9ECE7 | 235 |
 | Accent, Facet (blue): accent / light / text on accent (v3, replaces the Lumen Accord cyan #1FA6C8 / #62D6EE) | #40A3FF / #8CC8FF / #05090C | 146 / 192 / 8 |
-| Accent, Nordvaern (orange): accent / light / text on accent (v3, replaces the Derrick League #E07628 / #FFA25C) | #FF6E1F / #FFA06A / #05090C | 141 / 175 / 8 |
+| Accent, Ironward (orange): accent / light / text on accent (v3, replaces the Derrick League #E07628 / #FFA25C) | #FF6E1F / #FFA06A / #05090C | 141 / 175 / 8 |
 
 Luminance is 0.299 R + 0.587 G + 0.114 B. Use it when you judge the greyscale check below.
 
@@ -2202,7 +2202,7 @@ image. Every value below comes from vector and text nodes (fills, strokes, text 
 2 faction sheets for each side, 1 terrain sheet), `get_design_context` (code and values only, no
 screenshot, no asset URL fetched) for the landscape boards Battle, Main menu, Skirmish, Loading, Pause,
 Victory, Production, Intro, the four faction sheets and the terrain sheet, and `get_variable_defs` for
-Battle, Main menu and the Nordværn unit sheet. Campaign and Unit details (out of scope, ADR 0049
+Battle, Main menu and the Ironward unit sheet. Campaign and Unit details (out of scope, ADR 0049
 decision 2) and the nine portrait boards were read by structure (`get_metadata`: sizes, order, names),
 not by text. **The file defines no Figma variables or styles** (`get_variable_defs` is `{}` on all
 three nodes): every colour is a literal fill, so the token names below are ours (proposals for P604),
@@ -2223,17 +2223,17 @@ wide. The values are quoted in board px and read as dp at that board size (the g
 | Text | `text` (`HudTokens`, today white) | #E9ECE7 (a few touch labels #E9EFEA) | titles, values |
 | Text, secondary | `text_dim` (new) | #94A6AB | labels, body copy, units |
 | Text, muted | `text_mute` (new) | #5C727B | inactive numbers, hints, footers |
-| Action, money, selected, status | `action` / `money` (`HudTokens.money`, today #F2C14E) | #F4B653 (the filled primary button #F4B74D) | primary button fill, credits "◈ 12.450", selected tab and card edge, section eyebrows, status chips, sliders, progress fill, side marker of Nordværn in screens |
+| Action, money, selected, status | `action` / `money` (`HudTokens.money`, today #F2C14E) | #F4B653 (the filled primary button #F4B74D) | primary button fill, credits "◈ 12.450", selected tab and card edge, section eyebrows, status chips, sliders, progress fill, side marker of Ironward in screens |
 | Action wash (selected plate, chip fill) | `action_wash` (new) | #32271A | selected faction card, chip fill, active tab fill |
 | Good, power | `ok` (`HudTokens.ok`, today #6EDC5F) | #AFC58D | power "ϟ 840 / 1.200", health fill, "Klar", done objective |
 | Info, enemy contact, alert | `info` (new) | #61CFD9 | alert border and triangle, enemy tags, Helix side in screens, map marker C |
-| Nordværn, fixed faction colour (sheets) | `AccentFossil.accent` | #FF6E1F | the faction sheets: titles, 2 px card edges, names |
+| Ironward, fixed faction colour (sheets) | `AccentFossil.accent` | #FF6E1F | the faction sheets: titles, 2 px card edges, names |
 | Facet (the file's "Helix"), fixed faction colour (sheets) | `AccentRenew.accent` | #40A3FF | the faction sheets: titles, 2 px card edges, names |
 | Facet wash | `AccentRenew` plate (new) | #0E1F33 | the "recommended force" card on the blue sheet |
 | Danger, warning | `danger`, `warning` | **none in the file** | the file has no red and no amber warning; it shows an alert in cyan |
 
 What these show, and what P604 must decide:
-- **Two oranges and two blues.** The screens colour a side by its UI accent (Nordværn = amber
+- **Two oranges and two blues.** The screens colour a side by its UI accent (Ironward = amber
   #F4B653, Helix = cyan #61CFD9). The faction sheets colour the same sides by their unit colour
   (#FF6E1F, #40A3FF). ADR 0050 section 3 fixes the faction colours; the sheet pair is the one to
   take for units, markers and the faction accents. Amber stays the action and money colour. Cyan
@@ -2270,7 +2270,7 @@ or team-colour change). Source "P602" is the read-out table above; "adjusted" sa
 | `ok` | #6EDC5F | #AFC58D | P602 |
 | `text` | #FFFFFF | #E9ECE7 | P602 |
 | `panel` (alpha 0.84 kept) | #0A0E11 | #101A20 | P602 |
-| `danger` | #FF5A3C | **#FF4560** | adjusted: the file has no red; moved toward red (hue 351.3) so Nordvaern orange is 29.9 degrees away (lead's bar 25, ADR 0025 asks 15) |
+| `danger` | #FF5A3C | **#FF4560** | adjusted: the file has no red; moved toward red (hue 351.3) so Ironward orange is 29.9 degrees away (lead's bar 25, ADR 0025 asks 15) |
 | `warning` | #F5A524 | unchanged | the file has none |
 | `AccentRenew` accent / light / on_accent | #1FA6C8 / #62D6EE / #05202A | #40A3FF / #8CC8FF / #05090C | accent and on_accent P602; light adjusted (same hue, lighter) |
 | `AccentFossil` accent / light / on_accent | #E07628 / #FFA25C / #2A1405 | #FF6E1F / #FFA06A / #05090C | accent and on_accent P602; light adjusted (hue 21.7) |
@@ -2281,7 +2281,7 @@ or team-colour change). Source "P602" is the read-out table above; "adjusted" sa
 | new `action_wash` | | #32271A | P602 |
 | new `info` | | #61CFD9 | P602 (the file's cyan) |
 
-- **Danger.** #FF4560 is 29.9 degrees from Nordvaern #FF6E1F (29.4 from its light), 45.6 from money
+- **Danger.** #FF4560 is 29.9 degrees from Ironward #FF6E1F (29.4 from its light), 45.6 from money
   and 142.4 from Facet blue. It is 5.27:1 on the panel (4.5:1 asked).
 - **Accents.** Text #05090C on #FF6E1F is 7.1:1 and on #40A3FF 7.5:1 (4.5:1 asked). Each accent and
   light is at least 15 degrees from danger and money. `tests/ui/test_ui_theme_tokens.gd` pins all of it.
@@ -2447,7 +2447,7 @@ Names read in Danish; the English meaning is given where it matters.
 | Name in the file | Result | Note |
 | --- | --- | --- |
 | Treadline (game), Krigen om Nord (tagline), Askehavn, Isbrud, Isfronten, Nordhavet, Krigsarkiv, the person names Lind and Voss | clear | |
-| **Nordværn** | clear | no game of that name known to the reviewer; Michael runs the registry search (answer 8) |
+| **Nordværn** | clear | no game of that name known to the reviewer; Michael runs the registry search (answer 8)Renamed **Ironward** on 2026-11-27 (P657); the search covers the new name too, which is not yet cleared |
 | **Helix**, "Helix-konsortiet", every "Helix · ..." card, "Helix-forsvar", "Helix-modstykke" | **blocked** | ADR 0049 section 2: a *Generals - Zero Hour* unit. The file still carries it on every screen; the game says **Facet**. The glyph `⌁ H` becomes `F` |
 | X-7 »Prisme« (Prism) | **risky** | *Prism Tank* (Red Alert 2). Do not use "Prism" for a unit; "Facet" is the better word for the side |
 | X-9 »Aegis« | risky (low) | *Aegis Cruiser* (Red Alert 2) and a real naval system. Avoid |
@@ -2525,7 +2525,7 @@ in doubt, choose a plainer real-world form.
 | Drillhead (`fossil_bomber`) | A fat orange lifting body with a stepped steel and iron drill-bit nose, a short broad concrete wing, two long orange booms either side that each carry an iron drum engine at the front and end in an orange wedge fin, one steel tail plane across the booms and a team band on each wing tip. | `iso/fossil/veh/fossil_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 162x106, hovers `fly_px` 22 |
 | Glint (`renew_fighter`) | A slim white ceramic hexagonal-section body with a glass bubble canopy and a thin titanium rail barrel ahead, a thin wing on each side stepped forward towards its tip so that the tips lead, two small upright tail fins with mint lamps and a graphite nozzle at the rear. | `iso/renew/veh/renew_fighter_{hull,shadow}_d<NN>.svg`, 16 frames, 124x76, hovers `fly_px` 26 |
 | Sunfall (`renew_bomber`) | A very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip. | `iso/renew/veh/renew_bomber_{hull,shadow}_d<NN>.svg`, 16 frames, 182x108, hovers `fly_px` 22 |
-| Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted crew box in Nordværn orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
+| Bunk Wagon (`fossil_bunk_wagon`) | A tall riveted crew box in Ironward orange on two long dark tracks, an orange deck and sloped nose under it, a steel roof edge round an orange roof with a round hatch, a vent and a lamp, a small rimmed team plate on the roof, three dark slit windows down each side, a dark rear door and a thin iron ladder up the right flank. | `iso/fossil/veh/fossil_bunk_wagon_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 158x124 |
 | Linecar (`renew_linecar`) | A low white ceramic car on four dark wheels with a long glass roof under a flat white lid, a wide team band on its roof and sides, two dark door seams down each side, a mint light strip on its blunt nose, a dark bumper at each end and a small mint beacon at the tail. | `iso/renew/veh/renew_linecar_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 150x92 |
 | Shot Truck (`fossil_shot_truck`) | A low flatbed truck on six dark wheels with orange hubs, an orange boxed cab with a rimmed team plate on its roof and a lamp bar, and on the orange bed a long steel drill mast on an orange housing laid slantwise on two iron cradles with its bit reaching past the tail, four fat orange shot cans with steel caps standing beside it, and orange rails down the bed. | `iso/fossil/veh/fossil_shot_truck_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 190x138 |
 | Seeder (`renew_seeder`) | A light blue-grey four-wheeled planter with a small glass-fronted cab, a tall hexagonal glass hopper on a team-colour flange behind it and a jointed planting arm at the tail that drops a white spike. | `iso/renew/veh/renew_seeder_{hull,shadow}_d<NN>.svg`, 16 + 16 frames, 152x106 |
@@ -3751,8 +3751,8 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-25 | v1.51 (P631, art-director, ADR 0050 section 1): the detail renderer, `ArtModel.detail` 0 to 3 and what each level draws ("Detail levels (P631)"); every model stays at 0, so no frame changes. |
 | 2026-11-25 | v1.52 (P632, art-director, ADR 0050 section 3): the migration to fixed faction colours and a team marker: one sentinel key triad (magenta, hue 300) in place of the two per-faction keys, every committed frame regenerated with the hex strings changed and nothing else (`scripts/art-hex-only.sh`), the fixed `faction` materials (Nordvaern orange, Facet blue), the item cards' marker in the faction colour, the same-scene sheet with a mirror row, `TEAM_SHARE` 2 to 12 %, `FACTION_SHARE` 15 to 85 %, and the Skirmish scenarios naming Signal and Kobolt (the Sne and Karmin defaults wait for P647) |
 | 2026-11-25 | v1.53 (P605, art-director, ADR 0049 amendment): the UI type is Michael's Figma type: Roboto Condensed Bold, Inter Regular and Bold, IBM Plex Mono Regular, static unmodified OFL 1.1 files; Big Shoulders and Chakra Petch removed; the Type scale section says which theme type uses which face; the Menu looks edge colour reads #33434A. |
-| 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Nordvaern ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with orange panels (the fixed `faction` material then; the sentinel key from P652, so the team colour) and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass (from P652 it applies below detail 2 only); same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
-| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more (retired in P652); the three Nordvaern squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view, the team colour from P652), a thin team vest band; `test_medic_art.gd` held the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
+| 2026-11-25 | v1.54 (P638, art-director, ADR 0050 sections 1 and 3): the Ironward ground vehicles (Flarejack, Bullhead, Mortar Rig, Tanker) at detail 2 with orange panels (the fixed `faction` material then; the sentinel key from P652, so the team colour) and a small rimmed team plate (iron rim, lamp line, sentinel top); the roof-plate rule lets that plate pass (from P652 it applies below detail 2 only); same-scene saturation is judged on the neutral body (`tone_sat`) and on the whole sprite (`tone_sat_all_max`), see "Same-scene saturation (P638)" |
+| 2026-11-26 | v1.55 (P640, art-director, ADR 0050 section 3; the lead said yes): FACTION_SHARE (15 to 85 %) is measured with the same-scene hue-band classifier instead of the exact faction tones, for every model at detail 1 or more (retired in P652); the three Ironward squads (Rig Hands, Wildcatters, Patchers) at detail 2: steel-grey bodies, orange hard hats, shoulder plates and pack panels (31 to 33 % of the default view, the team colour from P652), a thin team vest band; `test_medic_art.gd` held the Patchers' team share at 3 to 12 % in the default view and 0.5 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
 | 2026-11-26 | v1.56 (P641, art-director, no rule change): the three Facet squads (Linemen, Breakers, Menders) at detail 2: white and graphite bodies, blue hexagonal helmets, shoulder plates and pack or case panels (30 to 40 % of the default view, the fixed `faction` material then and the team colour from P652), a thin team chest band, mint kept as Facet's lamp accent on visors, rifle lines and hand light; `test_medic_art.gd` held the Menders' team share at 2 to 12 % in the default view and 0.2 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
-| 2026-11-26 | v1.57 (P642, art-director, no rule change): the Nordvaern Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view, the team colour from P652) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passed them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` held 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %; 30 to 65 % and 25 to 75 % from P652) |
-| 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Nordværn name in new text is Ironward (Michael, 2026-11-27) |
+| 2026-11-26 | v1.57 (P642, art-director, no rule change): the Ironward Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view, the team colour from P652) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passed them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` held 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %; 30 to 65 % and 25 to 75 % from P652) |
+| 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Ironward name in new text is Ironward (Michael, 2026-11-27) |
