@@ -1,0 +1,12 @@
+<!-- Map glyph: white and grey only, tinted at run time (the map trophies of the Rank screen). -->
+<!-- Shape: a sheet folded in three upright panels in a zigzag, the middle one lifted, with one dark route line winding across all three and ending in a round dot. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- left, middle and right panels -->
+  <polygon points="12,34 44,22 44,102 12,114" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="44,22 84,34 84,114 44,102" fill="#BFBFBF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <polygon points="84,34 116,22 116,102 84,114" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- the route, dark, from a start dot to an end dot -->
+  <polyline points="26,92 40,70 58,82 74,52 96,66 104,40" fill="none" stroke="#4D4D4D" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="24" cy="94" r="7" fill="#4D4D4D"/>
+  <circle cx="104" cy="40" r="9" fill="#4D4D4D"/>
+</svg>
