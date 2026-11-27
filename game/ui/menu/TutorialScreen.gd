@@ -15,12 +15,10 @@ const DONE_MARK: String = "DONE"
 const NEXT_MARK: String = "NEXT"
 ## The reward tag of a lesson not paid yet (P674b); `%d` is `ProgressionDef.lesson_xp`.
 const XP_TAG: String = "+%d XP"
-const TAG_VARIATION: StringName = &"MenuEyebrow"  ## 14 sp in the money amber.
+const TAG_VARIATION: StringName = &"MenuTag"  ## 14 sp in the money amber.
+const ROW_VARIATION: StringName = &"MenuItemTagged"  ## MenuItem with the tag's room kept free.
 const TAG_ROOM_DP: float = 72.0  ## Kept at each row's right end, so the title never runs under it.
 const TAG_EDGE_DP: float = 12.0
-const BUTTON_STYLES: Array[StringName] = [
-	&"normal", &"hover", &"pressed", &"hover_pressed", &"disabled"
-]
 const HINT: String = "Each lesson is a short match. Finished ones can be played again."
 const HEADING_VARIATION: StringName = &"CapsTitle"
 
@@ -88,13 +86,7 @@ func _add_tag(id: StringName) -> void:
 	var button: Button = _buttons[id]
 	# A title that does not fit beside the tag wraps (the row grows) and never widens the column.
 	button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	for style_name: StringName in BUTTON_STYLES:
-		var base: StyleBox = button.get_theme_stylebox(style_name)
-		if base == null:
-			continue
-		var room: StyleBox = base.duplicate()
-		room.content_margin_right = UiScale.dp(TAG_ROOM_DP)
-		button.add_theme_stylebox_override(style_name, room)
+	button.theme_type_variation = ROW_VARIATION
 	var tag: Label = Label.new()
 	tag.name = &"XpTag"
 	tag.theme_type_variation = TAG_VARIATION
