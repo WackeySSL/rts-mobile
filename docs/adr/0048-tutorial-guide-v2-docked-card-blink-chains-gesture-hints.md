@@ -615,7 +615,12 @@ Checked against the code (`main` at 59efa29b):
   `AD_BAND`; the economy card excepted). The loop walks the mark's cached copy of those rects with
   no `keys()` or `values()` call. A unit under the open drawer
   sheet, the command bar or a corner part is not in the field. A real finger there would hit the
-  HUD.
+  HUD. The card's own visible buttons (Next, Skip, the tab) hide the field too, since they take a
+  touch even while the card is see-through (P593b-3): `CoachMark` hands the anchor their global
+  rects each frame (hidden ones left out, one reused array). The point counts as under a button once
+  it is inside the plain rect and as clear only once it is outside the rect grown by
+  `THROUGH_BAND_DP` (8 dp), so a unit along a button's edge does not flip the hand between TAP and
+  DRAG. The hand then drags the unit clear by the existing out-of-field path.
 - **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
   field gets §6's off-screen `DRAG` from the point (clamped into the safe rect) toward the field's
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it

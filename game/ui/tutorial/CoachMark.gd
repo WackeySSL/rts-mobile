@@ -47,7 +47,7 @@ const THROUGH_VARIATION: StringName = &"GuideCardThrough"
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const CHEVRON_PATH: String = "res://assets/art/svg/icons/glyph_chevron.svg"
 const CHEVRON_DP: Vector2 = Vector2(14.0, 10.0)
-const THROUGH_BAND_DP: float = 8.0  ## A unit's ring clears the card by this much to turn it back.
+const THROUGH_BAND_DP: float = GuideUnitAnchor.THROUGH_BAND_DP  ## A ring clears the card by this.
 ## Drawn above every other control of the layer, the pause menu included, whatever order the mark
 ## was added in: the card that asks for Resume must be seen over the open menu.
 const Z_ABOVE_MODALS: int = 100
@@ -128,6 +128,8 @@ var _next_hud: int = 0
 var _lookup: GuideLookup = GuideLookup.new()
 var _unit: GuideUnitAnchor = GuideUnitAnchor.new()
 var _tab: Button
+var _buttons: Array[Rect2] = []  ## Reused: the visible card buttons' rects, for the unit anchor.
+var _button_nodes: Array[Control] = []  ## Next, Skip and the tab, filled once.
 
 
 func _ready() -> void:
@@ -467,7 +469,17 @@ func _update() -> void:
 	if covered:
 		return
 	var docked: bool = _refresh_dock()
-	_unit.update(_aim, runner, camera, ground_layer, air_layer, _safe_rect, _dp, _dock_rects)
+	_buttons.clear()
+	if _button_nodes.is_empty():
+		_button_nodes.assign([_fit.next, _fit.skip, _tab])
+	for button: Control in _button_nodes:
+		# A visible but transparent or folded button still takes touches, so it counts.
+		var box: Rect2 = button.get_global_rect()
+		if button.is_visible_in_tree() and box.size.x > 0.0 and box.size.y > 0.0:
+			_buttons.append(box)
+	_unit.update(
+		_aim, runner, camera, ground_layer, air_layer, _safe_rect, _dp, _dock_rects, _buttons
+	)
 	var ring: Rect2 = _ring_box()
 	_update_gesture(ring)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
