@@ -118,7 +118,7 @@ func test_the_back_link_pops_the_stack_and_a_section_lands_below_the_block() -> 
 	var before: int = _screen.column.get_child_count()
 	_screen._add_section(&"MAIN_NEXT")
 	assert_int(_screen.column.get_child_count()).is_equal(before + 2)
-	assert_str(_screen.back_link.text).begins_with("\u2039 ")
+	assert_str(_screen.back_link.text).starts_with("\u2039 ")
 	var depth: int = _stack.depth()
 	_screen.back_link.pressed.emit()
 	assert_int(_stack.depth()).is_equal(depth - 1)
