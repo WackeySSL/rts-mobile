@@ -19,6 +19,8 @@ signal back_requested
 @export var slide_ms: int = 200
 ## Handed to every screen as its opaque backdrop (set in menu.tscn).
 @export var backdrop_color: Color
+## True when a picture sits under the screens: they then draw no opaque colour of their own.
+var see_through: bool = false
 ## Reduced effects: every change of screen is a cut. The owner sets it (the settings screen, P526).
 var reduced: bool = false
 ## False while the boot intro opens out into this menu: Back then belongs to the intro (a skip),
@@ -146,6 +148,7 @@ func back() -> void:
 
 func _add(screen: MenuScreen) -> void:
 	screen.backdrop_color = backdrop_color
+	screen.see_through = see_through
 	add_child(screen)
 	move_child(screen, _blocker.get_index())  # Blocker and question stay above every screen.
 

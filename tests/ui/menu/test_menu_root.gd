@@ -103,6 +103,51 @@ func test_register_defaults_off_leaves_the_table_alone() -> void:
 	assert_bool(_routes.has(MenuRoutes.HOW_TO_PLAY)).is_false()
 
 
+## P663: the picture sits under the screens and covers the viewport, the crop follows the measured
+## aspect, and a tap still reaches the menu.
+func test_the_backdrop_covers_the_screen_and_the_crop_follows_the_aspect() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(true, &"", size)
+		var backdrop: MenuBackdrop = _stack.get_node("MenuBackdrop") as MenuBackdrop
+		var label: String = str(size)
+		assert_bool(backdrop.usable).override_failure_message(label).is_true()
+		assert_int(backdrop.get_index()).is_equal(0)
+		assert_bool(_stack.see_through).is_true()
+		assert_bool(_stack.current().has_node("Backdrop")).is_false()
+		assert_int(backdrop.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+		var view: Rect2 = get_viewport().get_visible_rect()
+		var picture: TextureRect = backdrop.get_node("Picture") as TextureRect
+		(
+			assert_vector(picture.get_global_rect().size)
+			. override_failure_message(label)
+			. is_equal_approx(view.size, Vector2(1, 1))
+		)
+		assert_int(picture.stretch_mode).is_equal(TextureRect.STRETCH_KEEP_ASPECT_COVERED)
+		assert_bool(backdrop.is_tall).override_failure_message(label).is_equal(
+			view.size.x < view.size.y
+		)
+		var wide_shape: bool = picture.texture.get_width() > picture.texture.get_height()
+		assert_bool(wide_shape).override_failure_message(label).is_equal(not backdrop.is_tall)
+		var scrim: TextureRect = backdrop.get_node("Scrim") as TextureRect
+		assert_int(scrim.mouse_filter).is_equal(Control.MOUSE_FILTER_IGNORE)
+		var box: Rect2 = scrim.get_global_transform() * Rect2(Vector2.ZERO, scrim.size)
+		assert_vector(box.size).override_failure_message(label).is_equal_approx(
+			view.size, Vector2(1, 1)
+		)
+		_close()
+		UiScale.clear_override()
+
+
+func test_a_missing_picture_leaves_the_flat_backdrop_with_no_error() -> void:
+	var backdrop: MenuBackdrop = MenuBackdrop.new()
+	backdrop.wide_path = "res://assets/art/backdrops/none.png"
+	add_child(backdrop)
+	await await_idle_frame()
+	assert_bool(backdrop.usable).is_false()
+	assert_int(backdrop.get_child_count()).is_equal(0)
+	backdrop.free()
+
+
 func _open(defaults: bool, pending: StringName, size: Vector2i, slide: bool = false) -> void:
 	var profile: UiMetrics = _profile_with_window(size)
 	UiScale.set_override(profile)

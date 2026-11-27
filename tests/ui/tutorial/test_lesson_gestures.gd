@@ -5,7 +5,7 @@ extends GdUnitTestSuite
 ## - every beat carries the gesture of the table, and no other beat has one;
 ## - a gesture fits its kind and its anchor;
 ## - the box surrounds the squads;
-## - every beat that asks for a map action has a hint, or a named reason for none.
+## - every beat that asks for a map action has a hint.
 
 const LESSON_DIR: String = "res://data/tutorial/"
 const LESSONS: Array[StringName] = [&"basics", &"strikes", &"air", &"support"]
@@ -23,13 +23,6 @@ const TABLE: Array[Array] = [
 	[&"support", &"select-plant", GESTURE.TAP, Vector2i.ZERO],
 	[&"support", &"tanks", GESTURE.DOUBLE_TAP, Vector2i.ZERO],
 ]
-## Beats with no anchor that ask for a map action and have no hint on purpose: a hint would play at
-## the free field's centre and tap empty ground. Each reason is the missing fixed tile.
-const NO_HINT: Dictionary[String, String] = {
-	"basics/attack": "the enemy squads move, so no fixed tile to tap",
-	"air/tap-air": "the fighter lands on a free pad, and the lesson is not to tap the ground",
-	"support/select-truck": "the shot truck is built in the lesson, so no fixed tile",
-}
 const SELECTING: Array[TutorialConditions.Kind] = [
 	TutorialConditions.Kind.SELECTED,
 	TutorialConditions.Kind.UNITS_IN_AREA,
@@ -114,13 +107,13 @@ func test_the_box_surrounds_the_squads() -> void:
 		assert_bool(px.x < end.x and px.y < end.y).override_failure_message(str(at)).is_true()
 
 
-## Every beat that asks for something on the map (a condition other than NEXT, on a tile or with no
-## anchor) has a hint: a named gesture, or `AUTO` where the guide resolves it from the kind (a pan,
-## a zoom). A control beat is tapped by `AUTO`, so it needs none. The `NO_HINT` beats are the only
-## exceptions, and each stays without one.
-func test_every_map_action_beat_has_a_hint_or_a_reason_not_to() -> void:
+## Every beat that asks for something on the map (a condition other than NEXT, on a tile, a unit or
+## with no anchor) has a hint: a named gesture, or `AUTO` where the guide resolves it from the kind
+## (a pan, a zoom) or from the anchor (a tap on a unit, as on a control). A control beat is tapped
+## by `AUTO`, so it needs none. There is no exception list.
+func test_every_map_action_beat_has_a_hint() -> void:
 	var checked: int = 0
-	var skipped: int = 0
+	var unit_beats: int = 0
 	for id: StringName in LESSONS:
 		for beat: TutorialBeatDef in _lesson(id).beats:
 			if beat.anchor == TutorialBeatDef.Anchor.CONTROL:
@@ -132,17 +125,16 @@ func test_every_map_action_beat_has_a_hint_or_a_reason_not_to() -> void:
 				beat.kind == TutorialConditions.Kind.CAMERA_PANNED
 				or beat.kind == TutorialConditions.Kind.ZOOM_LEVEL
 			)
+			var on_unit: bool = beat.anchor == TutorialBeatDef.Anchor.UNIT
+			unit_beats += int(on_unit)
 			var hinted: bool = (
-				beat.gesture != GESTURE.NONE and (beat.gesture != GESTURE.AUTO or from_kind)
+				beat.gesture != GESTURE.NONE
+				and (beat.gesture != GESTURE.AUTO or from_kind or on_unit)
 			)
-			if NO_HINT.has(label):
-				skipped += 1
-				assert_bool(beat.anchor == TutorialBeatDef.Anchor.NONE and not hinted).is_true()
-				continue
 			checked += 1
 			assert_bool(hinted).override_failure_message(label + " has no hint").is_true()
-	assert_int(skipped).is_equal(NO_HINT.size())
-	assert_int(checked).is_equal(TABLE.size() + 1)  # The table, and the zoom beat's AUTO.
+	assert_int(unit_beats).is_equal(3)  # attack, tap-air, select-truck.
+	assert_int(checked).is_equal(TABLE.size() + 1 + unit_beats)  # The table, the zoom, the units.
 
 
 func _lesson(id: StringName) -> TutorialLessonDef:
