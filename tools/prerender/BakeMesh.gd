@@ -24,6 +24,7 @@ var id: StringName = &""
 var triangles: int = 0  ## Counted past the cap too, so the refusal can name the real count.
 var batches: Dictionary = {}  ## Material name -> Batch.
 var offset: Vector3 = Vector3.ZERO  ## Added to every point, grid frame (a repeat, a mount).
+var reach: float = 0.0  ## Above 0: points drop to the ground, `reach` tiles +gx per tile of z.
 
 
 func _init(model_id: StringName = &"") -> void:
@@ -55,7 +56,10 @@ func tri(
 	var batch: Batch = batches[mat]
 	var base: int = batch.vertices.size()
 	for i: int in 3:
-		batch.vertices.append(to_godot(p[i] + offset))
+		var at: Vector3 = p[i] + offset
+		if reach > 0.0:
+			at = Vector3(at.x + reach * at.z, at.y, 0.0)
+		batch.vertices.append(to_godot(at))
 		batch.normals.append(to_godot(n[i]).normalized())
 		batch.edges.append(edge[i])
 	var cross: Vector3 = (p[1] - p[0]).cross(p[2] - p[0])

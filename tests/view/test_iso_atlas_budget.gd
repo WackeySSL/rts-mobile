@@ -122,13 +122,17 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## Mortar Rig, `renew_scout`, `renew_tank` and `renew_artillery`), and a frame that a key colour
 ## touches is baked per player, so a mirror match bakes it twice. Page 1 has left 836 rows on the
 ## cross-faction page, 887 on the Derrick League mirror and 988 on the Lumen Accord mirror.
+## P658 (the gunmetal bodies, two barrels 0.1 longer, the Drillhead's wider body and booms, the
+## Linemen's wider reel hub: new tight boxes, no new frames) moved page 1 from 2748, 2697 and 2596
+## to 2749, 2697 and 2598 (+1, 0 and +2) and left page 2 at 2600, 1478 and 1480; every page stays
+## under the 3584 budget.
 ## P641: 2744 + 4; P640: 2725 + 19; P639: 2731 - 6; P638: 2730 + 1; P280: 2628 + 102; P279: 2582
 ## + 46;
 ## P292: 2472 + 110; P291: 2367 +
 ## 105;
 ## P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
-const TODAY_CROSS: int = 2748
+const TODAY_CROSS: int = 2749
 ## P652: 2615 + 82; P641: 2615 + 0; P640: 2582 + 33; P639: 2582 + 0; P638: 2657 - 75;
 ## P280: 2552 + 105; P279: 2526 + 26;
 ## P292: 2407 + 119; P291: 2279
@@ -141,7 +145,7 @@ const TODAY_MIRROR_DERRICK: int = 2697
 ## P291: 2266 + 75; P249: 2238 +
 ## 28
 ## (P245b: 2167 + 71; P239b: 2068 + 99).
-const TODAY_MIRROR_LUMEN: int = 2596
+const TODAY_MIRROR_LUMEN: int = 2598
 ## Page 2 (the shadows and the flyers): until P204 puts a key colour in a unit's shadow a shadow is
 ## one slot for both players. The packer fills shelves tallest first and never goes back to an
 ## earlier shelf, so a shadow added pushes shorter cells on and the trailing shelves grow. An
