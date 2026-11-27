@@ -6,8 +6,6 @@ extends GdUnitTestSuite
 const ICON_DIR: String = "res://assets/art/svg/icons/"
 const DIFFICULTY_DIR: String = "res://data/ai/difficulty/"
 const FACTION_DIR: String = "res://data/factions/"
-## Glyphs P673g draws; until that row lands their files are missing on purpose.
-const GLYPHS_PENDING: Array[StringName] = [&"glyph_map", &"glyph_time"]
 
 
 func _catalog() -> TrophyCatalog:
@@ -118,8 +116,7 @@ func test_thresholds_are_data() -> void:
 func test_glyph_files_exist_and_pips_in_range() -> void:
 	for trophy: TrophyDef in _catalog().trophies:
 		assert_int(trophy.pips).is_between(0, TrophyCatalog.MAX_PIPS)
-		if not GLYPHS_PENDING.has(trophy.glyph):
-			assert_bool(FileAccess.file_exists(ICON_DIR + "%s.svg" % trophy.glyph)).is_true()
+		assert_bool(FileAccess.file_exists(ICON_DIR + "%s.svg" % trophy.glyph)).is_true()
 
 
 func test_headquarters_types_are_unbuildable_and_spawned_once() -> void:
