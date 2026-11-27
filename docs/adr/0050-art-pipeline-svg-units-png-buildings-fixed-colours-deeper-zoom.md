@@ -36,6 +36,15 @@ P621c)" at the end of this ADR records the decision, the measured share bands an
 in §3, §7 and the Consequences. The default team colours there are the lead's proposal, which
 Michael can override. No accepted text changed.
 
+Status note (2026-11-27, P654, architect; ADR 0053 **proposed**): Michael chose "3D til terræn +
+bygninger, SVG-enheder" on 2026-11-27, after the probes P653 and P655. ADR 0053
+(`docs/adr/0053-prerendered-terrain-and-buildings.md`) proposes to reverse answer 1's "There is
+no PNG on the map" (§2, §4's "Stand-alone pictures" bullet) for terrain and buildings: they would
+be pre-rendered from our own 3D models at today's density, with the team colour recoloured at match
+start. Units stay generator SVG under this ADR as amended. §8, the amendment's A1-A7, §1's byte
+budget for buildings and §6 still bind the pre-rendered art. Until ADR 0053 is accepted, this ADR
+stands as written. No accepted text changed.
+
 ## Michael's answers (2026-11-24)
 Verbatim: "ja til alle 4, men vi skal have afgjort om det er figma Ai der vinder, vi skal have en
 helhed i grafikken hele vejen rundt så det virker gennemarbejdet og ikke tilfældigt" (yes to
@@ -180,6 +189,9 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
   Portraits are used where no card is: first on the main menu's and map select's side cards (one
   hero portrait per faction). Per-type portraits for production and unit details come with those
   screens' own rows (unit details is out of scope, ADR 0049).
+- 2026-11-27 (P654): ADR 0053 (proposed) would make terrain and buildings pre-rendered PNG from
+  our own 3D models, in place of this section's first bullet for those two classes. Units stay
+  generator SVG. See the status note at the top.
 
 ### 3. Fixed faction colours and a team marker (replaces ADR 0049 question 5)
 - **The faction colour is a fixed material**, never replaced:
