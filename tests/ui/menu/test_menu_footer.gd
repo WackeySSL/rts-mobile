@@ -10,16 +10,8 @@ const PrefsRig: GDScript = preload("res://tests/support/prefs_rig.gd")
 const FakeRank: GDScript = preload("res://tests/ui/support/fake_rank_progression.gd")
 const FakeFlow: GDScript = preload("res://tests/ui/support/fake_start_flow.gd")
 const KINDS: Array[StringName] = [&"settings", &"map", &"how_to_play", &"licences", &"tutorial"]
+const NamedRoot: GDScript = preload("res://tests/ui/menu/support/named_root_screen.gd")
 const TOLERANCE_PX: float = 0.5
-
-
-## What the footer sits over: a root that names itself as the main menu does.
-class FakeRoot:
-	extends MenuScreen
-
-	func screen_name() -> String:
-		return "MAIN MENU"
-
 
 var _window_size_before: Vector2i
 var _menu: Control
@@ -152,7 +144,7 @@ func _open(kind: StringName, profile: UiMetrics, with_root: bool = true) -> void
 	_stack = _menu.get_node("MenuStack") as MenuStack
 	_stack.slide_ms = 0
 	if with_root:
-		_root = FakeRoot.new()
+		_root = NamedRoot.new()
 		_stack.push(_root)
 		await await_idle_frame()
 	_screen = _make(kind)
