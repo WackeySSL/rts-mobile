@@ -11,12 +11,13 @@ extends RefCounted
 ## the lower id. Enemies count only on cells the local player sees; buildings never.
 
 const MIN_HALF_DP: float = 24.0  ## The ring is never smaller than this half size.
+const THROUGH_BAND_DP: float = CoachMark.THROUGH_BAND_DP  ## The band a button's rect grows by.
 
 var unit_id: int = -1  ## The held unit, -1 for none.
 var point: Vector2 = Vector2.INF  ## Its tap point on the screen, base px; INF: no ring, no hand.
 var half: float = 0.0  ## The ring's half size, px.
 var flyer: bool = false
-var in_field: bool = false  ## The point is on the screen and under no HUD part.
+var in_field: bool = false  ## The point is on the screen and under no HUD part or card button.
 var scans: int = 0  ## Scans made so far (tests).
 var lookups: int = 0  ## `index_of` calls made to find the held row (tests).
 
@@ -26,10 +27,13 @@ var _tick: int = -1
 var _version: int = -1  ## `rows_version` the held row was read at.
 var _row: int = -1
 var _type: int = -1
+var _under: bool = false  ## The point is under a card button (hysteresis: see `_under_button`).
 
 
 ## Brings the result up to this frame for step `aim`. `rects` are the mark's HUD rects
-## (`GuideDock.hud_for_dock`); the economy card is not one that hides the field.
+## (`GuideDock.hud_for_dock`); the economy card is not one that hides the field. `buttons` are the
+## global rects of the card's visible Next, Skip and tab: they take a touch even when the card is
+## see-through, so a point under one is not in the field (ADR 0048 section 13.5).
 func update(
 	aim: TutorialLeadInDef,
 	runner: MatchRunner,
@@ -38,7 +42,8 @@ func update(
 	air: AirLayer,
 	safe: Rect2,
 	dp: float,
-	rects: Dictionary[StringName, Rect2]
+	rects: Dictionary[StringName, Rect2],
+	buttons: Array[Rect2] = []
 ) -> void:
 	var snap: MatchSnapshot = runner.snapshot if runner != null else null
 	var sel: TutorialUnitPickDef = aim.unit if aim != null else null
@@ -71,12 +76,27 @@ func update(
 	var ring: float = IsoProjection.ellipse_px(snap.type_selection_radius[_type]).x * camera.zoom.x
 	half = maxf(ring, MIN_HALF_DP * dp)
 	in_field = safe.has_point(point)
+	if _under_button(buttons, THROUGH_BAND_DP * dp):
+		in_field = false
 	for key: StringName in rects:
 		if key != HudCorners.CARD and in_field and rects[key].has_point(point):
 			in_field = false
 
 
+## Whether the point is under a button. It is once inside a plain rect and clear only once outside
+## every rect grown by `band`, so a unit along a button's edge does not flip the hand.
+func _under_button(buttons: Array[Rect2], band: float) -> bool:
+	var inside: bool = false
+	for rect: Rect2 in buttons:
+		if rect.has_point(point) or (_under and rect.grow(band).has_point(point)):
+			inside = true
+			break
+	_under = inside
+	return inside
+
+
 func _forget() -> void:
+	_under = false
 	unit_id = -1
 	point = Vector2.INF
 	in_field = false

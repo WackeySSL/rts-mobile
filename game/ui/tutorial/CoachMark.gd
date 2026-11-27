@@ -128,6 +128,7 @@ var _next_hud: int = 0
 var _lookup: GuideLookup = GuideLookup.new()
 var _unit: GuideUnitAnchor = GuideUnitAnchor.new()
 var _tab: Button
+var _buttons: Array[Rect2] = []  ## Reused: the visible card buttons' rects, for the unit anchor.
 
 
 func _ready() -> void:
@@ -467,7 +468,13 @@ func _update() -> void:
 	if covered:
 		return
 	var docked: bool = _refresh_dock()
-	_unit.update(_aim, runner, camera, ground_layer, air_layer, _safe_rect, _dp, _dock_rects)
+	_buttons.clear()
+	for button: Button in [_fit.next, _fit.skip, _tab]:
+		if button.is_visible_in_tree():
+			_buttons.append(Rect2(button.global_position, button.size))
+	_unit.update(
+		_aim, runner, camera, ground_layer, air_layer, _safe_rect, _dp, _dock_rects, _buttons
+	)
 	var ring: Rect2 = _ring_box()
 	_update_gesture(ring)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()

@@ -28,12 +28,6 @@ const GROUPS: int = 3
 const UNIT_BEATS: Array[String] = [
 	"basics/attack", "air/tap-air", "air/home", "support/select-truck", "support/mine"
 ]
-## The "lesson/beat WxH" pairs where the unit stands under the card's Next button, so the finger
-## pans first. OPEN DESIGN GAP: the card's buttons (Next, Skip, the tab) take a touch even when
-## the card is see-through, and the guide does not count them as hiding the field, so a unit under
-## one is "in the field" yet cannot be tapped. The sweep pans like a finger; this list pins where.
-## It must match exactly: a new pair is a new overlap, a missing one a stale entry.
-const BUTTON_PANS: Array[String] = ["support/mine 2400x912"]
 const EXTRA_PROFILES: Array[StringName] = [&"web_phone_small", &"web_phone_portrait"]
 ## Which selection a start state holds: nothing, the player's units, one building (`BUILDINGS` plus
 ## its index in the player's list).
@@ -67,7 +61,6 @@ var _selection: SelectionModel
 var _camera: RtsCamera
 var _air: AirLayer
 var _proofs: Array[String] = []  ## The "lesson/beat WxH" of every touch proof that ran.
-var _button_pans: Array[String] = []  ## The same, where the unit stood under a card button.
 var _proof_key: String = ""
 var _sent: Array[Command] = []  ## What the controller sent since the last touch proof.
 var _own: PackedInt32Array = PackedInt32Array()
@@ -111,7 +104,6 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 	var judged: int = 0
 	var chained: int = 0
 	_proofs.clear()
-	_button_pans.clear()
 	for lesson: TutorialLessonDef in _lessons():
 		for profile: UiMetrics in profiles:
 			await _open(lesson, profile)
@@ -141,12 +133,6 @@ func test_the_ring_follows_every_chain_to_a_visible_control_in_every_lesson() ->
 			if not _proofs.has(key):
 				missing.append(key)
 	assert_array(missing).override_failure_message("no touch proof: %s" % [missing]).is_empty()
-	var pans: Array[String] = []
-	for key: String in _button_pans:
-		if not pans.has(key):
-			pans.append(key)
-	pans.sort()
-	assert_array(pans).override_failure_message("button pans %s" % [pans]).is_equal(BUTTON_PANS)
 	for line: String in found:
 		print("CHAIN ", line)
 	print("CHAIN judged ", judged, " chained ", chained)
@@ -602,14 +588,17 @@ func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef)
 	if id < 0:
 		return lines  # `_ring_problems` told it.
 	_proofs.append(_proof_key)
-	# A finger pans a unit that is out of the field, or under one of the card's buttons (they take
-	# a touch even when the card is see-through), to where it can be tapped: first centred, then
-	# on the lower part of the screen.
-	if unit.in_field and _under_a_card_button(unit.point):
-		_button_pans.append(_proof_key)
+	# Under a visible card button the unit is not in the field and the hand is not a TAP: it drags
+	# (ADR 0048 section 13.5). A finger then pans a unit that is out of the field to where it can be
+	# tapped: first centred, then on the lower part of the screen.
+	if _under_a_card_button(unit.point):
+		if unit.in_field:
+			lines.append("%s: unit %d is in the field under a card button" % [label, id])
+		if _mark.gesture_plan().kind == TutorialBeatDef.Gesture.TAP:
+			lines.append("%s: the hand taps unit %d under a card button" % [label, id])
 	var view: Rect2 = get_viewport().get_visible_rect()
 	for want: Vector2 in [Vector2(0.5, 0.5), Vector2(0.5, 0.65), Vector2(0.25, 0.65)]:
-		if unit.in_field and not _under_a_card_button(unit.point):
+		if unit.in_field:
 			break
 		var aim: Vector2 = view.position + view.size * want
 		var home: Vector2 = _camera.screen_to_world(unit.point)

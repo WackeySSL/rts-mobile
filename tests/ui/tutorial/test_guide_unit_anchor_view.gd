@@ -73,3 +73,56 @@ func test_a_flyer_resolves_through_the_air_layer() -> void:
 		_camera.world_to_screen(air.tap_point(Air.FIGHTER_ID)), Vector2(0.01, 0.01)
 	)
 	assert_that(ground.tap_point(Air.FIGHTER_ID)).is_equal(Vector2.INF)
+
+
+func test_a_point_under_a_card_button_is_not_in_the_field() -> void:
+	_look_at(7)
+	var aim: TutorialLeadInDef = _aim(
+		TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEAREST_CAMERA
+	)
+	_update(aim)
+	var at: Vector2 = _anchor.point
+	assert_bool(_anchor.in_field).is_true()
+	# Next, Skip and the tab are three rects of one list: any of them hides the field.
+	for slot: int in 3:
+		var buttons: Array[Rect2] = [Rect2(), Rect2(), Rect2()]
+		buttons[slot] = Rect2(at - Vector2(20.0, 20.0), Vector2(40.0, 40.0))
+		_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, buttons)
+		assert_bool(_anchor.in_field).override_failure_message("slot %d" % slot).is_false()
+	var apart: Array[Rect2] = [Rect2(at + Vector2(200.0, 0.0), Vector2(40.0, 40.0))]
+	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, apart)
+	assert_bool(_anchor.in_field).is_true()  # A hidden button is no rect: nothing is passed.
+
+
+func test_a_button_edge_has_a_band_of_8_dp_with_hysteresis_both_ways() -> void:
+	_look_at(7)
+	var aim: TutorialLeadInDef = _aim(
+		TutorialUnitPickDef.Whose.OWN, TutorialUnitPickDef.Pick.NEAREST_CAMERA
+	)
+	_update(aim)
+	var at: Vector2 = _anchor.point
+	var band: float = CoachMark.THROUGH_BAND_DP
+	# `gap` is how far the button's left edge stands to the right of the point (negative: the
+	# point is inside the rect).
+	var steps: Array = [
+		[band - 1.0, true],  # Outside the plain rect, never under: in the field.
+		[-1.0, false],  # Enters the plain rect.
+		[band - 1.0, false],  # Inside the band: still under, no flip.
+		[band + 1.0, true],  # Past the band: clear.
+		[band - 1.0, true],  # Back inside the band: still clear, no flip.
+		[-1.0, false],
+	]
+	for step: Array in steps:
+		var gap: float = step[0] as float
+		var rects: Array[Rect2] = [Rect2(at + Vector2(gap, -20.0), Vector2(40.0, 40.0))]
+		_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, 1.0, _hud, rects)
+		assert_bool(_anchor.in_field).override_failure_message("gap %s" % gap).is_equal(step[1])
+	var dp: float = 3.0  # The band grows with dp.
+	var wide: Array[Rect2] = [Rect2(at + Vector2(-1.0, -20.0), Vector2(40.0, 40.0))]
+	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, dp, _hud, wide)
+	wide[0] = Rect2(at + Vector2(band * dp - 1.0, -20.0), Vector2(40.0, 40.0))
+	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, dp, _hud, wide)
+	assert_bool(_anchor.in_field).is_false()
+	wide[0] = Rect2(at + Vector2(band * dp + 1.0, -20.0), Vector2(40.0, 40.0))
+	_anchor.update(aim, _runner, _camera, _ground, _air, SAFE, dp, _hud, wide)
+	assert_bool(_anchor.in_field).is_true()
