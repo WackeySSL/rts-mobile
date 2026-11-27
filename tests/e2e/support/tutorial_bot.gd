@@ -70,6 +70,8 @@ var single_squad_group: bool = false
 var drop_selection: bool = false
 ## How many selection lead-in steps the bot followed (a tap on a tile, or the AllArmy control).
 var selection_steps: int = 0
+## How many taps the bot made on a unit the ring stood on (a `UNIT` step: lead-in or beat).
+var unit_taps: int = 0
 ## How many STOP commands the bot sent, by tapping the Stop button.
 var stops_sent: int = 0
 
@@ -190,6 +192,7 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 		"contact": _contact,
 		"stops": stops_sent,
 		"selection_steps": selection_steps,
+		"unit_taps": unit_taps,
 	}
 	_director.skip()
 	_mark.queue_free()
@@ -591,6 +594,7 @@ func _tap_unit(owner: Object) -> bool:
 	_controller.handle_gesture(tap)
 	_unit_tapped = owner
 	_unit_tick = _ticks_run
+	unit_taps += 1
 	if _director.current.kind == TutorialConditions.Kind.ENEMY_LOSSES:
 		var sent: Command = _sent[-1] if _sent.size() > before else null
 		if sent == null or sent.type != Command.Type.ATTACK or sent.target_id != unit.unit_id:
@@ -605,10 +609,13 @@ func _note_unit(text: String) -> void:
 		_ringless.append("%s: %s" % [_where(), text])
 
 
-## A unit tap that has not passed its step after `UNIT_WATCH_TICKS` is told in `ringless`.
+## A unit tap that has not passed its step after `UNIT_WATCH_TICKS` is told in `ringless`; an
+## attack beat is exempt, since it ends on kills.
 func _watch_unit(beat: TutorialBeatDef) -> void:
 	if _unit_tapped == null or _unit_noted or _ticks_run - _unit_tick < UNIT_WATCH_TICKS:
 		return
+	if beat.kind == TutorialConditions.Kind.ENEMY_LOSSES:
+		return  # An attack ends on kills, which take time: the ATTACK it sent is the proof.
 	var pending: bool = _unit_tapped == beat or _director.active_target() == _unit_tapped
 	if pending:
 		_note_unit("the tap on unit %d did not pass" % _mark.unit_anchor().unit_id)

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLessonDef.gd" id="1_lesson"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialBeatDef.gd" id="2_beat"]
 [ext_resource type="Script" path="res://game/ui/tutorial/TutorialLeadInDef.gd" id="9_lead"]
+[ext_resource type="Script" path="res://game/ui/tutorial/TutorialUnitPickDef.gd" id="10_unit"]
 [ext_resource type="Resource" path="res://data/scenarios/tutorial_air.tres" id="3_scenario"]
 [ext_resource type="Resource" path="res://data/tutorial/air_enemy.tres" id="4_enemy"]
 
@@ -39,10 +40,17 @@ covers = Array[StringName]([&"units-build-aircraft"])
 budget_s = 24
 lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_02_build"), SubResource("Beat_02_tab")])
 
+[sub_resource type="Resource" id="Beat_03_unit"]
+script = ExtResource("10_unit")
+type_id = &"fossil_fighter"
+pick = 1
+
 [sub_resource type="Resource" id="Beat_03"]
 script = ExtResource("2_beat")
 id = &"tap-air"
 prompt_key = &"tutorial.air.tap-air"
+anchor = 3
+unit = SubResource("Beat_03_unit")
 kind = 1
 type_id = &"fossil_fighter"
 covers = Array[StringName]([&"selection-tap-aircraft"])
@@ -62,6 +70,18 @@ prompt_key = &"tutorial.air.bomber"
 covers = Array[StringName]([&"orders-bomber-reload"])
 budget_s = 4
 
+[sub_resource type="Resource" id="Beat_06_unit"]
+script = ExtResource("10_unit")
+type_id = &"fossil_fighter"
+pick = 1
+
+[sub_resource type="Resource" id="Beat_06_select"]
+script = ExtResource("9_lead")
+anchor = 3
+unit = SubResource("Beat_06_unit")
+kind = 1
+type_id = &"fossil_fighter"
+
 [sub_resource type="Resource" id="Beat_06"]
 script = ExtResource("2_beat")
 id = &"home"
@@ -70,6 +90,7 @@ anchor = 1
 anchor_control = &"Home"
 covers = Array[StringName]([&"orders-home"])
 budget_s = 4
+lead_in = Array[ExtResource("9_lead")]([SubResource("Beat_06_select")])
 
 [sub_resource type="Resource" id="Beat_07"]
 script = ExtResource("2_beat")
