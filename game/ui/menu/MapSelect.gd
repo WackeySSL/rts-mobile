@@ -72,6 +72,7 @@ func _ready() -> void:
 	_start = add_button(tr(MapSelectText.START), _on_start)
 	offer = StartCreditsOffer.new()
 	OfferSlot.add_to(column, self).add_child(offer)
+	use_footer()  # The back link: the web has no back event (P672a).
 	_progression_defaults()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
@@ -124,6 +125,10 @@ func _can_start() -> bool:
 ## Back does nothing while the match starts: a pop would leave the flow to start it from the menu.
 func on_back() -> bool:
 	return _starting
+
+
+func screen_name() -> String:
+	return tr(MapSelectText.TITLE)
 
 
 func _on_start() -> void:

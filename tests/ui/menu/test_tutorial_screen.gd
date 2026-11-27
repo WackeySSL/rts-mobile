@@ -55,7 +55,7 @@ func test_the_screen_fits_the_safe_area_with_big_targets_at_the_six_sizes() -> v
 			. override_failure_message(label)
 			. is_true()
 		)
-		assert_int(_buttons().size()).is_equal(TutorialStart.ORDER.size() + 1)
+		assert_int(_buttons().size()).is_equal(TutorialStart.ORDER.size())
 		var floor_px: float = UiScale.dp(48.0) - TOLERANCE_PX
 		for button: Button in _buttons():
 			var rect: Rect2 = button.get_global_rect()
@@ -73,7 +73,7 @@ func test_a_fresh_save_lists_the_lessons_in_order_and_marks_the_first_next() -> 
 	assert_str(_buttons()[1].text).is_equal("STRIKES AND THE SATELLITE")
 	assert_str(_buttons()[2].text).is_equal("AIRCRAFT AND CARRIERS")
 	assert_str(_buttons()[3].text).is_equal("REPAIR, SALE AND MINES")
-	assert_str(_buttons()[4].text).is_equal("BACK")
+	assert_int(_buttons().size()).is_equal(4)  # BACK is the footer's link, not a column row.
 
 
 func test_a_finished_lesson_shows_done_in_words_and_the_next_one_moves_on() -> void:
@@ -139,7 +139,7 @@ func test_back_pops_to_the_menu_below_and_the_android_back_is_not_taken() -> voi
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
 	assert_bool(_screen.on_back()).is_false()
 	assert_int(_stack.depth()).is_equal(2)
-	_buttons().back().pressed.emit()
+	_screen.back_link.pressed.emit()
 	await await_idle_frame()
 	assert_int(_stack.depth()).is_equal(1)
 
