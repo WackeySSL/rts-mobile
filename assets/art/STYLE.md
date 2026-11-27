@@ -2137,6 +2137,8 @@ keeps the file at 79.5 % cover (the arrow 69 %), under the 82 % bound for an ico
 | `glyph_mine.svg` | A squat round drum seen from the side and above, a flat oval lid and a dark seam round its side, with a fat block arrow pointing down at the lid from above. |
 | `glyph_hold.svg` | A peaked shield, its top edge rising to a centre peak between two low shoulders and its foot pointed, a grey shaded foot, and in its face a dark downward stake driven into a long dark ground bar. |
 | `glyph_home.svg` | A house: a wide pitched roof over a boxy body with a dark doorway, a grey right flank on the roof and the wall. |
+| `glyph_map.svg` | A sheet folded in three upright panels in a zigzag, the middle one grey and lifted, one dark route line winding across all three from a small dot to a larger end dot. |
+| `glyph_time.svg` | An upright hourglass: a dark cap bar at the top and the foot, two glass cones meeting at a narrow neck, grey sand heaped in the lower cone. |
 | `glyph_unload_mark.svg` | Two fat chevrons stacked and pointing straight down, the lower one the point itself, on a dark rounded plate with a white rim. |
 | `glyph_construct.svg` | A tall straight-sided lattice mast of crossed braces on a flat foot, a long level jib across its top with a grey counterweight block at its back end and a hook hanging from the far end, on a dark rounded plate with a white rim. |
 
