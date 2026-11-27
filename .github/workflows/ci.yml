@@ -78,6 +78,15 @@ jobs:
       - name: Install gdtoolkit
         run: pipx install "gdtoolkit==${GDTOOLKIT_VERSION}"
 
+      # The pre-render post's tests (tests/tools/prerender/test_prerender_post.gd) run tools/prerender/post.py
+      # under `python3 -I`: Python 3.13 with the pins of requirements.txt, in the setup-python environment
+      # (the runner's system Python is externally managed, PEP 668). verify.sh itself installs nothing.
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5.6.0
+        with:
+          python-version: "3.13"
+      - name: Install the pre-render post's Python pins
+        run: python3 -m pip install -r tools/prerender/requirements.txt
+
       # Offline, against stub tools: the seed, the library check, build-native.sh's exit codes and ELF
       # checks, install-ndk.sh against a stub sdkmanager and the C++ format check (ADR 0013 sections 8-10).
       - name: Offline test of the native scripts
