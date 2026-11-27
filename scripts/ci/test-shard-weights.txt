@@ -1,0 +1,17 @@
+# Balance hints for scripts/ci/shard-tests.py. They change which shard a suite lands in, never
+# whether it runs: a suite that is missing here is still in some shard.
+#   <file>  <seconds>        the suite's estimated run time in seconds
+#   <dir/>  <seconds/case>   the per-case rate of every suite below the directory (default 0.25)
+# Estimates, not measurements: read the per-step times of the shard jobs and adjust.
+tests/art/                                                   0.4
+tests/ui/tutorial/test_coach_mark_chain_sweep.gd             900
+tests/ui/tutorial/test_coach_mark_lead_in_states_air.gd      240
+tests/ui/tutorial/test_coach_mark_lead_in_states_basics.gd   240
+tests/ui/tutorial/test_coach_mark_lead_in_states_support.gd  240
+tests/perf/test_golden_hashes.gd                             150
+tests/perf/test_sim_perf.gd                                  150
+tests/perf/test_air_perf.gd                                  100
+tests/perf/test_base_arena_perf.gd                           100
+tests/perf/test_ai_perf.gd                                   100
+tests/perf/test_ai_4b_perf.gd                                100
+tests/perf/test_restore_perf.gd                               60
