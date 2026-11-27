@@ -197,27 +197,32 @@ upsert_comment() {
 }
 
 # Pushes with GITHUB_TOKEN may not start a Pages build; ask for one. Never fatal.
-# A new build cancels the one in progress, so ask only when it helps: skip when the latest build
-# is queued or building (it will publish the head or be followed by the next check) or is built
-# for the current gh-pages head. Statuses of GET pages/builds/latest: queued, building, built,
-# errored; `commit` is the built SHA. When latest or the head cannot be read, ask anyway.
+# A new build cancels the one in progress, so ask only when it helps. The signal is the newest
+# workflow run on gh-pages ("pages build and deployment"; needs `actions: read`): skip when its
+# status is not `completed` (queued, in_progress, waiting, ...: a build is running), or when it
+# completed with conclusion `success` for the current gh-pages head. Otherwise POST.
+# When the run or the head cannot be read it POSTs anyway and sets READ_FAILED=1, so the waiter
+# can fall back to the old single request instead of asking again every BUILD_REQUEST_AFTER s.
+READ_FAILED=0
 request_pages_build() {
-  local latest status commit head
-  if latest="$(gh api "repos/$REPO/pages/builds/latest" --jq '[.status, .commit] | @tsv' 2>/dev/null)"; then
-    IFS=$'\t' read -r status commit <<<"$latest"
-    case "$status" in
-      queued | building)
-        echo "Pages build already $status; not requesting another (it would cancel it)"
-        return 0
-        ;;
-      built)
-        if head="$(gh api "repos/$REPO/git/ref/heads/gh-pages" --jq .object.sha 2>/dev/null)" &&
-          [ -n "$head" ] && [ "$commit" = "$head" ]; then
-          echo "latest Pages build already covers gh-pages ${head:0:7}; not requesting another"
-          return 0
-        fi
-        ;;
-    esac
+  local run status conclusion run_sha head
+  READ_FAILED=0
+  if run="$(gh api "repos/$REPO/actions/runs?branch=gh-pages&per_page=1" \
+    --jq '.workflow_runs[0] | [.status // "-", .conclusion // "-", .head_sha // "-"] | @tsv' 2>/dev/null)" &&
+    IFS=$'\t' read -r status conclusion run_sha <<<"$run" && [ "$status" != "-" ] && [ -n "$run_sha" ]; then
+    if [ "$status" != completed ]; then
+      echo "a Pages build is $status; not requesting another (it would cancel it)"
+      return 0
+    fi
+    if [ "$conclusion" = success ] &&
+      head="$(gh api "repos/$REPO/git/ref/heads/gh-pages" --jq .object.sha 2>/dev/null)" &&
+      [ -n "$head" ] && [ "$run_sha" = "$head" ]; then
+      echo "the latest Pages build already covers gh-pages ${head:0:7}; not requesting another"
+      return 0
+    fi
+  else
+    READ_FAILED=1
+    echo "::warning::cannot read the latest Pages build run; requesting a build anyway"
   fi
   gh api -X POST "repos/$REPO/pages/builds" >/dev/null ||
     echo "::warning::Pages build request failed (is Pages enabled for gh-pages /?)"
@@ -260,10 +265,12 @@ case "$cmd" in
       fi
       if [ "$waited" -ge "$LIVE_TIMEOUT" ]; then break; fi
       # GITHUB_TOKEN pushes may not start a Pages build, or a build may have ended before our head
-      # landed; re-check every BUILD_REQUEST_AFTER s. request_pages_build skips a useful build.
+      # landed; re-check every BUILD_REQUEST_AFTER s. request_pages_build skips while a build runs.
       if [ "$waited" -ge "$next_request" ]; then
         request_pages_build
         next_request=$((waited + BUILD_REQUEST_AFTER))
+        # API trouble must not become a request every BUILD_REQUEST_AFTER s: ask only once.
+        if [ "$READ_FAILED" -eq 1 ]; then next_request=$((LIVE_TIMEOUT + 1)); fi
       fi
       sleep "$POLL_INTERVAL"
       waited=$((waited + POLL_INTERVAL))
