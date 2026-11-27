@@ -1,18 +1,18 @@
 class_name MapSelect
 extends MenuScreen
-## The map select (ADR 0043 section 5, plan P525; the look of Michael's Figma board, P666): a
-## breadcrumb and headline, two faction cards (the chosen one in the amber accent, the other in its
-## faction's), the map from `MapCatalog`, the computer's level as chips and START. Wide (landscape)
-## the cards and the level stand on the left and the map and START on the right; upright it is one
-## column in that order. The map's preview is a marked slot (`MapPreviewSlot`) that names the chosen
-## map until a picture can be drawn from the map's data (P666b); the in-match minimap needs a sim.
-## A map or level above the player's rank (ADR 0045, read through `Progression`) is dimmed and
-## shows its rank; it cannot be chosen. START builds a `MatchSetup`
-## and awaits `MenuFlow.start_match`; a second tap while it runs does nothing, and a refused start
+## The map select (ADR 0043 section 5, plan P525; Michael's Figma board and his wish for a guided
+## sequence, P666): a breadcrumb and headline, then three numbered steps, each with its current
+## choice in its header: 01 the side (two faction cards, the chosen one amber), 02 the map (a row
+## per map from `MapCatalog`), 03 the difficulty (three chips). Under them a one-line summary and
+## START BATTLE. Wide (landscape): 01 and 03 left, 02 and START right; upright one column in
+## order. Every step shows one chosen item (amber edge and tint; START alone is solid amber). A
+## map or level above the player's rank (ADR 0045, read through `Progression`) is dimmed with a
+## lock and its rank, and cannot be chosen. START builds a `MatchSetup` and awaits
+## `MenuFlow.start_match`; a second tap while it runs does nothing, and a refused start
 ## (ERR_BUSY or another error) is reported with `push_warning` and leaves the button live. The
 ## computer plays the other side. The banner band is the slot's; the offer slot holds Phase 6's
-## `StartCreditsOffer` (P433), which owns every ad call; none lives here. It is a menu: no
-## Command, no sim.
+## `StartCreditsOffer` (P433), which owns every ad call; none lives here. The map's picture
+## (P666b) will come back above the map rows. It is a menu: no Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
@@ -21,7 +21,8 @@ const EMBLEMS: Dictionary[StringName, Texture2D] = {
 	&"renew": preload("res://assets/art/svg/icons/emblem_renew.svg"),
 }
 const EMBLEM_DP: float = 40.0
-const PREVIEW_DP: float = 112.0  ## The preview slot's least height.
+const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
+const LOCK_DP: float = 16.0
 const HOLD_FRAMES: int = 4  ## Frames a turn keeps the scroll position.
 const START_DP: Vector2 = Vector2(0.0, 64.0)
 const OPPONENT_PATH: String = "res://data/ai/opponent_%s.tres"
@@ -66,16 +67,24 @@ var _sides: Dictionary[StringName, Button] = {}
 var _map_cards: Dictionary[StringName, PanelContainer] = {}
 var _side_cards: Dictionary[StringName, PanelContainer] = {}
 var _levels: Dictionary[StringName, Button] = {}
+var _level_cards: Dictionary[StringName, PanelContainer] = {}
+var _names: Dictionary[StringName, Label] = {}  ## The word of each map and level option.
+var _notes: Dictionary[StringName, Control] = {}  ## Its lock row (glyph and RANK n), shown locked.
+var _choice_labels: Dictionary[StringName, Label] = {}  ## A step header's current choice.
+var _summary: Label
+var _seen_scroll: int = 0  ## The scroll at the end of the last frame (a turn clamps it first).
+var _step_words: Array[Label] = []  ## The numbers and titles of the step headers.
 var _tags: Dictionary[StringName, Label] = {}
 var _start: Button
 var _starting: bool = false
 var _wide: bool = false
-var _body: GridContainer
-var _cards_row: HBoxContainer
-var _map_box: VBoxContainer
-var _level_box: VBoxContainer
+var _body: BoxContainer
+var _left: VBoxContainer
+var _right: VBoxContainer
+var _side_step: VBoxContainer
+var _map_step: VBoxContainer
+var _level_step: VBoxContainer
 var _start_box: VBoxContainer
-var _preview_name: Label
 var _spaced: Array[BoxContainer] = []
 
 
@@ -89,24 +98,25 @@ func _ready() -> void:
 	_label(column, tr(MapSelectText.CRUMB), &"MenuEyebrow")
 	_label(column, tr(MapSelectText.HEADLINE), &"CapsBigTitle")
 	_build_body()
-	_cards_row = _spaced_box(HBoxContainer.new()) as HBoxContainer
+	_side_step = _step(1, MapSelectText.STEP_SIDE, &"side")
+	var cards: HBoxContainer = _spaced_box(HBoxContainer.new()) as HBoxContainer
+	_side_step.add_child(cards)
 	for id: StringName in SIDES:
-		_sides[id] = _side_card(id)
-	_map_box = _section(MapSelectText.MAP)
-	_build_preview()
-	var maps: HBoxContainer = _spaced_box(HBoxContainer.new()) as HBoxContainer
-	_map_box.add_child(maps)
+		_sides[id] = _side_card(id, cards)
+	_map_step = _step(2, MapSelectText.STEP_MAP, &"map")
+	var maps: VBoxContainer = _spaced_box(VBoxContainer.new()) as VBoxContainer
+	_map_step.add_child(maps)
 	for id: StringName in catalog.map_ids():
-		_maps[id] = _choice(id, _pick_map, maps, _map_cards)
-	_level_box = _section(MapSelectText.LEVEL)
+		_maps[id] = _option(id, catalog.title(id).to_upper(), _pick_map, maps, _map_cards, true)
+	_level_step = _step(3, MapSelectText.STEP_LEVEL, &"level")
 	var levels: HBoxContainer = _spaced_box(HBoxContainer.new()) as HBoxContainer
-	_level_box.add_child(levels)
+	_level_step.add_child(levels)
 	for id: StringName in LEVELS:
-		_levels[id] = _choice(id, _pick_level, levels, null)
+		_levels[id] = _option(id, tr(LEVEL_TEXT[id]), _pick_level, levels, _level_cards, false)
 	_start_box = _spaced_box(VBoxContainer.new()) as VBoxContainer
+	_summary = _label(_start_box, "", &"MenuStepTitle")
+	_summary.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_start = _button(_start_box, &"MenuPrimary", tr(MapSelectText.START), _on_start, START_DP)
-	for part: Control in [_cards_row, _map_box, _level_box, _start_box]:
-		_body.add_child(part)  # In the tree: the offer slot's owner must be its ancestor.
 	_apply()
 	offer = StartCreditsOffer.new()
 	OfferSlot.add_to(_start_box, self).add_child(offer)
@@ -114,6 +124,10 @@ func _ready() -> void:
 	_progression_defaults()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
+
+
+func _process(_delta: float) -> void:
+	_seen_scroll = scroll.scroll_vertical
 
 
 func _exit_tree() -> void:
@@ -200,12 +214,40 @@ func _pick_level(id: StringName) -> void:
 	_refresh()
 
 
-## The body: a grid of the four sections in the upright order (cards, map, level, START). Wide it
-## has two columns, so the cards and the level stand left of the map and START; upright one column.
-## Nothing is moved or rebuilt by a turn, so the scroll and the choice are kept.
+## The body: two columns wide (01 and 03 left; 02 and START right), one upright (01, 02 and 03 in
+## `_left`, START under them in `_right`). START never changes parent (a move would reset the offer
+## in its slot); a turn moves only the map step between the columns, and `_hold_scroll` keeps the
+## scroll through it.
 func _build_body() -> void:
-	_body = GridContainer.new()
+	_body = _spaced_box(BoxContainer.new()) as BoxContainer
 	column.add_child(_body)
+	_left = _spaced_box(VBoxContainer.new()) as VBoxContainer
+	_right = _spaced_box(VBoxContainer.new()) as VBoxContainer
+	_body.add_child(_left)
+	_body.add_child(_right)
+
+
+func _layout() -> void:
+	if _body == null or _start_box == null:
+		return
+	_body.vertical = not _wide
+	var left: Array[Control] = [_side_step, _map_step, _level_step]
+	var right: Array[Control] = [_start_box]
+	if _wide:
+		left = [_side_step, _level_step]
+		right = [_map_step, _start_box]
+	_fill(_left, left)
+	_fill(_right, right)
+
+
+func _fill(target: VBoxContainer, parts: Array[Control]) -> void:
+	for index: int in parts.size():
+		var part: Control = parts[index]
+		if part.get_parent() == null:
+			target.add_child(part)
+		elif part.get_parent() != target:
+			part.reparent(target, false)
+		target.move_child(part, index)
 
 
 ## The wide layout asks for the whole safe width inside the gaps; upright keeps the base column.
@@ -215,17 +257,14 @@ func _apply() -> void:
 		return
 	var was_wide: bool = _wide
 	_wide = not HudLayout.is_portrait()
-	if _wide != was_wide and _body != null and scroll.scroll_vertical > 0:
-		_hold_scroll(scroll.scroll_vertical)
+	if _wide != was_wide and _body != null and _seen_scroll > 0:
+		_hold_scroll(_seen_scroll)
 	if _wide:
 		column.custom_minimum_size.x = column_room_px()
 	var gap: int = roundi(UiScale.dp(GAP_DP))
 	for box: BoxContainer in _spaced:
 		box.add_theme_constant_override("separation", gap)
-	if _body != null:
-		_body.columns = 2 if _wide else 1
-		_body.add_theme_constant_override("h_separation", gap)
-		_body.add_theme_constant_override("v_separation", gap)
+	_layout()
 
 
 ## A turn changes the page's shape, which would reset the scroll: for a few frames, each time the
@@ -239,6 +278,7 @@ func _hold_scroll(kept: int) -> void:
 		if not is_inside_tree():
 			return  # The screen is gone, and the bar with it.
 		await get_tree().process_frame
+		put_back.call()
 	if is_instance_valid(bar):
 		bar.changed.disconnect(put_back)
 
@@ -249,33 +289,33 @@ func _spaced_box(box: BoxContainer) -> BoxContainer:
 	return box
 
 
-## A labelled block of the body: the small caps label, then what the caller adds.
-func _section(title: StringName) -> VBoxContainer:
+## One numbered step: its header (the number, the title, the current choice at the right in amber)
+## and the box the caller fills. `key` names the choice label (`_choice_labels`).
+func _step(number: int, title: StringName, key: StringName) -> VBoxContainer:
 	var box: VBoxContainer = _spaced_box(VBoxContainer.new()) as VBoxContainer
-	_label(box, tr(title), &"MenuEyebrow")
+	var head: HBoxContainer = _spaced_box(HBoxContainer.new()) as HBoxContainer
+	box.add_child(head)
+	var num: Label = _label(head, tr(MapSelectText.NUMBER) % number, &"MenuEyebrow")
+	num.size_flags_horizontal = Control.SIZE_FILL
+	num.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var heading: Label = _label(head, tr(title), &"MenuStepTitle")
+	_step_words.append(num)
+	_step_words.append(heading)
+	var choice: Label = _label(head, "", &"MenuStepChoice")
+	choice.size_flags_horizontal = Control.SIZE_SHRINK_END
+	choice.autowrap_mode = TextServer.AUTOWRAP_OFF
+	choice.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_choice_labels[key] = choice
 	return box
-
-
-## The slot of the map's picture: for now the chosen map's name on a plate of the card look. P666b
-## draws the map into it.
-func _build_preview() -> void:
-	var slot: PanelContainer = PanelContainer.new()
-	slot.name = &"MapPreviewSlot"
-	slot.theme_type_variation = &"MenuMapCard"
-	slot.custom_minimum_size.y = UiScale.dp(PREVIEW_DP)
-	_map_box.add_child(slot)
-	_preview_name = _label(slot, "", &"CapsBigTitle")
-	_preview_name.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_preview_name.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 
 
 ## A faction card: the flat button that takes the touch, under the emblem, the tag, the name and
 ## the pitch (the content ignores touches). The chosen card is the amber one.
-func _side_card(id: StringName) -> Button:
+func _side_card(id: StringName, cards: HBoxContainer) -> Button:
 	var card: PanelContainer = PanelContainer.new()
 	card.name = &"SideCard_%s" % id
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_cards_row.add_child(card)
+	cards.add_child(card)
 	var button: Button = Button.new()
 	button.theme_type_variation = &"CapsButton"
 	button.flat = true
@@ -305,17 +345,44 @@ func _side_card(id: StringName) -> Button:
 	return button
 
 
-## A choice button for `id` under `parent`. With `cards` it is a flat CapsButton inside a
-## PanelContainer card (the card carries the look, kept in `cards`); without, a MenuTab chip.
-func _choice(id: StringName, pick: Callable, parent: Control, cards: Variant) -> Button:
-	if cards == null:
-		return _button(parent, &"MenuTab", "", pick.bind(id), BUTTON_DP)
+## A map or level option: a PanelContainer card (its look kept in `cards`) holding a flat button
+## that takes the touch, over the word and, locked, a lock row (the glyph and RANK n). A map is a
+## row (word left, lock right); a level is a chip (word, lock under it): two lines at most.
+func _option(
+	id: StringName, word: String, pick: Callable, parent: Control, cards: Dictionary, row: bool
+) -> Button:
 	var card: PanelContainer = PanelContainer.new()
 	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	parent.add_child(card)
+	cards[id] = card
 	var button: Button = _button(card, &"CapsButton", "", pick.bind(id), BUTTON_DP)
 	button.flat = true
-	(cards as Dictionary)[id] = card
+	button.autowrap_mode = TextServer.AUTOWRAP_OFF
+	var content: BoxContainer = HBoxContainer.new() if row else VBoxContainer.new()
+	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	content.alignment = BoxContainer.ALIGNMENT_CENTER
+	card.add_child(content)
+	var name_label: Label = _label(content, word, &"MenuOptionName")
+	name_label.autowrap_mode = TextServer.AUTOWRAP_OFF
+	name_label.clip_text = true
+	name_label.horizontal_alignment = (
+		HORIZONTAL_ALIGNMENT_LEFT if row else HORIZONTAL_ALIGNMENT_CENTER
+	)
+	_names[id] = name_label
+	var note: HBoxContainer = HBoxContainer.new()
+	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	note.size_flags_horizontal = Control.SIZE_SHRINK_END if row else Control.SIZE_SHRINK_CENTER
+	content.add_child(note)
+	var glyph: TextureRect = TextureRect.new()
+	glyph.texture = LOCK_ART
+	glyph.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	glyph.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	glyph.custom_minimum_size = Vector2.ONE * UiScale.dp(LOCK_DP)
+	note.add_child(glyph)
+	var rank: Label = _label(note, "", &"MenuLockNote")
+	rank.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	rank.autowrap_mode = TextServer.AUTOWRAP_OFF
+	_notes[id] = note
 	return button
 
 
@@ -340,37 +407,41 @@ func _refresh() -> void:
 	if _start == null:
 		return
 	for id: StringName in _maps:
-		var open: bool = is_open(KIND_MAP, id)
-		_show(_maps[id], catalog.title(id).to_upper(), id == map_id, KIND_MAP, id)
-		_map_cards[id].theme_type_variation = (
-			&"MenuMapCardLocked"
-			if not open
-			else (&"MenuMapCardOn" if id == map_id else &"MenuMapCard")
-		)
+		_show(_maps[id], _map_cards[id], id, KIND_MAP, id == map_id)
+	for id: StringName in _levels:
+		_show(_levels[id], _level_cards[id], id, KIND_LEVEL, id == level)
 	for id: StringName in _sides:
 		var picked: bool = id == side
 		_side_cards[id].theme_type_variation = &"MenuSideCardOn" if picked else SIDE_LOOK[id]
 		_tags[id].text = tr(MapSelectText.TAG_PICKED if picked else MapSelectText.TAG_OTHER)
 		_tags[id].theme_type_variation = &"MenuEyebrow" if picked else SIDE_TAG_LOOK[id]
-	_preview_name.text = catalog.title(map_id).to_upper()
-	for id: StringName in _levels:
-		_show(_levels[id], tr(LEVEL_TEXT[id]), id == level, KIND_LEVEL, id)
-		_levels[id].theme_type_variation = &"MenuTabOn" if id == level else &"MenuTab"
+	var side_word: String = tr(SIDE_TEXT[side])
+	var map_word: String = catalog.title(map_id).to_upper()
+	var level_word: String = tr(LEVEL_TEXT[level])
+	_choice_labels[&"side"].text = side_word
+	_choice_labels[&"map"].text = map_word
+	_choice_labels[&"level"].text = level_word
+	_summary.text = tr(MapSelectText.SUMMARY) % [side_word, map_word, level_word]
 	_start.disabled = _starting or not _can_start()
 	UiWait.hold(_start, _starting)
 	_start.text = tr(MapSelectText.STARTING if _starting else MapSelectText.START)
 
 
-## Sets one choice button: the word, `> ` before the chosen one and the rank on a locked one (a
-## locked choice is disabled).
-func _show(button: Button, word: String, chosen: bool, kind: StringName, id: StringName) -> void:
-	var open: bool = kind == &"" or is_open(kind, id)
-	if not open:
-		word = tr(MapSelectText.LOCKED) % [word, _progression.unlock_rank(kind, id)]
-	elif chosen:
-		word = tr(MapSelectText.CHOSEN) % word
-	button.text = word
+## One option of a step: the chosen one is amber, a locked one dim with its lock row (a locked
+## choice is disabled), the others plain.
+func _show(
+	button: Button, card: PanelContainer, id: StringName, kind: StringName, chosen: bool
+) -> void:
+	var open: bool = is_open(kind, id)
+	card.theme_type_variation = (
+		&"MenuMapCardLocked" if not open else (&"MenuMapCardOn" if chosen else &"MenuMapCard")
+	)
 	button.disabled = not open
+	_names[id].theme_type_variation = &"MenuOptionName" if open else &"MenuOptionNameLocked"
+	_notes[id].visible = not open
+	if not open:
+		var rank: Label = _notes[id].get_child(1) as Label
+		rank.text = tr(MapSelectText.LOCK_NOTE) % _progression.unlock_rank(kind, id)
 
 
 func _label(parent: Control, text: String, look: StringName) -> Label:

@@ -58,29 +58,42 @@ func test_the_figma_layout_at_the_six_sizes() -> void:
 		var start: Rect2 = _screen._start.get_global_rect()
 		var cards: Rect2 = fossil.merge(renew)
 		var map: Rect2 = _screen._map_cards[&"kestrel_flats"].get_global_rect()
-		var level: Rect2 = _screen._levels[&"easy"].get_global_rect()
+		var last_map: Rect2 = _screen._map_cards[&"map_3"].get_global_rect()
+		var level: Rect2 = _screen._level_cards[&"easy"].get_global_rect()
+		var summary: Rect2 = _screen._summary.get_global_rect()
+		_assert_steps(label)
 		var offer: Rect2 = (
 			(_screen.find_child("OfferSlot", true, false) as Control).get_global_rect()
 		)
 		if UiScale.is_portrait_size(size):
-			# One column in Figma's order: cards, map, level, START, all the width of the column.
+			# One column in order: 01 cards, 02 maps, 03 levels, the summary, START.
 			assert_float(cards.end.y).override_failure_message(label).is_less_equal(map.position.y)
-			assert_float(map.end.y).override_failure_message(label).is_less_equal(level.position.y)
+			assert_float(last_map.end.y).override_failure_message(label).is_less_equal(
+				level.position.y
+			)
 			assert_float(level.end.y).override_failure_message(label).is_less_equal(
-				start.position.y
+				summary.position.y
 			)
 			assert_float(start.size.x).override_failure_message(label).is_greater_equal(
 				cards.size.x - TOLERANCE_PX
 			)
 		else:
-			# Two columns: cards and level left, map and START right.
+			# Two columns: 01 and 03 left, 02, the summary and START right.
+			assert_float(cards.end.y).override_failure_message(label).is_less_equal(
+				level.position.y
+			)
 			assert_float(cards.end.x).override_failure_message(label).is_less_equal(
 				map.position.x + TOLERANCE_PX
 			)
 			assert_float(level.end.x).override_failure_message(label).is_less_equal(
 				start.position.x + TOLERANCE_PX
 			)
-			assert_float(map.end.y).override_failure_message(label).is_less_equal(start.position.y)
+			assert_float(last_map.end.y).override_failure_message(label).is_less_equal(
+				summary.position.y
+			)
+		assert_float(summary.end.y).override_failure_message(label).is_less_equal(
+			start.position.y + TOLERANCE_PX
+		)
 		# START is a big target, the offer slot (while shown) is directly under it, the footer shows.
 		assert_float(start.size.y).override_failure_message(label).is_greater_equal(
 			UiScale.dp(64.0) - TOLERANCE_PX
@@ -102,15 +115,87 @@ func test_the_header_and_the_cards_carry_the_copy_and_the_emblems() -> void:
 	var words: Array[String] = []
 	_collect_label_text(_screen.column, words)
 	for word: String in [
-		"TREADLINE / SKIRMISH", "CHOOSE YOUR FRONT", "IRONWARD", "FACET", "MAP", "COMPUTER LEVEL"
+		"TREADLINE / SKIRMISH",
+		"CHOOSE YOUR FRONT",
+		"01",
+		"CHOOSE YOUR SIDE",
+		"02",
+		"CHOOSE A MAP",
+		"03",
+		"CHOOSE DIFFICULTY",
+		"IRONWARD",
+		"FACET",
+		"KESTREL FLATS",
+		"EASY",
+		"NORMAL",
+		"HARD",
 	]:
 		assert_array(words).override_failure_message(word).contains([word])
 	for id: StringName in [&"fossil", &"renew"]:
 		var card: Control = _screen._side_cards[id]
 		var emblem: TextureRect = card.find_children("*", "TextureRect", true, false)[0]
 		assert_object(emblem.texture).is_not_null()
-	assert_object(_screen.find_child("MapPreviewSlot", true, false)).is_not_null()
-	assert_str(_screen._preview_name.text).is_equal("KESTREL FLATS")
+	# No plate named for the map, and the old ">" mark is gone.
+	assert_object(_screen.find_child("MapPreviewSlot", true, false)).is_null()
+	for word: String in words:
+		assert_bool(word.begins_with("> ")).override_failure_message(word).is_false()
+	assert_str(_screen._start.text).is_equal("START BATTLE")
+
+
+func test_each_step_shows_its_choice_and_the_summary_follows_it() -> void:
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
+	assert_str(_screen._choice_labels[&"side"].text).is_equal("IRONWARD")
+	assert_str(_screen._choice_labels[&"map"].text).is_equal("KESTREL FLATS")
+	assert_str(_screen._choice_labels[&"level"].text).is_equal("NORMAL")
+	assert_str(_screen._summary.text).is_equal("IRONWARD · KESTREL FLATS · NORMAL")
+	_screen._sides[&"renew"].pressed.emit()
+	_screen._levels[&"easy"].pressed.emit()
+	assert_str(_screen._choice_labels[&"side"].text).is_equal("FACET")
+	assert_str(_screen._choice_labels[&"level"].text).is_equal("EASY")
+	assert_str(_screen._summary.text).is_equal("FACET · KESTREL FLATS · EASY")
+	# One chosen item per step: exactly one amber card among the sides, maps and levels each.
+	for cards: Dictionary in [_screen._side_cards, _screen._map_cards, _screen._level_cards]:
+		var on: int = 0
+		for card: PanelContainer in cards.values():
+			if String(card.theme_type_variation).ends_with("On"):
+				on += 1
+		assert_int(on).is_equal(1)
+
+
+func _assert_steps(label: String) -> void:
+	# No option wraps: its word and its lock are one line each (two lines at most per option).
+	for id: StringName in _screen._names:
+		var name_label: Label = _screen._names[id]
+		(
+			assert_int(name_label.get_line_count())
+			. override_failure_message("%s %s" % [label, id])
+			. is_equal(1)
+		)
+		(
+			assert_bool(name_label.size.x + 0.5 >= name_label.get_minimum_size().x)
+			. override_failure_message("%s %s clipped" % [label, id])
+			. is_true()
+		)
+		var note: Control = _screen._notes[id]
+		if note.visible:
+			(
+				assert_int((note.get_child(1) as Label).get_line_count())
+				. override_failure_message("%s %s lock" % [label, id])
+				. is_equal(1)
+			)
+	for word: Label in _screen._step_words:
+		(
+			assert_int(word.get_line_count())
+			. override_failure_message("%s %s" % [label, word.text])
+			. is_equal(1)
+		)
+	# The header of each step keeps its choice in one line.
+	for key: StringName in _screen._choice_labels:
+		(
+			assert_int(_screen._choice_labels[key].get_line_count())
+			. override_failure_message("%s %s" % [label, key])
+			. is_equal(1)
+		)
 
 
 func _collect_label_text(node: Node, into: Array[String]) -> void:

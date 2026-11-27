@@ -30,6 +30,11 @@ const LABELS: Dictionary[StringName, StringName] = {
 	&"MenuEyebrow": &"",
 	&"MenuCardTagRenew": &"MenuSideCardRenew",
 	&"MenuCardTagFossil": &"MenuSideCardFossil",
+	&"MenuStepTitle": &"",
+	&"MenuStepChoice": &"",
+	&"MenuOptionName": &"MenuMapCard",
+	&"MenuOptionNameLocked": &"MenuMapCardLocked",
+	&"MenuLockNote": &"MenuMapCardLocked",
 }
 
 
@@ -77,6 +82,11 @@ func test_every_look_exists_with_the_base_the_screens_rely_on() -> void:
 		&"MenuSideCardOn": &"MenuSideCard",
 		&"MenuCardTagRenew": &"MenuEyebrow",
 		&"MenuCardTagFossil": &"MenuEyebrow",
+		&"MenuStepTitle": &"CapsTitle",
+		&"MenuStepChoice": &"CapsTitle",
+		&"MenuOptionName": &"CapsTitle",
+		&"MenuOptionNameLocked": &"MenuOptionName",
+		&"MenuLockNote": &"MenuEyebrow",
 		&"MenuMapCard": &"PanelContainer",
 		&"MenuMapCardOn": &"MenuMapCard",
 		&"MenuMapCardLocked": &"MenuMapCard",
