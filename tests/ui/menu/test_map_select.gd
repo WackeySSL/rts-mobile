@@ -90,8 +90,8 @@ func test_layout_at_the_six_sizes() -> void:
 				. override_failure_message(label)
 				. is_true()
 			)
-		# Three maps, two sides, three levels and START.
-		assert_int(shown).override_failure_message(label).is_equal(9)
+		# Three maps, two sides, three levels, START and BACK.
+		assert_int(shown).override_failure_message(label).is_equal(10)
 		var band: AdBannerBand = _screen.slot.get_child(0) as AdBannerBand
 		AdBandAsserts.assert_lines_up(self, band, _ads, _screen.scroll, band.gap_dp(), label)
 		(

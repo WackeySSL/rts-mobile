@@ -219,6 +219,27 @@ func test_settings_pushing_a_screen_during_a_call_comes_back_with_normal_rows() 
 	assert_str(rows.remove_button.text).contains(PRICE)
 
 
+func test_the_back_button_is_refused_while_a_restore_call_is_open() -> void:
+	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
+	_service = fake
+	await _open(_profile_for(ScreenSizes.PORTRAIT[0]))
+	var rows: RemoveAdsRows = _screen.remove_rows
+	rows.now_ms = func() -> int: return Time.get_ticks_msec() + ARM_MS
+	var back: Button = _screen.column.get_child(_screen.column.get_child_count() - 1) as Button
+	rows.restore_button.pressed.emit()
+	back.pressed.emit()
+	await await_idle_frame()
+	# Settings stays, as with the Android Back: it is the only screen, so a pass-through would
+	# have opened the quit question.
+	assert_bool(_stack.is_asking_to_quit()).is_false()
+	assert_object(_stack.current()).is_same(_screen)
+	fake.release.emit()
+	await await_idle_frame()
+	back.pressed.emit()
+	await await_idle_frame()
+	assert_bool(_stack.is_asking_to_quit()).is_true()  # Free again: Back reaches the stack.
+
+
 func test_the_price_is_never_the_part_that_is_cut() -> void:
 	var fake: CountingPurchaseService = auto_free(CountingPurchaseService.new())
 	_service = fake
