@@ -12,6 +12,7 @@ class FlowStub:
 	var runner: MatchRunner = null
 	var setup: MatchSetup = null
 	var left: Array[StringName] = []
+	var finished: Array[StringName] = []
 
 	func current_runner() -> MatchRunner:
 		return runner
@@ -21,6 +22,9 @@ class FlowStub:
 
 	func return_to_menu(screen: StringName = &"") -> void:
 		left.append(screen)
+
+	func finish_lesson(screen: StringName = &"") -> void:
+		finished.append(screen)
 
 
 var _quit_on_go_back_before: bool = true
@@ -80,9 +84,11 @@ func test_skip_and_the_last_beat_return_to_the_tutorial_screen() -> void:
 	skip.pressed.emit()
 	await await_idle_frame()
 	assert_array(_flow.left).is_equal([&"tutorial"])
+	assert_array(_flow.finished).is_empty()  # Skip pays no XP: it never calls finish_lesson.
 	host.director.lesson_done.emit(&"basics")
 	await await_idle_frame()
-	assert_array(_flow.left).is_equal([&"tutorial", &"tutorial"])
+	assert_array(_flow.left).is_equal([&"tutorial"])
+	assert_array(_flow.finished).is_equal([&"tutorial"])
 
 
 func test_a_lesson_without_a_file_warns_and_adds_no_director() -> void:

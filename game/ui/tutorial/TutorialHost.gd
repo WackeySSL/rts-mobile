@@ -5,8 +5,9 @@ extends Node
 ## `TutorialDirector` and a `CoachMark`, wires them to the scene's nodes found by type, and starts
 ## the lesson. Any other match (a skirmish, a dev scene) gets nothing. Presentation only: it sends
 ## no Command.
-## Where the lesson goes next: finishing the last beat and Skip both return to the Tutorial screen
-## (`MenuFlow.return_to_menu`: no XP, no ad bookkeeping; the director saved the done mark).
+## Where the lesson goes next: finishing the last beat and Skip both return to the Tutorial screen.
+## The last beat goes through `MenuFlow.finish_lesson` (pays the lesson's XP once, ADR 0045; no ad
+## bookkeeping; the director saved the done mark); Skip: `MenuFlow.return_to_menu` (no XP).
 
 var director: TutorialDirector
 var mark: CoachMark
@@ -62,7 +63,7 @@ func begin(id: StringName) -> void:
 	mark.air_layer = _find(main, "AirLayer") as AirLayer
 	mark.hud_root = layer
 	layer.add_child(mark)
-	director.lesson_done.connect(_leave)
+	director.lesson_done.connect(_finish)
 	director.lesson_skipped.connect(_leave)
 	director.start(def)
 
@@ -71,6 +72,12 @@ func begin(id: StringName) -> void:
 static func _find(root: Node, type_name: String) -> Node:
 	var found: Array[Node] = root.find_children("*", type_name, true, false)
 	return found[0] if not found.is_empty() else null
+
+
+func _finish(id: StringName) -> void:
+	TutorialStart.note_left(id)
+	if flow != null and flow.has_method(&"finish_lesson"):
+		flow.call_deferred(&"finish_lesson", TutorialStart.RETURN_SCREEN)
 
 
 func _leave(id: StringName) -> void:
