@@ -2,7 +2,10 @@
 # PR web preview on the gh-pages branch (Pages "deploy from a branch", path /).
 #   publish  copy build/web/ to gh-pages:pr-<n>/ (never forced; retried when another push won)
 #   comment  create or update ONE sticky PR comment and wait until the build is live;
-#            exits 1 when pr-<n>/build.txt does not return HEAD_SHA in time (default 8 min)
+#            exits 1 when pr-<n>/build.txt does not return HEAD_SHA in time (default 15 min).
+#            Every BUILD_REQUEST_AFTER s of waiting it asks for a Pages build, but only when none
+#            is running and none covers the current gh-pages head: a new Pages build cancels the
+#            one in progress, so blind requests from several waiting PRs kept restarting it.
 #   remove   delete gh-pages:pr-<n>/ and update the comment
 #   sweep    remove every pr-<n>/ on gh-pages whose PR is closed (one commit) and update their
 #            comments; reconciles runs of `remove` that never started (a PR closed with a merge
@@ -10,7 +13,7 @@
 #            cannot be read is kept and the sweep exits 1 after doing the rest.
 # Env: PR, HEAD_SHA (publish and comment), GH_TOKEN, GITHUB_REPOSITORY. Untrusted event data must
 # reach this script only through env, never through ${{ }} inside run:.
-# Optional env: BUILD_DIR (build/web), MARKER, PAGES_URL, REMOTE_URL, LIVE_TIMEOUT (480 s),
+# Optional env: BUILD_DIR (build/web), MARKER, PAGES_URL, REMOTE_URL, LIVE_TIMEOUT (900 s),
 #   POLL_INTERVAL (15 s), BUILD_REQUEST_AFTER (90 s), PUSH_ATTEMPTS (6), PUSH_RETRY_SLEEP (5 s),
 #   DRY_RUN (sweep only: true lists what would be removed and changes nothing; default false).
 # Exit: 0 ok; 1 failed (push, build dir, PR state lookup or preview not live); 2 bad usage or env.
@@ -32,7 +35,7 @@ SITE="${RUNNER_TEMP:-/tmp}/gh-pages-site"
 BUILD_DIR="${BUILD_DIR:-build/web}"
 MARKER="${MARKER:-<!-- rts-mobile-web-preview -->}"
 DIR="pr-${PR}"
-LIVE_TIMEOUT="${LIVE_TIMEOUT:-480}"
+LIVE_TIMEOUT="${LIVE_TIMEOUT:-900}"
 POLL_INTERVAL="${POLL_INTERVAL:-15}"
 BUILD_REQUEST_AFTER="${BUILD_REQUEST_AFTER:-90}"
 PUSH_ATTEMPTS="${PUSH_ATTEMPTS:-6}"
@@ -194,7 +197,28 @@ upsert_comment() {
 }
 
 # Pushes with GITHUB_TOKEN may not start a Pages build; ask for one. Never fatal.
+# A new build cancels the one in progress, so ask only when it helps: skip when the latest build
+# is queued or building (it will publish the head or be followed by the next check) or is built
+# for the current gh-pages head. Statuses of GET pages/builds/latest: queued, building, built,
+# errored; `commit` is the built SHA. When latest or the head cannot be read, ask anyway.
 request_pages_build() {
+  local latest status commit head
+  if latest="$(gh api "repos/$REPO/pages/builds/latest" --jq '[.status, .commit] | @tsv' 2>/dev/null)"; then
+    IFS=$'\t' read -r status commit <<<"$latest"
+    case "$status" in
+      queued | building)
+        echo "Pages build already $status; not requesting another (it would cancel it)"
+        return 0
+        ;;
+      built)
+        if head="$(gh api "repos/$REPO/git/ref/heads/gh-pages" --jq .object.sha 2>/dev/null)" &&
+          [ -n "$head" ] && [ "$commit" = "$head" ]; then
+          echo "latest Pages build already covers gh-pages ${head:0:7}; not requesting another"
+          return 0
+        fi
+        ;;
+    esac
+  fi
   gh api -X POST "repos/$REPO/pages/builds" >/dev/null ||
     echo "::warning::Pages build request failed (is Pages enabled for gh-pages /?)"
 }
@@ -228,17 +252,18 @@ case "$cmd" in
     upsert_comment "Web preview for \`$short\` is deploying (1-3 min): $PAGES_URL" ||
       echo "::warning::could not post the deploying comment"
     waited=0
-    requested=0
+    next_request="$BUILD_REQUEST_AFTER"
     while true; do
       if is_live; then
         upsert_comment "**Web preview** for \`$short\`: $PAGES_URL"$'\n\n'"Open it on the phone; it turns with the phone. A PR that changes layout says which orientation to try. Pages caches files for up to 10 min; the build id served at ${PAGES_URL}build.txt must be \`$HEAD_SHA\`."
         exit 0
       fi
       if [ "$waited" -ge "$LIVE_TIMEOUT" ]; then break; fi
-      # Docs say GITHUB_TOKEN pushes do not start a Pages build; ask for one if nothing went live.
-      if [ "$requested" -eq 0 ] && [ "$waited" -ge "$BUILD_REQUEST_AFTER" ]; then
+      # GITHUB_TOKEN pushes may not start a Pages build, or a build may have ended before our head
+      # landed; re-check every BUILD_REQUEST_AFTER s. request_pages_build skips a useful build.
+      if [ "$waited" -ge "$next_request" ]; then
         request_pages_build
-        requested=1
+        next_request=$((waited + BUILD_REQUEST_AFTER))
       fi
       sleep "$POLL_INTERVAL"
       waited=$((waited + POLL_INTERVAL))
