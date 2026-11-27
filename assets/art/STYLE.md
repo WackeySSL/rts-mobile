@@ -464,6 +464,9 @@ canvas fall in a key band and were replaced: rust #8E5A38 by **#6E5D50**, lamp a
 | --- | --- | --- | --- | --- | --- | --- |
 | mid tone | #6B7366 | #9F9A8E | #6E5D50 | #3B3F39 | #FFF1D6 | #7D8562 |
 
+The detail-2 units wear the gunmetal family instead of iron, steel and olive (P658, "Gunmetal
+bodies"); the older models and the buildings keep the three above.
+
 | Lumen Accord | ceramic | graphite | titanium | glass | bluegrey | mint |
 | --- | --- | --- | --- | --- | --- | --- |
 | mid tone | #D5DBDC | #414A51 | #8A9398 | #B4C8CF | #7D8B96 | #A8F5B0 |
@@ -1101,6 +1104,35 @@ primitive's key, so `--check` is stable. Every extra sits right after the face i
   64 KB per generated unit frame.
 - **Not drawn at any level:** spheres, rods, `broken` boxes and the item card (which stays flat).
 
+### Gunmetal bodies (P658)
+Michael, 2026-11-27: "3D til terræn + bygninger, SVG-enheder". The units stay SVG and take the
+P655 probe's gain that SVG can carry: the dark neutral body under the team panels, and a longer
+gun. Three new materials (`ArtPalette.MATERIALS`; the shared `iron`, `steel` and `olive` and
+Facet's `graphite` and `titanium` are untouched and the buildings still use them):
+
+| material | mid tone | replaces | used by |
+| --- | --- | --- | --- |
+| `gunmetal` | #2B2E32 | Ironward `iron`, Facet `graphite` | running gear, trim, pack and chest, gun muzzles |
+| `gunsteel` | #5C6066 | Ironward `steel`, Facet `titanium` | guns, rims, wheel hubs, hatches |
+| `gunbody` | #4A4D52 | Ironward `olive` | the hull slab under the panels (Ironward only) |
+
+The 18 detail-2 models of P638 to P642 changed the material word only (Ironward: `iron` to
+`gunmetal`, `steel` to `gunsteel`, `olive` to `gunbody`; Facet: `graphite` to `gunmetal`,
+`titanium` to `gunsteel`; `wheel=`, `bar=` and `lid=` options too). `concrete`, `rust`, `lamp`,
+`ceramic`, `glass` and `mint` stay. The team panels are as P652 left them (Ironward's models stay
+under 65 %; Facet's Torque reads 52 % and was not narrowed). The darkest mid tone is #2B2E32 on
+purpose: the frozen `black_edge_max` (0.02) binds at about #25282B and `light_left_min` (-0.04)
+punishes a right face much darker than the left, so the family cannot go darker than this.
+
+Silhouette: the Flarejack's and the Swift's barrels are 0.1 tile longer (the muzzle height and the
+sheet's `muzzle_lift_px` do not change; the size classes of "Scale" still hold). The Bullhead's and the
+Torque's stay: a Torque gun 0.1 longer overruns the art gallery's ground in its first and last
+direction (`test_art_gallery_iso.gd`; the slot reserve is in `game/view`, which this row does not
+touch), and a Bullhead gun 0.1 longer alone raises its 32 px overlap with the Torque from 0.75 to
+0.78. The Drillhead's body is 0.56 x 0.30 (was 0.5 x 0.28) and its booms
+0.15 (was 0.14), so its head-on view reads 26.5 % team (was 23.3 %) and no direction of it is under 25 %; the
+Linemen's reel hub is 0.19 across its 0.13 flanges (a dark rim of 0.03 a side, gap 0.06).
+
 ### Same-scene saturation (P638, P652)
 The same-scene check (`bash scripts/same-scene.sh`, bands in `tools/artgen/same_scene.tres`, frozen
 by ADR 0050 amendment A8) judges saturation twice, because the team panels are saturated by design
@@ -1119,7 +1151,7 @@ by ADR 0050 amendment A8) judges saturation twice, because the team panels are s
   colour. A sheet that wears other triads needs `SameScene.ROUTE_TRIAD` and `is_faction` (code) to
   learn them; the `.tres` stays as it is.
 - The floor fell from 0.14 to 0.06: a body of iron, steel and olive reads 0.09 to 0.12 once the
-  panels are taken out.
+  panels are taken out (0.09 to 0.13 in gunmetal, P658).
 - The mirror row of the sheet (the same unit as the two players of a mirror route) differs only in
   the team panels: 30 to 80 % of the body (`test_same_scene.gd`).
 
@@ -3756,3 +3788,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-26 | v1.56 (P641, art-director, no rule change): the three Facet squads (Linemen, Breakers, Menders) at detail 2: white and graphite bodies, blue hexagonal helmets, shoulder plates and pack or case panels (30 to 40 % of the default view, the fixed `faction` material then and the team colour from P652), a thin team chest band, mint kept as Facet's lamp accent on visors, rifle lines and hand light; `test_medic_art.gd` held the Menders' team share at 2 to 12 % in the default view and 0.2 to 17 % in every direction (was 8 to 12 % and 3 to 17 %; 30 to 65 % and 25 to 75 % from P652) |
 | 2026-11-26 | v1.57 (P642, art-director, no rule change): the Ironward Bunk Wagon, Shot Truck, Torchjet and Drillhead at detail 2: orange panels (39 to 56 % of the default view, the team colour from P652) over steel, iron and concrete, olive and rust retired; one small rimmed team plate on the Bunk Wagon's roof and the Shot Truck's cab, a fin stripe and wing-tip bands on the aircraft (aircraft keep stripes and bands, the roof-plate rule passed them); `test_carrier_art.gd`, `test_minelayer_art.gd` and `test_aircraft_art.gd` held 2 to 12 % in the default view and 1 to 16 % in every direction for a model at detail 2 (was 8 to 12 % and 5 to 16 %; 30 to 65 % and 25 to 75 % from P652) |
 | 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Ironward name in new text is Ironward (Michael, 2026-11-27) |
+| 2026-11-27 | v1.59 (P658, art-director, no rule change; Michael 2026-11-27: SVG units take the P655 probe's palette and silhouette): the gunmetal family (`gunmetal` #2B2E32, `gunsteel` #5C6066, `gunbody` #4A4D52) replaces iron, steel and olive on the 11 Ironward and graphite and titanium on the 7 Facet detail-2 models, new materials so that the buildings and older models are unchanged ("Gunmetal bodies (P658)"); barrels 0.1 tile longer on the Flarejack and the Swift (the Bullhead's and the Torque's stay, see "Gunmetal bodies (P658)"); the Drillhead widened so that no direction reads under 25 % team (the P652 exception is gone); the Linemen's reel hub widened to 0.19;  the two mirror pages and the cross page re-pinned (page 1 +1, 0 and +2 on the cross and the two mirror pages, page 2 unchanged) |
