@@ -19,7 +19,8 @@ const FLING_FLOOR_PX_PER_S: float = 30.0
 ## A release slower than this (px/s) starts no fling.
 const FLING_START_PX_PER_S: float = 200.0
 
-var slop_dp: float = InputSettings.new().tap_slop_dp  ## `InputSettings.tap_slop_dp`.
+## The thresholds: `tap_slop_dp` is the drag slop (data/input_settings.tres).
+var settings: InputSettings = preload("res://data/input_settings.tres")
 
 var _finger: int = -1  ## The touch index being followed, -1 for none.
 var _from: Vector2
@@ -76,7 +77,7 @@ func _press(touch: InputEventScreenTouch) -> void:
 func _move(drag: InputEventScreenDrag) -> void:
 	if not _scrolling:
 		var moved: Vector2 = drag.position - _from
-		if moved.length() <= UiScale.dp(slop_dp):
+		if moved.length() <= UiScale.dp(settings.tap_slop_dp):
 			return
 		if absf(moved.y) < absf(moved.x):  # Sideways: not ours (a slider, a swipe).
 			_finger = -1

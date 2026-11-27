@@ -121,6 +121,20 @@ func test_a_modal_frame_scrolls_under_a_finger() -> void:
 		UiScale.clear_override()
 
 
+func test_the_slop_comes_from_the_settings_resource() -> void:
+	await _open(ScreenSizes.PORTRAIT[0], LONG_ROWS)
+	var scroll: TouchScroll = _screen.scroll as TouchScroll
+	var tuned: InputSettings = InputSettings.new()
+	tuned.tap_slop_dp = 400.0  # More than the swipe, so it is only a tap.
+	scroll.settings = tuned
+	var from: Vector2 = scroll.get_global_rect().get_center()
+	await _swipe(from, from + Vector2(0.0, -UiScale.dp(SWIPE_DP)))
+	assert_int(scroll.scroll_vertical).is_equal(0)
+	scroll.settings = preload("res://data/input_settings.tres")
+	await _swipe(from, from + Vector2(0.0, -UiScale.dp(SWIPE_DP)))
+	assert_int(scroll.scroll_vertical).is_greater(0)
+
+
 func _open(size: Vector2i, rows: int) -> void:
 	var profile: UiMetrics = null
 	for profiles: Dictionary[StringName, UiMetrics] in [UiProfiles.all(), UiProfiles.portrait()]:
