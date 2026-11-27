@@ -7,7 +7,8 @@ script = ExtResource("1_model")
 art_id = &"renew_seeder"
 faction = &"renew"
 category = &"veh"
-silhouette = "Seeder: a light blue-grey four-wheeled planter with a small glass-fronted cab and a team band on its flanks, behind the cab a tall hexagonal glass hopper on a graphite frame with a team ring and a white cap with a mint light, and at the tail a jointed graphite planting arm that drops a white spike towards the ground."
+silhouette = "Seeder: a four-wheeled planter on a graphite chassis with a team-colour cab and deck, a small glass windscreen and a mint light on its nose, behind the cab a tall hexagonal glass hopper standing in a deep team-colour collar with a white band and a white cap with a mint light, and at the tail a jointed graphite planting arm that drops a white spike towards the ground."
+detail = 2
 prims = PackedStringArray(
 "prism hull graphite 0.42 -0.31 0 0.26 0.1 0.26 axis=y sides=10",
 "prism hull titanium 0.42 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
@@ -17,22 +18,21 @@ prims = PackedStringArray(
 "prism hull titanium -0.42 -0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
 "prism hull graphite -0.42 0.31 0 0.26 0.1 0.26 axis=y sides=10",
 "prism hull titanium -0.42 0.37 0.07 0.12 0.02 0.12 axis=y sides=8",
-"box hull graphite 0 0 0.07 1.1 0.36 0.07",
-"box hull bluegrey 0.44 0 0.14 0.34 0.5 0.14",
-"wedge hull glass 0.44 0 0.28 0.34 0.46 0.14 slope=1",
-"box hull team 0.44 -0.255 0.17 0.28 0.02 0.07",
-"box hull team 0.44 0.255 0.17 0.28 0.02 0.07",
-"box hull mint 0.62 0 0.215 0.02 0.3 0.025",
-"box hull bluegrey -0.18 0 0.14 0.6 0.5 0.06",
-"box hull team -0.18 -0.255 0.15 0.56 0.02 0.07",
-"box hull team -0.18 0.255 0.15 0.56 0.02 0.07",
-"box hull graphite -0.18 0 0.2 0.36 0.36 0.06",
-"prism hull glass -0.18 0 0.26 0.4 0.4 0.4 sides=6 taper=0.8",
-"prism hull team -0.18 0 0.22 0.54 0.54 0.04 sides=6",
+"box hull graphite 0 0 0.07 1.1 0.36 0.07 chamfer=0.04",
+"box hull team 0.44 0 0.14 0.34 0.5 0.17 chamfer=0.06 detail=1",
+"wedge hull glass 0.42 0 0.31 0.3 0.42 0.1 slope=1",
+"box hull ceramic 0.44 -0.255 0.225 0.22 0.02 0.03",
+"box hull ceramic 0.44 0.255 0.225 0.22 0.02 0.03",
+"box hull mint 0.62 0 0.235 0.02 0.3 0.025",
+"box hull team -0.18 0 0.14 0.6 0.5 0.06 chamfer=0.05 detail=1",
+"box hull graphite -0.18 0 0.2 0.36 0.36 0.04 chamfer=0.04",
+"prism hull team -0.18 0 0.24 0.5 0.5 0.18 sides=6 turn=30 detail=1",
+"prism hull glass -0.18 0 0.42 0.36 0.36 0.4 sides=6 taper=0.75 turn=30",
+"prism hull ceramic -0.18 0 0.52 0.42 0.42 0.025 sides=6 turn=30",
 "box hull team -0.49 0 0.15 0.02 0.46 0.1",
 "box hull team 0.62 0 0.145 0.02 0.48 0.07",
-"prism hull ceramic -0.18 0 0.66 0.3 0.3 0.06 sides=6 taper=0.6",
-"box hull mint -0.18 0 0.72 0.05 0.05 0.04",
+"prism hull ceramic -0.18 0 0.82 0.26 0.26 0.06 sides=6 taper=0.6 turn=30",
+"box hull mint -0.18 0 0.88 0.05 0.05 0.04",
 "rod hull graphite -0.38 0 0.34 -0.7 0 0.5 5",
 "rod hull graphite -0.7 0 0.5 -0.76 0 0.3 5",
 "prism hull ceramic -0.76 0 0.08 0.1 0.1 0.22 sides=6 taper=0.3",
@@ -40,7 +40,7 @@ prims = PackedStringArray(
 )
 emitters = PackedStringArray(
 "exhaust -0.6 0.15 0.14",
-"damage -0.18 0 0.6",
+"damage -0.18 0 0.7",
 "hang 0.42 0.28 0.24"
 )
 marks = &"wheels"

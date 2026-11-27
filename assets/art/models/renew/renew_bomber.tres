@@ -7,15 +7,16 @@ script = ExtResource("1_model")
 art_id = &"renew_bomber"
 faction = &"renew"
 category = &"veh"
-silhouette = "Sunfall: a very wide, thick white ceramic hexagon of a flying wing, its top laid with a grid of graphite solar panels between ceramic ribs, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team stripe at each wing tip."
+silhouette = "Sunfall: a very wide, thick titanium hexagon of a flying wing, its top laid with team-colour solar panels between white ribs and two graphite panels at the tail, a low central hump with a glass cockpit at the front, two small upright tail fins with mint lamps, a graphite nozzle block and a team-colour patch at each wing tip."
 fly_px = 22
+detail = 2
 prims = PackedStringArray(
 "prism hull graphite -0.5 0 0.4 0.14 0.26 0.16 axis=x sides=6",
-"prism hull ceramic 0.0 0 0.34 1.0 1.7 0.12 sides=6",
-"box hull graphite 0.2 -0.5 0.46 0.26 0.4 0.016",
-"box hull graphite 0.2 0.5 0.46 0.26 0.4 0.016",
-"box hull graphite -0.1 -0.5 0.46 0.26 0.4 0.016",
-"box hull graphite -0.1 0.5 0.46 0.26 0.4 0.016",
+"prism hull titanium 0.0 0 0.34 1.0 1.7 0.12 sides=6",
+"box hull team 0.2 -0.5 0.46 0.26 0.4 0.016 detail=1",
+"box hull team 0.2 0.5 0.46 0.26 0.4 0.016 detail=1",
+"box hull team -0.1 -0.5 0.46 0.26 0.4 0.016 detail=1",
+"box hull team -0.1 0.5 0.46 0.26 0.4 0.016 detail=1",
 "box hull graphite -0.36 -0.34 0.46 0.2 0.32 0.016",
 "box hull graphite -0.36 0.34 0.46 0.2 0.32 0.016",
 "box hull team 0.0 -0.66 0.46 0.3 0.24 0.016",
@@ -28,11 +29,12 @@ prims = PackedStringArray(
 "box hull team -0.26 0.6 0.46 0.12 0.14 0.016",
 "box hull team 0.2 -0.2 0.46 0.12 0.1 0.016",
 "box hull team 0.2 0.2 0.46 0.12 0.1 0.016",
-"prism hull ceramic 0.0 0 0.46 0.7 0.3 0.14 axis=x sides=6 taper=0.85",
+"prism hull titanium 0.0 0 0.46 0.7 0.3 0.14 axis=x sides=6 taper=0.85",
+"box hull ceramic -0.1 0 0.58 0.5 0.12 0.012",
 "box hull team -0.1 0 0.6 0.3 0.12 0.02",
 "prism hull glass 0.3 0 0.5 0.24 0.18 0.1 sides=6 taper=0.6",
-"box hull ceramic -0.46 -0.26 0.46 0.2 0.03 0.22",
-"box hull ceramic -0.46 0.26 0.46 0.2 0.03 0.22",
+"box hull titanium -0.46 -0.26 0.46 0.2 0.03 0.22 chamfer=0.01",
+"box hull titanium -0.46 0.26 0.46 0.2 0.03 0.22 chamfer=0.01",
 "box hull mint -0.54 -0.26 0.68 0.04 0.045 0.035",
 "box hull mint -0.54 0.26 0.68 0.04 0.045 0.035"
 )

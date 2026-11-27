@@ -12,7 +12,7 @@ const NUMBER_PAINT: String = "#E9E5D6"
 ## The models that have opted in, by restyle batch (docs/art/treadline-batches.json); every other
 ## model of the game is at detail 0 until its own batch. P638: the Ironward ground vehicles; P639:
 ## the Facet ground vehicles; P640: the three Ironward squads; P641: the three Facet squads; P642:
-## the Ironward support and air units.
+## the Ironward support and air units; P643: the Facet support and air units.
 const OPTED_IN: Dictionary[String, int] = {
 	"light_tank": 2,
 	"heavy_tank": 2,
@@ -32,6 +32,10 @@ const OPTED_IN: Dictionary[String, int] = {
 	"fossil_shot_truck": 2,
 	"fossil_fighter": 2,
 	"fossil_bomber": 2,
+	"renew_linecar": 2,
+	"renew_seeder": 2,
+	"renew_fighter": 2,
+	"renew_bomber": 2,
 }
 
 
@@ -188,8 +192,8 @@ func test_every_frame_of_an_opted_in_unit_holds_the_unit_budget() -> void:
 		seen += 1
 	# Hull, turret and shadow of six units, hull and shadow of the two tankers, 16 directions each;
 	# hull and shadow of the six squads, 8 directions each (P640, P641); hull and shadow of the two
-	# support units and the two aircraft, 16 directions each (P642).
-	assert_int(seen).is_equal(22 * 16 + 6 * 2 * 8 + 4 * 2 * 16)
+	# support units and the two aircraft, 16 directions each (P642); the same four of Facet (P643).
+	assert_int(seen).is_equal(22 * 16 + 6 * 2 * 8 + 8 * 2 * 16)
 
 
 func _opted_in(path: String) -> bool:
