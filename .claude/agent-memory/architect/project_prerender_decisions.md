@@ -20,3 +20,4 @@ metadata:
 - Pitfall: the lead's brief said P658 is one row; I split it into six. Keep a row the brief defines as one row unless the 400-line rule forces a split, and name the split condition.
 - ACCEPTED 2026-11-27 (Michael "Godkend alle 7 (anbefalet)": method, CLAUDE.md lines, +7.5 MB cap 10, roads decoration, P645-P647 after P659, P658 steel look, separate calmer ground bands); P654b folded into P654; status notes in ADR 0023 (before "Decisions in short") and a second one in ADR 0050 (the proposed-time note left as written).
 - Pitfall: agents cannot edit CLAUDE.md (refused, even for the coordinator); approved CLAUDE.md lines go to the lead as exact wording in the hand-back, and the ADR/plan say "edited by the lead before any PNG art merges (P656 / P644)".
+- The lead's CLAUDE.md edit (Legal, Layout, Stack for tools/prerender) is PR #686, branch claude/p654c-claude-md-prerender, approved by Michael.

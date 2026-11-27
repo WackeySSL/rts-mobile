@@ -21,7 +21,7 @@ the same day by the architect in row P654 on branch `claude/p654-prerender-adr` 
 7648d987), and accepted in that PR; the planned acceptance row P654b was folded into it. Plan:
 `docs/plans/2026-11-27-prerender.md`.
 
-**Acceptance note.** CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (approved by Michael's answer 2), before any PNG art merges (P656 / P644). No row edits CLAUDE.md. The tool rows P656a and P656b may merge before
+**Acceptance note.** CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (#686, approved by Michael's answer 2), before any PNG art merges (P656 / P644). No row edits CLAUDE.md. The tool rows P656a and P656b may merge before
 that edit; no PNG frame or kit tile may.
 Evidence: two prototype branches that are never merged, and that stay the reference:
 - `claude/p653-prerender-prototype` (head 5d2fa55d), `docs/proto/p653/README.md`: a tank, a 3x3
@@ -388,7 +388,7 @@ No sim rule, Command, `STATE_FORMAT`, hash, `data/` value or balance number chan
     (ADR 0053).
   - **Stack:** add one clause saying Forward+ over Vulkan is used only inside the offline bake
     tool, and that the game stays Compatibility.
-  CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (approved by Michael's answer 2), before any PNG art merges (P656 / P644). The tool rows (P656a,
+  CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (#686, approved by Michael's answer 2), before any PNG art merges (P656 / P644). The tool rows (P656a,
   P656b) can merge before that.
 - **The `svg-art-style` skill** (ADR 0050 §4's "Stand-alone pictures" bullet, if P630b applied
   it) gets a matching note through the lead. No skill is edited in this PR.
@@ -551,7 +551,7 @@ judges the look in P659.
 2. **CLAUDE.md**: allow "PNG rendered in this repo by `tools/prerender/` from our own model data"
    in Legal, add `tools/prerender/` to Layout, and note in Stack that Forward+ is used only in the
    bake tool (§6). Recommended: yes. The lead edits CLAUDE.md.
-   **Answered:** "Godkend alle 7 (anbefalet)". Yes; the lead edits the three lines before any PNG art merges
+   **Answered:** "Godkend alle 7 (anbefalet)". Yes; the lead edits the three lines (#686) before any PNG art merges
    (P656 / P644).
 3. **Size**: the APK and the web build grow by about 7.5 MB, capped at 10 MB. Recommended: yes.
    **Answered:** "Godkend alle 7 (anbefalet)". Yes: about +7.5 MB, at most +10 MB.
