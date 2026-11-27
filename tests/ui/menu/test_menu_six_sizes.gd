@@ -57,6 +57,11 @@ var _save: Node
 var _progression: Node
 ## Set by the store-row tests: the AdService stand-in Settings talks to (null: the autoload).
 var _store: CountingPurchaseService = null
+## The main menu's ad service: a fresh one with no consent, so no banner appears while a case runs.
+## The `/root/AdService` autoload keeps what earlier suites did to it (a scene scan boots it, and a
+## banner then loads a few frames in and shrinks the scroll under a measured position).
+var _ad_harness: AdServiceHarness = null
+var _ads: Node = null
 
 
 func before() -> void:
@@ -76,15 +81,19 @@ func before_test() -> void:
 	_save.call("set_path_override", PrefsRig.dir().path_join("six_sizes_save.cfg"))
 	_progression = (load(SERVICE_SCRIPT) as GDScript).new()
 	_progression.call("bind", _save, null)
+	_ad_harness = AdServiceHarness.new()
+	_ads = _ad_harness.make(false)
+	add_child(_ads)
 
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
 	_close()
 	UiStateGuard.restore(get_window(), _window_size_before)
-	for node: Node in [_rank, _flow, _progression, _save]:
+	for node: Node in [_rank, _flow, _progression, _save, _ads]:
 		if is_instance_valid(node):
 			node.free()
+	_ad_harness.dispose()
 	PrefsRig.end()
 
 
@@ -642,6 +651,7 @@ func _make_screen(kind: StringName) -> MenuScreen:
 		MAIN:
 			var main: MainMenu = MainMenu.new()
 			main.progression = _progression
+			main.ad_service = _ads
 			main.resume_check = func() -> bool: return true  # Continue shows: the tallest column.
 			return main
 		MAP_SELECT:
