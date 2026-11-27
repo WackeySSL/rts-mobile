@@ -157,9 +157,9 @@ func test_back_leaves_a_text_for_the_list_and_the_list_for_the_menu_below() -> v
 	assert_int(_stack.depth()).is_equal(1)
 
 
-func test_the_back_button_of_the_list_pops() -> void:
+func test_the_back_link_of_the_list_pops() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _catalog(false, false))
-	_buttons().back().pressed.emit()
+	_screen.back_link.pressed.emit()
 	await await_idle_frame()
 	assert_int(_stack.depth()).is_equal(1)
 

@@ -287,6 +287,23 @@ func leave_match(screen: StringName = &"") -> void:
 	_to_menu()
 
 
+## A lesson that ended on its last beat (TutorialHost): it is scored like a finished match, a win
+## with `Progression.award_match` once (ADR 0045: a lesson pays once), `match_scored` is emitted,
+## and the player leaves for `screen` as `leave_match` does (no ad is touched). A match that is not
+## a lesson, or was scored already, is just left.
+func finish_lesson(screen: StringName = &"") -> void:
+	if _busy:
+		return
+	if not _scored and _setup != null and _runner != null and _setup.lesson_id != &"":
+		_scored = true
+		_summary = MatchSummary.for_lesson(
+			_setup.lesson_id, _level_id(), _setup.map_id, _local_seat(), _runner.snapshot.tick
+		)
+		_award = Progression.award_match(_summary)
+		match_scored.emit(_summary, _award)
+	await leave_match(screen)
+
+
 ## Exit to menu from the pause menu or a failed restore, asking it to open `screen`: no XP, no ad
 ## bookkeeping.
 func return_to_menu(screen: StringName = &"") -> void:

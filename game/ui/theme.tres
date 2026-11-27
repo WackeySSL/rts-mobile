@@ -953,6 +953,25 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.97647059, 0.8, 0.52156863, 1)
 
+; The menu footer bar (P672a, Michael's Figma of 2026-11-27): a thin top rule over the ground, the
+; back link (text, no plate; the touch target is the button's 48 dp floor) and the hint.
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0.03137255, 0.05490196, 0.07058824, 0.9)
+border_width_top = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_link"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_link_down"]
+content_margin_left = 8.0
+content_margin_right = 8.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
+
 ; The backdrop reading shade (the file's "Laeseskygge", left to right: ground at 96 percent, 65 percent
 ; at the middle, clear). Not used yet: the MenuScrim type's `shade` icon is for the backdrop rows (P663).
 [sub_resource type="Gradient" id="Gradient_menu_scrim"]
@@ -1495,6 +1514,23 @@ MenuItem/styles/hover = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_down")
 MenuItem/styles/normal = SubResource("StyleBoxFlat_menu_item")
 MenuItem/styles/pressed = SubResource("StyleBoxFlat_menu_item_down")
+MenuFooter/base_type = &"PanelContainer"
+MenuFooter/styles/panel = SubResource("StyleBoxFlat_menu_footer")
+MenuFooterLink/base_type = &"CapsButton"
+MenuFooterLink/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuFooterLink/colors/font_focus_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuFooterLink/colors/font_hover_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/colors/font_hover_pressed_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/colors/font_pressed_color = Color(0.91372549, 0.9254902, 0.90588235, 1)
+MenuFooterLink/font_sizes/font_size = 16
+MenuFooterLink/styles/focus = SubResource("StyleBoxFlat_pause_focus")
+MenuFooterLink/styles/hover = SubResource("StyleBoxFlat_menu_footer_link")
+MenuFooterLink/styles/hover_pressed = SubResource("StyleBoxFlat_menu_footer_link_down")
+MenuFooterLink/styles/normal = SubResource("StyleBoxFlat_menu_footer_link")
+MenuFooterLink/styles/pressed = SubResource("StyleBoxFlat_menu_footer_link_down")
+MenuFooterHint/base_type = &"Label"
+MenuFooterHint/colors/font_color = Color(0.45, 0.5, 0.55, 1)
+MenuFooterHint/font_sizes/font_size = 14
 MenuItemOn/base_type = &"MenuItem"
 MenuItemOn/styles/hover = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_on")
