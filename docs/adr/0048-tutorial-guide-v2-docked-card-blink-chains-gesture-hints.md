@@ -810,7 +810,7 @@ The PR numbers are the squash subjects' `(#NNN)` on `main` at 555f6b58.
 | P593b-2 | #690 | The six unit beats in the lesson data; the bot taps the ring on each `UNIT` step |
 | P593b-3 | #694 | The card's visible Next, Skip and tab hide the field, with hysteresis |
 | P593b-4 | #696 | A unit's drag hint starts on free map, never on a card button or a HUD rect |
-| P593b-5 | pending | The drag start clears every button and HUD rect by the band plus the drawn press ring's radius |
+| P593b-5 | #704 | The drag start clears every button and HUD rect by the band plus the drawn press ring's radius |
 | P595 | #695 | Guide proof: the lead-in states per lesson, the view-only replay proof, the shots scene |
 | P596 | not merged | This note, the `touch-ui-rules` draft, the phone check (pending) |
 
