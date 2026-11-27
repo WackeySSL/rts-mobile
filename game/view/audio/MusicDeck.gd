@@ -34,6 +34,9 @@ var _current: StringName = &""
 ## A track asked for while muted: the crossfade starts when the sound returns.
 var _waiting: bool = false
 var _paused: bool = false
+## Set when the deck leaves the tree: a late `mute_changed` (the service handles its own focus
+## notification after its children have left) must not start a track, which would hold its stream.
+var _closed: bool = false
 var _fade: Tween
 var _duck_tween: Tween
 var _mute_tween: Tween
@@ -57,6 +60,10 @@ func setup(settings: AudioSettings, service: Node) -> void:
 	service.mute_changed.connect(_on_mute_changed)
 
 
+func _enter_tree() -> void:
+	_closed = false
+
+
 func current() -> StringName:
 	return _current
 
@@ -67,12 +74,31 @@ func play(id: StringName) -> bool:
 	var stream: AudioStream = _settings.music_tracks.get(id)
 	if stream == null or id == _current:
 		return false
+	if _closed:
+		return false
 	_current = id
 	if _service.is_muted():
 		_waiting = true
 		return true
 	_start(id, stream)
 	return true
+
+
+## A playing player keeps its stream and its playback alive to the end of the process, so the engine
+## reports them ("resources still in use at exit"). Stopping and dropping the streams lets them go.
+func _exit_tree() -> void:
+	# Whatever the timing at quit: no tween may call back into a freed deck, a track that waited for
+	# the sound must not start after this, and every stream is let go.
+	_closed = true
+	_waiting = false
+	_kill(_fade)
+	_kill(_duck_tween)
+	_kill(_mute_tween)
+	for tween: Tween in _live.duplicate():
+		_kill(tween)
+	for player: AudioStreamPlayer in _players:
+		player.stop()
+		player.stream = null
 
 
 ## Silences both players at once. A sting cut short still emits `sting_finished`. The duck ends.
@@ -127,6 +153,8 @@ func duck_db_now() -> float:
 
 
 func _start(id: StringName, stream: AudioStream) -> void:
+	if _closed:
+		return
 	_waiting = false
 	var back: int = 1 - _front if _front >= 0 else -1
 	var reverse: bool = back >= 0 and _ids[back] == id and _players[back].playing
@@ -192,7 +220,10 @@ func _apply() -> void:
 func _new_tween() -> Tween:
 	var tween: Tween = create_tween()
 	_live.append(tween)
-	tween.finished.connect(_live.erase.bind(tween))
+	# Not `.bind(tween)`: a Callable that holds the tween, stored in the tween's own signal, is a
+	# reference cycle that is never freed (one leaked Tween per fade at exit). The weak ref avoids it.
+	var weak: WeakRef = weakref(tween)
+	tween.finished.connect(func() -> void: _live.erase(weak.get_ref()))
 	if _paused:
 		tween.pause()
 	return tween

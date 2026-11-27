@@ -77,6 +77,12 @@ func current() -> MenuScreen:
 	return null if _screens.is_empty() else _screens.back()
 
 
+## The screen under `screen` (the one a Back pops to), or null at the root or when it is not here.
+func screen_below(screen: MenuScreen) -> MenuScreen:
+	var index: int = _screens.find(screen)
+	return _screens[index - 1] if index > 0 else null
+
+
 func is_asking_to_quit() -> bool:
 	return _quit.visible
 

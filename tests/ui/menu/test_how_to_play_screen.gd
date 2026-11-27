@@ -40,7 +40,7 @@ func test_the_list_and_a_section_stay_in_the_safe_area_with_big_targets_at_the_s
 	for size: Vector2i in ScreenSizes.ALL:
 		await _open(_profile_with_window(size), _long_help(1))
 		_assert_fits(str(size) + " list")
-		assert_int(_buttons().size()).is_equal(2)  # One section and Back.
+		assert_int(_buttons().size()).is_equal(1)  # One section; Back is the footer link.
 		_buttons()[0].pressed.emit()
 		await await_idle_frame()
 		await await_idle_frame()
@@ -69,7 +69,7 @@ func test_a_long_section_scrolls_at_the_six_sizes() -> void:
 func test_the_real_data_lists_every_section_as_a_button() -> void:
 	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), null)
 	var help: HelpDef = load(HowToPlayScreen.DEF_PATH) as HelpDef
-	assert_int(_buttons().size()).is_equal(help.sections.size() + 1)
+	assert_int(_buttons().size()).is_equal(help.sections.size())
 	assert_bool(_screen.slot.has_band()).is_false()
 	assert_float(_screen.slot.size.y).is_equal_approx(0.0, 0.01)
 
@@ -140,9 +140,7 @@ func test_the_back_button_at_the_root_asks_the_quit_question() -> void:
 	await await_idle_frame()
 	var how_to: HowToPlayScreen = _stack.current() as HowToPlayScreen
 	assert_int(_stack.depth()).is_equal(1)
-	for child: Node in how_to.column.get_children():
-		if child is Button and (child as Button).text == "BACK":
-			(child as Button).pressed.emit()
+	how_to.back_link.pressed.emit()
 	await await_idle_frame()
 	assert_bool(_stack.is_asking_to_quit()).is_true()
 
@@ -160,9 +158,9 @@ func test_the_real_data_fits_at_the_six_sizes() -> void:
 		UiScale.clear_override()
 
 
-func test_the_back_button_of_the_list_pops() -> void:
+func test_the_back_link_of_the_list_pops() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), _long_help(1))
-	_buttons().back().pressed.emit()
+	_screen.back_link.pressed.emit()
 	await await_idle_frame()
 	assert_int(_stack.depth()).is_equal(1)
 

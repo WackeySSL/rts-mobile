@@ -49,7 +49,8 @@ static func model_paths() -> Array[String]:
 	var found: Array[String] = []
 	for faction: String in DirAccess.get_directories_at(MODELS_DIR):
 		for file: String in DirAccess.get_files_at(MODELS_DIR.path_join(faction)):
-			if tres_name(file) != "":
+			# A `_detail.tres` is the pre-render's data (ADR 0053), not an `ArtModel`.
+			if tres_name(file) != "" and not tres_name(file).ends_with("_detail.tres"):
 				found.append(MODELS_DIR.path_join(faction).path_join(tres_name(file)))
 	found.sort()
 	return found
