@@ -107,6 +107,14 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## push shorter cells on, on the cross page's trailing shelves). Page 1 has left 836 rows on the
 ## cross-faction page, 969 on the Derrick League mirror and 1048 on the Lumen Accord mirror; page 2
 ## has left 990, 2126 and 2104.
+## P642 (the Nordvaern Bunk Wagon, Shot Truck, Torchjet and Drillhead, rebuilt at detail 2 on the
+## same hulls) left page 1 at 2748, 2615 and 2536 (the hulls keep their tight boxes' sizes) and
+## moved page 2 from 2594, 1458 and 1480 to 2600, 1478 and 1480 (+6, +20 and 0). It comes from the
+## shadows of the two ground units (the Bunk Wagon's canvas grew from 218 x 112 to 230 x 118, and
+## the Shot Truck's tight boxes changed: the shelves fall differently); the two aircraft's frames
+## keep their sizes, so the aircraft, which take a slot per player on a mirror page, add 0 on
+## every page (measured with the old aircraft models in place: the same 2600 and 1478). Page 1 has
+## left 836, 969 and 1048 rows; page 2 has left 984, 2106 and 2104.
 ## P641: 2744 + 4; P640: 2725 + 19; P639: 2731 - 6; P638: 2730 + 1; P280: 2628 + 102; P279: 2582
 ## + 46;
 ## P292: 2472 + 110; P291: 2367 +
@@ -131,19 +139,22 @@ const TODAY_MIRROR_LUMEN: int = 2536
 ## one slot for both players. The packer fills shelves tallest first and never goes back to an
 ## earlier shelf, so a shadow added pushes shorter cells on and the trailing shelves grow. An
 ## aircraft's hull carries the team colour, so it has a slot per player (P245).
-## P641: 2516 + 78; P639: 2512 + 4; P638: 2510 + 2; P280: 2504 + 6; P279: 2486 + 18; P292: 2264 +
+## P642: 2594 + 6 (the aircraft 0); P641: 2516 + 78;
+## P639: 2512 + 4; P638: 2510 + 2; P280: 2504 + 6; P279: 2486 + 18; P292: 2264 +
 ## 222; P291: 2046 +
 ## 218;
 ## P249: 1986 + 60
 ## (P245: 1514 + 472; P203: 1116 + 398, the pads).
-const TODAY2_CROSS: int = 2594
-## P641: 1458 + 0; P639: 1458 + 0; P638: 1456 + 2; P280: 1386 + 70; P279: 1386 + 0; P292: 1264 +
+const TODAY2_CROSS: int = 2600
+## P642: 1458 + 20 (the aircraft 0); P641: 1458 + 0;
+## P639: 1458 + 0; P638: 1456 + 2; P280: 1386 + 70; P279: 1386 + 0; P292: 1264 +
 ## 122; P291: 1158 +
 ## 106;
 ## P249: 1094 + 64
 ## (P245: 782 + 312; P245b: 780 + 2).
-const TODAY2_MIRROR_DERRICK: int = 1458
-## P641: 1478 + 2; P639: 1478 + 0; P280: 1408 + 70; P279: 1386 + 22; P292: 1286 + 100; P291: 1244
+const TODAY2_MIRROR_DERRICK: int = 1478
+## P642: 1480 + 0; P641: 1478 + 2;
+## P639: 1478 + 0; P280: 1408 + 70; P279: 1386 + 22; P292: 1286 + 100; P291: 1244
 ## + 42; P249: 1198 +
 ## 46
 ## (P245: 814 + 384; P203: 634 + 180).

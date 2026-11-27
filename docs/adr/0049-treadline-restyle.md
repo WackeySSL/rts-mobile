@@ -198,6 +198,17 @@ tokens.
 | Unit details 13:19 / 14:690, Campaign 2:9713 / 14:113 | None | Out of scope (Michael's decision 2) |
 | Settings, How to play, Licences, Tutorial (not in the file) | `MenuScreen` screens | They take the menu frame's look (P614) |
 
+Note (2026-11-26, P660; ADR 0052 accepted 2026-11-26, Michael: "Godkend alle 5 (anbefalet)"; the
+table above stays as accepted): ADR 0052 sets the menu screens' look after P602's read-out.
+- **Main menu:** the file's numbered list (a number, the word, an arrow) in place of icon-and-word
+  tiles, with a commander card (rank insignia, title, XP bar, the next unlock) where the file has
+  its campaign card.
+- **Intro:** the open-out reveals a Figma-AI menu backdrop and the logo, with no added time.
+- **Loading:** a still tip line.
+- **Victory:** an unlock card for real unlocks only.
+- **Rows:** P613 to P617 are replaced by P664, P666, P668, P669 and P670, and P650 by P661 and
+  P667 (`docs/plans/2026-11-26-menu-look-v2.md`).
+
 ### 4. Where the file meets a rule
 | The file | Here | Source |
 | --- | --- | --- |
