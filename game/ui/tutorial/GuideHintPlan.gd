@@ -21,7 +21,8 @@ extends RefCounted
 ## the tip flipped (`flip_x`, `flip_y`) to the side that fits, a drag that would leave the screen
 ## turns round or is cut short, and the press ring's overshoot past the edge is cut from `bounds`.
 ## Where nothing is aimed at (the field point, the start of the drag toward a tile) the point
-## itself is shifted in.
+## itself is shifted in. A unit's drag starts on free field, never under a card button or a HUD
+## part: its start moves to the nearest free point, and with none there is no hand (`_free_start`).
 
 var kind: TutorialBeatDef.Gesture = TutorialBeatDef.Gesture.NONE
 var point: Vector2 = Vector2.ZERO  ## Where the fingertip starts.
@@ -30,6 +31,8 @@ var bounds: Rect2 = Rect2()  ## Everything the hint draws, with its margin (empt
 var off_screen: bool = false  ## A drag toward a tile outside the screen.
 var flip_x: bool = false  ## The hand hangs left of the tip.
 var flip_y: bool = false  ## The hand hangs above the tip.
+
+var _edges: Array[Rect2] = []  ## Reused: the rects a drag's start looks along for a free point.
 
 
 ## `field_of` is a Callable returning the free field's point; it is called only when a branch needs
@@ -76,6 +79,8 @@ func resolve(
 		var way: Vector2 = (field_of.call() - point) / dp
 		if way != Vector2.ZERO:
 			vector_dp = way.limit_length(settings.hint_drag_max_dp)
+		if on_unit and not _free_start(unit, safe, dp, settings):
+			return  # No free point to start on: no hand rather than one that presses a button.
 	if not off_screen:
 		if lead:
 			want = TutorialBeatDef.Gesture.TAP
@@ -103,9 +108,43 @@ func resolve(
 		var shift: Vector2 = _inside(bounds, safe)
 		point += shift
 		bounds.position += shift
-		return
-	_fit_travel(want, safe, dp, settings)
-	_fit_hand(want, safe, dp, settings)
+	else:
+		_fit_travel(want, safe, dp, settings)
+		_fit_hand(want, safe, dp, settings)
+
+
+## Moves the drag's start (`point`) to the nearest free point of the field, keeping the vector: the
+## start itself when it is free, else a point 1 dp past each side of a button grown by the band or
+## of a HUD rect, each with the hand's box brought into `safe`. A drag that starts on a card button
+## would press it, and the map would not pan (plan row P593b-4). False when none is free.
+@warning_ignore("integer_division")
+func _free_start(unit: GuideUnitAnchor, safe: Rect2, dp: float, settings: GuideSettingsDef) -> bool:
+	var home: Vector2 = point
+	var best: float = INF
+	var pick: Vector2 = Vector2.INF
+	_edges.clear()
+	unit.edge_rects(_edges)
+	for turn: int in 1 + _edges.size() * 4:
+		var at: Vector2 = home
+		if turn > 0:
+			var edge: Rect2 = _edges[(turn - 1) / 4]
+			match (turn - 1) % 4:
+				0:
+					at.x = edge.position.x - dp
+				1:
+					at.x = edge.end.x + dp
+				2:
+					at.y = edge.position.y - dp
+				_:
+					at.y = edge.end.y + dp
+		point = at
+		at += _inside(_bounds(TutorialBeatDef.Gesture.DRAG, dp, settings, false, false), safe)
+		var gap: float = at.distance_squared_to(unit.point)
+		if gap < best and unit.clear_at(at):
+			best = gap
+			pick = at
+	point = pick if pick != Vector2.INF else home
+	return pick != Vector2.INF
 
 
 ## The tip stays; a drag or box that would leave the screen turns round, or is cut short.

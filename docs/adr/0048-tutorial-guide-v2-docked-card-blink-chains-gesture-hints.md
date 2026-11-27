@@ -621,6 +621,9 @@ Checked against the code (`main` at 59efa29b):
   it is inside the plain rect and as clear only once it is outside the rect grown by
   `THROUGH_BAND_DP` (8 dp), so a unit along a button's edge does not flip the hand between TAP and
   DRAG. The hand then drags the unit clear by the existing out-of-field path.
+  That drag starts on the nearest free field point (P593b-4), never under a visible card button
+  grown by the band or a HUD rect (`GuideUnitAnchor.clear_at`), with its vector unchanged; with no
+  free point there is no hand, so a finger that follows it pans and never presses Next.
 - **The hand** (`GuideHintPlan`): `AUTO` on `UNIT` gives `TAP`, as on a control. A unit not in the
   field gets §6's off-screen `DRAG` from the point (clamped into the safe rect) toward the field's
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it

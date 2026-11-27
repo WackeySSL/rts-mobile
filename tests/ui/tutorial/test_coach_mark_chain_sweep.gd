@@ -24,6 +24,7 @@ const MAIN_SCENE: String = "res://scenes/main.tscn"
 const TOLERANCE_PX: float = 0.5
 const OVERLAP_PX2: float = 4.0
 const GROUPS: int = 3
+const DRAG_STEPS: int = 4  ## Moves of a pushed touch-drag.
 ## The beats with a UNIT step (a beat's own or a lead-in), each touch-proved at every size.
 const UNIT_BEATS: Array[String] = [
 	"basics/attack", "air/tap-air", "air/home", "support/select-truck", "support/mine"
@@ -608,6 +609,7 @@ func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef)
 			lines.append("%s: unit %d is in the field under a card button" % [label, id])
 		if _mark.gesture_plan().kind == TutorialBeatDef.Gesture.TAP:
 			lines.append("%s: the hand taps unit %d under a card button" % [label, id])
+		lines.append_array(await _drag_proof(label, id))
 	var view: Rect2 = get_viewport().get_visible_rect()
 	for want: Vector2 in [Vector2(0.5, 0.5), Vector2(0.5, 0.65), Vector2(0.25, 0.65)]:
 		if unit.in_field:
@@ -650,6 +652,50 @@ func _touch_proof(label: String, beat: TutorialBeatDef, step: TutorialLeadInDef)
 			lines.append("%s: a touch at %s sent no ATTACK on unit %d" % [label, at, id])
 	elif not _selection.selected.has(id):
 		lines.append("%s: a touch at %s did not select unit %d" % [label, at, id])
+	return lines
+
+
+## The hand's drag for a unit under a card button (plan row P593b-4): it starts outside every
+## visible button grown by the band and outside every HUD rect, and a real touch-drag from there
+## along its vector pans the camera and presses nothing: the beat and its step stay.
+func _drag_proof(label: String, id: int) -> Array[String]:
+	var lines: Array[String] = []
+	var plan: GuideHintPlan = _mark.gesture_plan()
+	if plan.kind != TutorialBeatDef.Gesture.DRAG:
+		lines.append("%s: the hand over unit %d under a card button is not a drag" % [label, id])
+		return lines
+	var dp: float = _mark._dp
+	var band: float = GuideUnitAnchor.THROUGH_BAND_DP * dp
+	for node: Node in _mark.find_children("*", "BaseButton", true, false):
+		var button: BaseButton = node as BaseButton
+		if (
+			button.is_visible_in_tree()
+			and button.get_global_rect().grow(band).has_point(plan.point)
+		):
+			lines.append("%s: the drag starts at %s under %s" % [label, plan.point, button.name])
+	for key: StringName in _mark._dock_rects:
+		var rect: Rect2 = _mark._dock_rects[key]
+		if key != HudCorners.CARD and rect.has_point(plan.point):
+			lines.append("%s: the drag starts at %s under HUD part %s" % [label, plan.point, key])
+	var before: Vector2 = _camera.position
+	var beat: TutorialBeatDef = _director.current_beat()
+	var progress: Vector2i = _director.progress()
+	var aim: TutorialLeadInDef = _director.active_target()
+	var step: Vector2 = plan.vector_dp * dp / DRAG_STEPS
+	var at: Vector2 = plan.point
+	TouchEvents.press(get_viewport(), 0, at)
+	for _move: int in DRAG_STEPS:
+		at += step
+		TouchEvents.drag(get_viewport(), 0, at, step)
+		await await_idle_frame()
+	TouchEvents.release(get_viewport(), 0, at)
+	for _frame: int in 3:
+		await await_idle_frame()
+	if _camera.position.is_equal_approx(before):
+		lines.append("%s: a touch-drag from %s did not pan the camera" % [label, plan.point])
+	var held: bool = _director.current_beat() == beat and _director.progress() == progress
+	if not held or _director.active_target() != aim:
+		lines.append("%s: a touch-drag from %s pressed a card button" % [label, plan.point])
 	return lines
 
 
