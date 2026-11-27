@@ -1,0 +1,29 @@
+{
+ "1x": {
+  "png_kb_total_hull_turret": 431.884765625,
+  "png_kb_per_frame_mean": 13.49639892578125,
+  "png_kb_per_frame_max": 19.494140625,
+  "tight_texels_hull_turret": 323424,
+  "shadow_texels": 528320,
+  "atlas_mb_with_shadow": 3.406976,
+  "post_seconds": 4.548821210861206
+ },
+ "2x": {
+  "png_kb_total_hull_turret": 1391.95703125,
+  "png_kb_per_frame_mean": 43.4986572265625,
+  "png_kb_per_frame_max": 64.1435546875,
+  "tight_texels_hull_turret": 1257403,
+  "shadow_texels": 2113280,
+  "atlas_mb_with_shadow": 13.482732,
+  "post_seconds": 6.258004426956177
+ },
+ "p653_ref": {
+  "atlas_1x": {
+   "png_bytes": 444448,
+   "tight_texels_hull_turret": 310972,
+   "shadow_texels": 528320,
+   "post_seconds": 6.416797399520874
+  },
+  "png_1x": 444448
+ }
+}

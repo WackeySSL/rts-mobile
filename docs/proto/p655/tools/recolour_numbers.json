@@ -1,0 +1,178 @@
+{
+ "1x/Kobolt/hull/d3": {
+  "team_px": 527,
+  "mean_err": 1.935483870967742,
+  "p95": 3.0,
+  "p99": 4.0,
+  "max": 5,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Kobolt/hull/d9": {
+  "team_px": 380,
+  "mean_err": 1.481578947368421,
+  "p95": 3.0,
+  "p99": 4.0,
+  "max": 7,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Kobolt/turret/d3": {
+  "team_px": 1846,
+  "mean_err": 1.635427952329361,
+  "p95": 4.0,
+  "p99": 5.0,
+  "max": 11,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Kobolt/turret/d9": {
+  "team_px": 1551,
+  "mean_err": 1.370728562217924,
+  "p95": 3.0,
+  "p99": 5.0,
+  "max": 11,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Signal/hull/d3": {
+  "team_px": 527,
+  "mean_err": 4.1669829222011385,
+  "p95": 6.0,
+  "p99": 6.0,
+  "max": 7,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Signal/hull/d9": {
+  "team_px": 384,
+  "mean_err": 2.890625,
+  "p95": 6.0,
+  "p99": 8.0,
+  "max": 11,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Signal/turret/d3": {
+  "team_px": 1853,
+  "mean_err": 3.6357258499730167,
+  "p95": 7.0,
+  "p99": 9.0,
+  "max": 32,
+  "over12": 2,
+  "over24": 1,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "1x/Signal/turret/d9": {
+  "team_px": 1554,
+  "mean_err": 3.046975546975547,
+  "p95": 7.0,
+  "p99": 9.0,
+  "max": 26,
+  "over12": 4,
+  "over24": 1,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Kobolt/hull/d3": {
+  "team_px": 1964,
+  "mean_err": 1.804480651731161,
+  "p95": 3.0,
+  "p99": 4.0,
+  "max": 8,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Kobolt/hull/d9": {
+  "team_px": 1243,
+  "mean_err": 1.4827031375703943,
+  "p95": 3.0,
+  "p99": 4.579999999999927,
+  "max": 10,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Kobolt/turret/d3": {
+  "team_px": 6977,
+  "mean_err": 1.64655295972481,
+  "p95": 4.0,
+  "p99": 5.0,
+  "max": 15,
+  "over12": 2,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Kobolt/turret/d9": {
+  "team_px": 5788,
+  "mean_err": 1.3657567380787836,
+  "p95": 3.0,
+  "p99": 5.0,
+  "max": 16,
+  "over12": 4,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Signal/hull/d3": {
+  "team_px": 1964,
+  "mean_err": 4.385947046843177,
+  "p95": 6.0,
+  "p99": 6.0,
+  "max": 8,
+  "over12": 0,
+  "over24": 0,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Signal/hull/d9": {
+  "team_px": 1245,
+  "mean_err": 3.085140562248996,
+  "p95": 6.0,
+  "p99": 9.0,
+  "max": 14,
+  "over12": 2,
+  "over24": 0,
+  "fringe_px": 1,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Signal/turret/d3": {
+  "team_px": 6982,
+  "mean_err": 3.6407906044113436,
+  "p95": 7.0,
+  "p99": 9.0,
+  "max": 33,
+  "over12": 8,
+  "over24": 3,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ },
+ "2x/Signal/turret/d9": {
+  "team_px": 5794,
+  "mean_err": 3.074732481877805,
+  "p95": 7.0,
+  "p99": 8.0,
+  "max": 33,
+  "over12": 8,
+  "over24": 4,
+  "fringe_px": 0,
+  "clipped_sentinel_px": 0
+ }
+}
