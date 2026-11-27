@@ -50,3 +50,22 @@ static func from_snapshot(
 	else:
 		summary.outcome = OUTCOME_LOSS
 	return summary
+
+
+## A lesson played to its last beat: a win for `Progression` (ADR 0045 section 2, a lesson pays
+## `lesson_xp` once), since a lesson ends on its beats and not on a match end.
+static func for_lesson(
+	setup_lesson_id: StringName,
+	setup_level: StringName,
+	setup_map_id: StringName,
+	side: int,
+	ticks_played: int
+) -> MatchSummary:
+	var summary: MatchSummary = MatchSummary.new()
+	summary.outcome = OUTCOME_WIN
+	summary.level = setup_level
+	summary.map_id = setup_map_id
+	summary.ticks = ticks_played
+	summary.local_side = side
+	summary.lesson_id = setup_lesson_id
+	return summary
