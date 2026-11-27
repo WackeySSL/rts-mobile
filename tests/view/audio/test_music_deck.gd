@@ -84,6 +84,19 @@ func test_first_track_starts_and_crossfade_ends_with_one_player() -> void:
 	assert_bool(_deck.player_for_tests(0).playing).is_false()
 
 
+func test_a_finished_fade_tween_is_freed_not_kept_alive_by_its_own_signal() -> void:
+	# `finished.connect(_live.erase.bind(tween))` made a cycle (the tween held by a Callable in its
+	# own signal), so every fade leaked one Tween at exit ("ObjectDB instances were leaked").
+	_service.call(&"play_music", &"menu")
+	var fade: Tween = _deck.fade_tween_for_tests()
+	var watcher: WeakRef = weakref(fade)
+	fade.custom_step(10.0)
+	_service.call(&"play_music", &"battle")  # the deck's own `_fade` moves on to the next tween
+	fade = null
+	await await_idle_frame()  # the SceneTree lets go of an ended tween on its next frame
+	assert_object(watcher.get_ref()).is_null()
+
+
 func test_crossfade_is_halfway_at_half_the_time() -> void:
 	_service.call(&"play_music", &"menu")
 	_finish_fade()
