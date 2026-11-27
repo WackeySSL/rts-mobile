@@ -11,6 +11,7 @@ const SECTION: StringName = &"settings"
 const KEY_SOUND: String = "sound_step"
 const KEY_MUSIC: String = "music_step"
 const KEY_REDUCED: String = "reduced"
+const KEY_TIP: String = "deploy_tip"  ## The loading card's next tip (P668).
 
 
 ## The saved step, or `fallback` when none is saved (or it is not an int).
@@ -38,6 +39,15 @@ static func reduced_effects() -> bool:
 
 static func set_reduced_effects(on: bool) -> Error:
 	return _write(KEY_REDUCED, on)
+
+
+## The index of the tip to show now, in 0 to count - 1, and moves the saved counter on by one (so
+## the order is 0, 1, ..., count - 1, 0, ...; a save that cannot be written repeats the tip).
+static func take_tip(count: int) -> int:
+	var size: int = maxi(count, 1)
+	var index: int = posmod(_step(KEY_TIP, 0), size)
+	_write(KEY_TIP, posmod(index + 1, size))
+	return index
 
 
 ## Puts the saved steps on `audio` (the `AudioService`); a step never saved stays as it is.
