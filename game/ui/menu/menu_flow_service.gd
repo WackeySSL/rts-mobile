@@ -297,7 +297,13 @@ func finish_lesson(screen: StringName = &"") -> void:
 	if not _scored and _setup != null and _runner != null and _setup.lesson_id != &"":
 		_scored = true
 		_summary = MatchSummary.for_lesson(
-			_setup.lesson_id, _level_id(), _setup.map_id, _local_seat(), _runner.snapshot.tick
+			_setup.lesson_id,
+			_level_id(),
+			_setup.map_id,
+			_local_seat(),
+			_runner.snapshot.tick,
+			_faction_id(),
+			_runner.snapshot
 		)
 		_award = Progression.award_match(_summary)
 		match_scored.emit(_summary, _award)
@@ -386,7 +392,13 @@ func _on_match_ended(_winner: int) -> void:
 		return
 	_scored = true
 	_summary = MatchSummary.from_snapshot(
-		_runner.snapshot, _level_id(), _setup.map_id, _local_seat(), _surrendered, _setup.lesson_id
+		_runner.snapshot,
+		_level_id(),
+		_setup.map_id,
+		_local_seat(),
+		_surrendered,
+		_setup.lesson_id,
+		_faction_id()
 	)
 	_award = Progression.award_match(_summary)
 	match_scored.emit(_summary, _award)
@@ -397,6 +409,16 @@ func _level_id() -> StringName:
 		if level != null:
 			return level.id
 	return DEFAULT_LEVEL
+
+
+## The local seat's faction id from the scenario, empty when the scenario names none.
+func _faction_id() -> StringName:
+	var scenario: ScenarioDef = _setup.scenario()
+	var seat: int = _local_seat()
+	if scenario == null or seat < 0 or seat >= scenario.factions.size():
+		return &""
+	var faction: FactionDef = scenario.factions[seat]
+	return faction.id if faction != null else &""
 
 
 func _local_seat() -> int:
