@@ -22,11 +22,12 @@ func test_the_sheet_builds_headless_with_every_zoom_both_factions_and_the_hud_st
 	assert_int(colours.size()).is_greater(200)
 
 
-## The mirror row (P632): the same sprite as the two players of a mirror route has one
-## silhouette and differs only where the marker is, a part of the body (the old models paint their
-## whole team areas in it, 5 to 12 %, and its anti-aliased edges count too).
-func test_the_mirror_row_differs_only_in_the_marker() -> void:
-	for at: int in [0, 2]:  # The sheet's mirror row: a Nordvaern and a Facet unit.
+## The mirror row (P632, P652): the same sprite as the two players of a mirror route has one
+## silhouette and differs only in the team panels, 30 to 80 % of the body (ADR 0050 amendment A3:
+## the large panels wear the team colour, the seams and tints and the anti-aliased edges count too;
+## measured 51.0 for `heavy_tank` and 62.3 for `renew_tank`).
+func test_the_mirror_row_differs_only_in_the_team_panels() -> void:
+	for at: int in [0, 2]:  # The sheet's mirror row: an Ironward and a Facet unit.
 		var id: StringName = StringName(_bands.scene[at])
 		var own: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0)
 		var other: SameScene.Sprite = SameScene.sprite(id, _bands, 1.0, SameScene.mirror_of(id))
@@ -41,10 +42,11 @@ func test_the_mirror_row_differs_only_in_the_marker() -> void:
 				body += 1 if a.a > 0.95 else 0
 				differs += 1 if a.a > 0.95 and not a.is_equal_approx(b) else 0
 		var share: float = float(differs) / maxi(body, 1)
-		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(0.02, 0.3)
+		assert_float(share).override_failure_message("%s %.3f" % [id, share]).is_between(0.3, 0.8)
 
 
-## The route colours of the sheet are what `WorldSort.TRIADS` gives the sides (interim, P647).
+## The route colours of the sheet are what `WorldSort.TRIADS` gives the sides, each side's own
+## (ADR 0050 amendment A6).
 func test_the_sheet_wears_the_routes_triads() -> void:
 	assert_array(SameScene.ROUTE_TRIAD[&"fossil"]).is_equal(WorldSort.TRIADS[0])
 	assert_array(SameScene.ROUTE_TRIAD[&"renew"]).is_equal(WorldSort.TRIADS[3])
@@ -122,7 +124,7 @@ func test_a_garish_neutral_body_fails_the_neutral_band_and_pure_panels_the_whole
 
 ## Every material of both palettes that is not the fixed faction colour is neutral to the
 ## classifier (hue and saturation, whatever its tone), the faction colours are not, and the
-## sentinel and the route triads count as the marker.
+## sentinel and the route triads count as the team colour.
 func test_the_classifier_calls_every_non_faction_material_neutral() -> void:
 	for faction: StringName in ArtPalette.MATERIALS:
 		for material: StringName in ArtPalette.MATERIALS[faction]:

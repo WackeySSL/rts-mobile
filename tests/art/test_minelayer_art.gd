@@ -3,10 +3,10 @@ extends GdUnitTestSuite
 ## Truck (`fossil_shot_truck`) and the Lumen Accord's Seeder (`renew_seeder`). Each is a vehicle
 ## model with a hull in 16 directions, a cast shadow and an item card, no turret and no damage
 ## picture (a unit shows none). It pins the sheet's parts, the team share at zoom 1 (the rule asks
-## for 8 to 12 %, 2 to 12 % at detail 2, in the default view, a wider band in the other
-## directions), a shadow that is one connected mark, and the silhouettes at 32 px in greyscale
-## against its own faction's ground vehicles, the other minelayer and the ground carriers. That
-## the bytes equal a fresh run is test_artgen.gd.
+## for 8 to 12 % in the default view and a wider band in the other directions, 30 to 65 % and
+## 25 to 75 % at detail 2 in the key band), a shadow that is one connected mark, and the
+## silhouettes at 32 px in greyscale against its own faction's ground vehicles, the other
+## minelayer and the ground carriers. That the bytes equal a fresh run is test_artgen.gd.
 
 const MODEL: String = "res://assets/art/models/%s/%s.tres"
 const Support: GDScript = preload("res://tests/art/building_picture_support.gd")
@@ -38,11 +38,8 @@ const OTHERS: Dictionary[StringName, Array] = {
 }
 const SHARE: Vector2 = Vector2(0.08, 0.12)
 const SHARE_WIDE: Vector2 = Vector2(0.05, 0.16)
-## A model at detail 2 (P642, the Nordvaern side) wears a small marker in the key colour: the
-## general rule of 2 to 12 % in the default view (ADR 0050 section 3), and in the other directions
-## a band from 1 % (a plate or a band seen from behind or below is thin).
-const SHARE_OPTED: Vector2 = Vector2(0.02, 0.12)
-const SHARE_WIDE_OPTED: Vector2 = Vector2(0.01, 0.16)
+## A model at detail 2 (P642) wears the team colour on its large panels: 30 to 65 % of the default
+## view and 25 to 75 % in every direction (ADR 0050 amendment A3, `Support.TEAM_BAND`).
 const MAX_OVERLAP: float = 0.85
 
 var _index: IsoIndex = null
@@ -147,11 +144,9 @@ func test_each_minelayer_reads_apart_from_the_ground_vehicles_at_32_px_in_greysc
 			)
 
 
-## The team share band of `id`: the general band of a model at detail 2, else the old one.
+## The team share band of `id`: the key band's at detail 2 or more, else the old one.
 func _band(id: StringName, wide: bool) -> Vector2:
-	if _model(id).detail >= 2:
-		return SHARE_WIDE_OPTED if wide else SHARE_OPTED
-	return SHARE_WIDE if wide else SHARE
+	return Support.model_band(_model(id), wide, SHARE_WIDE if wide else SHARE)
 
 
 func _model(id: StringName) -> ArtModel:
@@ -176,5 +171,4 @@ func _picture(id: StringName, dir: int) -> Image:
 
 
 func _share(id: StringName, dir: int) -> float:
-	var faction: StringName = &"renew" if String(id).begins_with("renew") else &"fossil"
-	return Support.team_share(_picture(id, dir), faction)
+	return Support.model_share(_model(id), _picture(id, dir))

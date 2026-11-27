@@ -23,8 +23,8 @@ extends Resource
 @export var factions: Array[FactionDef] = []
 ## The team colour per player, for the view alone: entry `p` is the index into `WorldSort.TRIADS` of
 ## the triad player p wears (entry 0 unused). Empty, or past the end: triad p - 1. The Skirmish
-## scenarios name the side's colour: Nordvaern orange (0), Facet blue (3, Kobolt, the nearest
-## triad to its #40A3FF), the other player the other one. Since 2026-11-25 (P632) this is interim:
-## the default marker colours of ADR 0050 section 3 (own Sne, the computer's Karmin) switch in with
-## the last model batch, P647, when the models carry fixed faction panels and a small marker.
+## scenarios name the side's colour: Ironward orange (0), Facet blue (3, Kobolt, the nearest
+## triad to its #40A3FF), the other player the other one. These are the default team colours of
+## ADR 0050's amendment (A6, 2026-11-26): each side wears its own, and the large panels of a unit
+## wear it.
 @export var team_triads: PackedInt32Array = PackedInt32Array()

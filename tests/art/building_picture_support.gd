@@ -10,6 +10,10 @@ const PAGE: Vector2i = Vector2i(320, 320)
 const GROUND_POINT: Vector2i = Vector2i(160, 200)  ## Where the footprint's centre goes.
 const SIDE_PX: int = 32
 const KEY_TOLERANCE: float = 0.06  ## Summed difference of the three channels in 0 to 1.
+## The team share of a model at detail 2 or more (ADR 0050 amendment A3, P652): its large panels
+## wear the sentinel key, 30 to 65 % of the default view, and 25 to 75 % in every direction.
+const TEAM_BAND: Vector2 = Vector2(0.30, 0.65)
+const TEAM_BAND_DIRS: Vector2 = Vector2(0.25, 0.75)
 
 
 static func raster(text: String, scale: float) -> Image:
@@ -75,6 +79,46 @@ static func team_share(picture: Image, faction: StringName) -> float:
 					team += 1
 					break
 	return float(team) / maxi(body, 1)
+
+
+## The share of the opaque pixels (alpha 0.95 or more) in the key band of the sentinel: a hue
+## within `ArtPalette.BAND_DEGREES` of one of its three tones at a saturation of
+## `ArtPalette.BAND_SATURATION` or more (ADR 0050 amendment A3). It counts the seams and tints of a
+## panel too, which the exact-tone `team_share` misses.
+static func band_share(picture: Image) -> float:
+	var hues: Array[float] = []
+	for hex: String in ArtPalette.SENTINEL:
+		hues.append(Color(hex).h * 360.0)
+	var team: int = 0
+	var body: int = 0
+	for y: int in picture.get_height():
+		for x: int in picture.get_width():
+			var pixel: Color = picture.get_pixel(x, y)
+			if pixel.a < 0.95:
+				continue
+			body += 1
+			if pixel.s < ArtPalette.BAND_SATURATION:
+				continue
+			for hue: float in hues:
+				var gap: float = absf(pixel.h * 360.0 - hue)
+				if minf(gap, 360.0 - gap) <= ArtPalette.BAND_DEGREES:
+					team += 1
+					break
+	return float(team) / maxi(body, 1)
+
+
+## The team share of `picture` as `model`'s band measures it: the key band at detail 2 or more,
+## else the exact tones of its faction's key (`team_share`).
+static func model_share(model: ArtModel, picture: Image) -> float:
+	return band_share(picture) if model.detail >= 2 else team_share(picture, model.faction)
+
+
+## The band of `model`'s team share in the default view (`wide` false) or in every direction
+## (`wide` true): `TEAM_BAND` or `TEAM_BAND_DIRS` at detail 2 or more, else `old`.
+static func model_band(model: ArtModel, wide: bool, old: Vector2) -> Vector2:
+	if model.detail < 2:
+		return old
+	return TEAM_BAND_DIRS if wide else TEAM_BAND
 
 
 ## The silhouette of a picture scaled to fit 32 px and centred on a 32 px page.

@@ -10,8 +10,10 @@ extends GdUnitTestSuite
 ## The one exception is the team marker of ADR 0050 section 3: a small plate (at most `MARKER`
 ## square tiles) with a light line round it (a `lamp` plate under it, larger on every side) and a
 ## dark rim round that (an `iron` plate under the lamp, larger again). Facet has no `lamp` or
-## `iron`: its line is `ceramic` and its rim `graphite` (P639). The share of team pixels in
-## the default view (2 to 12 %) is in test_artgen_readability.gd.
+## `iron`: its line is `ceramic` and its rim `graphite` (P639).
+## The rule applies to models below detail 2. At detail 2 and up the team area is large panels by
+## design (ADR 0050 amendment A3, P652), and the share of team pixels in the default view (30 to
+## 65 % in the key band) is in test_artgen_readability.gd; below detail 2 the share is 2 to 12 %.
 
 const REST: float = 0.011  ## Tiles: a primitive rests on another when its bottom is this close.
 const OPEN: float = 0.25  ## A top face with less than this share covered is open.
@@ -24,9 +26,11 @@ const LINES: Array[StringName] = [&"lamp", &"ceramic"]
 const RIMS: Array[StringName] = [&"iron", &"graphite"]
 
 
-func test_no_team_primitive_is_a_roof_plate() -> void:
+func test_no_team_primitive_below_detail_2_is_a_roof_plate() -> void:
 	for path: String in ArtGen.model_paths():
 		var model: ArtModel = load(path) as ArtModel
+		if model.detail >= 2:
+			continue
 		for part: StringName in model.parts():
 			var found: Array[String] = _plates(model.primitives(part))
 			(

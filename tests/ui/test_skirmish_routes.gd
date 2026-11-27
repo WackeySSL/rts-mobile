@@ -4,8 +4,8 @@ extends GdUnitTestSuite
 ## with the player on that side as player 1, the computer of the other side as
 ## `MatchRunner.opponents` (plan P183: `OpponentAi`), the build menu of the player's own side only,
 ## and the player's units in its side's colour, the other player's in the other side's (orange for
-## Nordvaern, blue for Facet: the scenario's `team_triads`; P647 switches the markers to your own
-## white, Sne, and the computer's red, Karmin, ADR 0050 section 3 answer 3). The
+## Ironward, blue for Facet: the scenario's `team_triads`, each side's own colour by default, ADR
+## 0050's amendment A6). The
 ## layout of the menu is test_dev_menu_layout's, the rest of the dev routes are test_dev_routes'.
 
 const MatchRig: GDScript = preload("res://tests/ui/support/match_rig.gd")
@@ -37,9 +37,8 @@ const ROUTES: Array[Dictionary] = [
 ]
 ## Player 1's Headquarters tile in both scenarios (the minimap paints its footprint).
 const HQ_TILE: Vector2i = Vector2i(7, 7)
-## The interim marker colours (WorldSort.TRIADS): Nordvaern orange, Facet blue (Kobolt). The default
-## markers of ADR 0050 section 3 (own Sne, the computer's Karmin) switch in with P647, the last
-## model batch; until then the old models wear the side's colour on their whole team areas.
+## The default team colours (WorldSort.TRIADS): Ironward orange (Signal), Facet blue (Kobolt), each
+## side's own (ADR 0050's amendment A6). Sne and Karmin are not the defaults.
 const ORANGE: int = 0
 const BLUE: int = 3
 const THINK_TICKS: int = 150
@@ -167,8 +166,9 @@ func test_the_build_menu_shows_only_the_players_own_side_in_each_route() -> void
 		CommandQueue.clear()
 
 
-## Your units take the default marker colours (answer 3): player 1 wears Sne in the atlas and on
-## the minimap, player 2 Karmin, whichever side the route plays.
+## Your units take the default team colours (ADR 0050's amendment A6): player 1 wears its side's
+## colour in the atlas and on the minimap, player 2 the other side's, whichever side the route
+## plays.
 func test_each_routes_player_wears_the_colour_of_its_side_and_the_other_the_other() -> void:
 	get_window().size = ScreenSizes.LANDSCAPE[0]  # Sideways, so that the minimap shows.
 	await await_idle_frame()
@@ -203,8 +203,8 @@ func test_each_routes_player_wears_the_colour_of_its_side_and_the_other_the_othe
 ## The data behind it: every Skirmish scenario (both sides of all three maps, and the mirrors) names
 ## `(0, 6, 2)`, entry 0 unused, so the default marker colours are the route's rule, not a swap.
 ## The fixed faction colours are the HUD accents (ADR 0050 section 3): the art's `faction` material
-## mid of each side equals the theme's accent token. The route test above proves the markers (own
-## units Sne, the computer's Karmin) per route.
+## mid of each side equals the theme's accent token. The cards and the HUD keep them; the route test
+## above proves the team colours per route.
 func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
 	var theme: Theme = load("res://game/ui/theme.tres") as Theme
 	var pairs: Dictionary[StringName, StringName] = {
@@ -218,9 +218,9 @@ func test_the_fixed_faction_colours_are_the_hud_accents() -> void:
 		)
 
 
-## Interim, 2026-11-25 (P632; P647 switches to Sne and Karmin): each player of every Skirmish
-## scenario wears its side's colour, orange for Nordvaern and blue for Facet, and in a mirror of one
-## side the second player wears the other side's colour.
+## The default team colours (ADR 0050's amendment A6): each player of every Skirmish scenario wears
+## its side's colour, orange for Ironward and blue for Facet, and in a mirror of one side the second
+## player wears the other side's colour.
 func test_every_skirmish_scenario_gives_each_player_its_sides_colour() -> void:
 	var seen: int = 0
 	for file: String in DirAccess.get_files_at("res://data/scenarios"):

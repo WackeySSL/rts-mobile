@@ -35,7 +35,7 @@ func test_the_minimap_reads_the_same_rule() -> void:
 
 
 ## The atlas bakes the swap: the two players of a scenario wear the triads its `team_triads` name
-## (orange and Kobolt blue on the Skirmish routes, interim until P647), and a restart of the same
+## (orange and Kobolt blue on the Skirmish routes, each side's own), and a restart of the same
 ## scenario is not baked again.
 func test_the_atlas_players_wear_the_triads_the_scenario_names() -> void:
 	var scenario: ScenarioDef = load("res://data/scenarios/skirmish_kestrel_flats_mirrored.tres")
