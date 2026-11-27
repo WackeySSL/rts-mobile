@@ -29,6 +29,13 @@ idag"). Plan: `docs/plans/2026-11-24-treadline-restyle.md`. Built on P601's prot
 `claude/p601-style-proto` (head 6be63003), `docs/proto/p601/README.md`, rounds 1-3. The prototype is
 the reference only and is never merged as it is.
 
+Status note (2026-11-26, P621c, architect): Michael reversed §3's fixed faction colours on
+2026-11-26 ("A: Holdfarve på pladerne"): the large panels wear the player's team colour, the
+bodies stay neutral and the sides are told apart by shape. The section "Amendment (2026-11-26,
+P621c)" at the end of this ADR records the decision, the measured share bands and what it replaces
+in §3, §7 and the Consequences. The default team colours there are the lead's proposal, which
+Michael can override. No accepted text changed.
+
 ## Michael's answers (2026-11-24)
 Verbatim: "ja til alle 4, men vi skal have afgjort om det er figma Ai der vinder, vi skal have en
 helhed i grafikken hele vejen rundt så det virker gennemarbejdet og ikke tilfældigt" (yes to
@@ -374,3 +381,330 @@ No sim rule, Command or hash changes. Everything here is art, view and settings 
    dark rim.
 4. **Metal sheen with gradients on units.** Answered 2026-11-24: **yes**, from detail 2.
 5. **The `svg-art-style` text of §4.** Answered 2026-11-24: **yes** (P630b).
+
+## Amendment (2026-11-26, P621c): team colour on the large panels
+**In short, for Michael:** the big orange and blue panels now wear each player's team colour.
+The bodies stay steel and iron (Nordværn) or white and graphite (Facet), and the lamps stay as
+they are. You tell the two sides apart by their shapes. By default each side still wears its own
+colour, orange or blue, and in a mirror match the other player wears the other one. That last
+point is the lead's proposal, and you can change it.
+
+**Michael's decision** (2026-11-26, his answer to the lead's AskUserQuestion), verbatim: "A:
+Holdfarve på pladerne" (A: team colour on the panels).
+
+**Why.** With §3's fixed faction colours, both armies of a mirror match are the same orange (or
+the same blue). The team marker was the only thing that told them apart, and at 32 px it covers
+only about 1.5 to 8 % of a unit.
+
+**Form.** This is an amendment section in ADR 0050, not a new ADR. That follows the repo's
+precedent for a dated change to one part of an accepted ADR ("Amendment (2026-10-11, P8 review)"
+and "(2026-10-11, P21)" in ADR 0004, "Amendment (2026-10-12, P34b review)" in ADR 0012). The change
+is confined to §3, and to the lines of §7 and the Consequences that repeat §3. Keeping it beside
+the text it replaces leaves one place for the art pipeline. The accepted text above stays as it
+was written, and the status note at the top points here. A11 lists every accepted line this
+section replaces.
+
+Built on `main` at 99d0a5b5. The 14 detail-2 models on `main` (P638-P641) were measured with
+throwaway scripts in a copy of the tree, which ran the suites' own measures on frames regenerated
+with P652's swap. No code was committed. The 4 models of P642 (PR #681, not yet on `main`) use the
+numbers that row measured.
+
+### A1. The look
+- **Team panels.** Every large panel that is now the fixed faction colour wears the player's
+  team colour: Nordværn's orange panels, cab and turret flanks, hoods, hard hats, shoulder plates
+  and pack panels, and Facet's blue ones.
+- **Neutral bodies.** Nordværn is steel and iron (and concrete on buildings), Facet is white
+  (ceramic) and graphite. Rust and olive stay retired where P638-P642 retired them.
+- **Accents unchanged.** Nordværn's warm lamp and Facet's mint lamp, the visors, the decals
+  (number, hazard, vent) and the hazard stripes keep their colours.
+- **Shape language tells the sides apart.** Nordværn is heavy steel, tall boxy hulls and wide
+  tracks. Facet is low faceted wedges, closed armour and hexagons (ADR 0049 §7). A4 adds the
+  check for it.
+- **Item cards** belong to no player, so they still draw the key in the faction's colour
+  (`ArtIcon`, STYLE.md "The sentinel key triad"). A card therefore shows the panels in Nordværn
+  orange or Facet blue, as it does today. The HUD accents `AccentFossil` and `AccentRenew` keep
+  those hues.
+
+### A2. The sentinel key covers the panels
+- In every model at detail 2 or more, the fixed faction material (`faction`) becomes the sentinel
+  key material (`team`). The bake replaces the sentinel with the player's triad, so the team
+  colour covers the large panels.
+- The swap changes only the material word of those primitive lines: no geometry, no primitive
+  added or removed, no detail level, decal or pose. P652 does it on all 18 detail-2 models.
+- The small rimmed plates of P638's rule (a `team` plate on a lamp or ceramic line, on an iron or
+  graphite rim), and the aircraft's stripes and bands, may stay. They become part of the team
+  area.
+- **No fixed faction paint on the map.** After P652 no model paints `faction` (a test over every
+  model). A fixed orange or blue part left on a body would read as a team colour in a mirror
+  match, which is the very confusion this amendment fixes. `ArtPalette` keeps the material for
+  the cards and as the classifier's reference hue.
+- Measured on the 14 models in the copy (P642's four follow when they merge):
+  - **The frames change in hex strings only.** 574 frames changed. `scripts/art-hex-only.sh`'s
+    normalisation finds no other change, and the bytes are the same (7,836,215 before and after).
+    Team faces get the same extras as faction faces (seams, tints, bolts, all black or white at
+    some opacity), and neither material has metal sheen, so no key colour enters a gradient.
+  - **The item cards come out byte-identical.**
+  - **The page cost.** Five parts gain a key colour: the Bullhead's hull and the turrets of the
+    Mortar Rig, `renew_scout`, `renew_tank` and `renew_artillery`. A frame that a key colour
+    touches is baked per player (`IsoAtlas`), so a mirror match bakes those frames twice.
+    `IsoAtlas.planned_page` gives:
+
+    | Page | Today (the pins) | After the swap | Left of 3584 |
+    | --- | --- | --- | --- |
+    | Cross-faction, page 1 | 2748 | 2748 | 836 |
+    | Nordværn mirror, page 1 | 2615 | 2697 (+82) | 887 |
+    | Facet mirror, page 1 | 2536 | 2596 (+60) | 988 |
+    | Page 2 (cross, mirrors) | 2594, 1458, 1480 | unchanged | |
+
+    Draw calls and sprites per unit do not change. The rows come out of the free rows of §5 and
+    ADR 0027 §4.
+
+### A3. TEAM_SHARE at detail 2 and up (replaces §3's 2-6 % marker share for those models)
+- **Measure.** On the raw frames (sentinel, not recoloured), in the default view of
+  `test_artgen_readability.gd` (d06 for Nordværn, d10 for Facet, a building's one view, alpha of
+  0.95 or more), the share of opaque pixels **in the key band**: a hue within
+  `ArtPalette.BAND_DEGREES` (20°) of the sentinel's 300° at a saturation of
+  `ArtPalette.BAND_SATURATION` (0.30) or more.
+- **Why the key band.** The key-band rule guarantees that nothing else in a frame sits in that
+  band, so the count is exact in what it counts. The exact-tone measure of today's `_share`
+  (`KEY_TOLERANCE` 0.06) misses the panel seams, the cell tints and the edges of small faces. On
+  the swapped frames it reads 14.0 to 40.8 % where the panels cover 42.3 to 62.7 %. P640 moved
+  FACTION_SHARE to a hue band for the same reason.
+- **The band:**
+  - **30 to 65 % of the default view** for every model at detail 2 or more, units and buildings.
+  - **25 to 75 % in every direction**, for the suites that band every direction (medic, carrier,
+    minelayer, aircraft).
+- **The method of the numbers.** Today's two shares, each as its suite measures it, were set
+  against the key-band share of the same view after the swap:
+  - "Faction, hue band": today's FACTION_SHARE measure (P640).
+  - "Marker, exact": today's TEAM_SHARE measure.
+  - After the swap, the share is about the faction share plus the marker share, when the marker
+    too is counted by band. Counted by band, today's marker is 3.6 to 6.0 % on the vehicles and
+    14.3 to 20.7 % on the squads, whose small faces the exact measure misses.
+- **Measured** (default view, %):
+
+  | Id (row) | Faction, hue band | Marker, exact | Sum | After the swap, key band | Every direction | Mirror differs |
+  | --- | --- | --- | --- | --- | --- | --- |
+  | `light_tank` Flarejack (P638) | 49.3 | 3.8 | 53.1 | 54.2 | 47.3-58.3 | 67.5 |
+  | `heavy_tank` Bullhead | 38.5 | 3.2 | 41.6 | 42.3 | 33.6-52.4 | 51.0 |
+  | `artillery` Mortar Rig | 57.1 | 3.5 | 60.6 | 62.5 | 55.8-68.0 | 72.6 |
+  | `harvester` Tanker | 52.1 | 3.4 | 55.5 | 56.3 | 50.4-59.9 | 68.5 |
+  | `renew_scout` (P639) | 47.9 | 2.9 | 50.8 | 52.1 | 41.9-55.8 | 62.2 |
+  | `renew_tank` | 47.2 | 2.1 | 49.4 | 52.0 | 47.9-62.6 | 62.3 |
+  | `renew_artillery` | 58.0 | 2.5 | 60.5 | 62.7 | 58.2-71.3 | 73.4 |
+  | `renew_tanker` | 43.2 | 2.5 | 45.6 | 46.3 | 37.5-47.8 | 59.0 |
+  | `rifle_squad` Rig Hands (P640) | 33.2 | 4.5 | 37.7 | 48.1 | 42.2-61.7 | 65.0 |
+  | `rocket_squad` Wildcatters | 30.6 | 8.1 | 38.7 | 49.1 | 49.1-66.5 | 56.9 |
+  | `fossil_patchers` Patchers | 32.8 | 6.6 | 39.4 | 51.6 | 47.5-60.4 | 67.2 |
+  | `renew_rifle` Linemen (P641) | 34.8 | 4.7 | 39.5 | 55.0 | 48.9-67.9 | 69.9 |
+  | `renew_rocket` Breakers | 30.3 | 5.9 | 36.2 | 51.5 | 45.0-70.8 | 69.6 |
+  | `renew_menders` Menders | 36.6 | 8.1 | 44.7 | 60.0 | 31.3-60.0 | 72.9 |
+  | `fossil_bunk_wagon` Bunk Wagon (P642, #681) | 56.0 | 3.0 | 59.0 | about 60 (estimate) | P652 | P652 |
+  | `fossil_shot_truck` Shot Truck | 49.8 | 3.9 | 53.7 | about 56 (estimate) | P652 | P652 |
+  | `fossil_fighter` Torchjet | 45.3 | 4.6 | 49.9 | about 52 (estimate) | P652 | P652 |
+  | `fossil_bomber` Drillhead | 39.4 | 3.1 | 42.5 | about 44 (estimate) | P652 | P652 |
+
+  - **The range.** After the swap the 14 measured models read 42.3 to 62.7 % in the default view
+    and 31.3 to 71.3 % in every direction. The four P642 estimates are the sum plus half the
+    exact marker share again, which is the vehicles' band-to-exact ratio of about 1.5. P652
+    measures them.
+  - **"Mirror differs"** is `test_same_scene.gd`'s mirror measure: the share of body pixels that
+    change when the same sprite wears the other route triad.
+- **Why 30 and 65.**
+  - The floor is five times the old marker's 6 % ceiling, so the owner reads at the far zoom.
+    It leaves room below today's lowest unit (the Bullhead, 42.3 %) for the building batches,
+    whose large neutral walls and roofs P644-P647 draw to this band.
+  - The ceiling is near the frozen same-scene cap. Wearing Signal, the Mortar Rig at 62.5 % reads
+    `tone_sat_all` 0.536 against `tone_sat_all_max` 0.55 (A9), so a model much above 65 %
+    would fail the sheet anyway. The unit test now catches that before the sheet does.
+  - 60 % would fail two models of today (62.5 and 62.7).
+- **Models below detail 2** keep today's exact-tone measure and its 2-12 % band until their batch.
+  Every art id is in one of the batches P638-P647 (`docs/art/treadline-batches.json`), so after
+  P647 no model is left in that band. Its planned narrowing to 2-6 % (§3 Migration step 7, P647)
+  is struck, because no model will carry a small marker alone.
+- **The roof-plate rule** (`test_artgen_plates.gd`) applies to models below detail 2. At detail 2
+  and up, the team area is large panels by design and TEAM_SHARE bounds it. On the swapped
+  frames the rule would flag 57 team primitives in 12 of the 14 models (from 0 on the Tanker and
+  `renew_tanker` to 9 on each rifle and rocket squad). So the rule is scoped; no geometry is
+  changed to satisfy it. The rimmed-marker exception stays valid.
+- **The mirror row** of `test_same_scene.gd` ("differs only in the marker", 2 to 30 %) becomes
+  "differs only in the team panels", 30 to 80 %. Measured: 51.0 to 73.4 % over the 14, and 51.0
+  (`heavy_tank`) and 62.3 (`renew_tank`) on the sheet's own pair.
+
+### A4. FACTION_SHARE is retired and replaced by a shape check
+- **Retired.** FACTION_SHARE (15-85 % of the fixed faction colour at detail 1 and up) measured a
+  material that no model paints any more (A2). It is deleted, not re-banded.
+- **Replaced by two checks:**
+  1. **No fixed faction paint:** no model's primitive uses `faction` (A2).
+  2. **The faction reads from shape at 32 px.** For each Nordværn and Facet model of one role,
+     both at detail 2 or more, the silhouettes overlap less than 0.85. That is the repo's
+     `MAX_OVERLAP`, measured with `building_picture_support.gd`'s `mask_32` and `overlap`
+     (intersection over union of the 32 px masks). Each pair is compared in d06 and in d10, the
+     same direction for both models.
+     - The pairs come from the batch lists: the same position in P638 and P639, P640 and P641,
+       P642 and P643, P644 and P645, P646 and P647.
+     - A mask has no colour, so the check holds whichever triad either side wears. That matters
+       in a mirror match, where one Nordværn player is blue.
+- **Measured** on today's frames (silhouettes do not change with the swap):
+
+  | Pair | d06 | d10 | Each side's own default view (d06 against d10) | Highest in any one direction |
+  | --- | --- | --- | --- | --- |
+  | `light_tank` / `renew_scout` | 0.38 | 0.50 | 0.36 | 0.86 (d15) |
+  | `heavy_tank` / `renew_tank` | 0.75 | 0.75 | 0.65 | 0.88 (d08) |
+  | `artillery` / `renew_artillery` | 0.68 | 0.67 | 0.49 | 0.81 (d08) |
+  | `harvester` / `renew_tanker` | 0.82 | 0.83 | 0.39 | 0.87 (d08) |
+  | `rifle_squad` / `renew_rifle` | 0.75 | 0.78 | 0.48 | 0.84 (d08) |
+  | `rocket_squad` / `renew_rocket` | 0.63 | 0.55 | 0.72 | 0.63 (d06) |
+  | `fossil_patchers` / `renew_menders` | 0.34 | 0.31 | 0.61 | 0.55 (d04) |
+
+  - All seven pairs pass in d06 and d10. The tightest is the Tanker against `renew_tanker` at
+    0.83 (a risk; the swap cannot move it).
+  - In a few single directions the two sides come close: d08 for three pairs and d15 for the
+    scout pair, at 0.86 to 0.88. Those directions are not banded; there the team pad, the ring
+    and the side's default colour carry the read. Banding every direction would need geometry
+    changes to models that are already merged, which is outside P652.
+  - The support and air pairs are tested from P643 on. At detail 0 they read 0.59 to 0.76 in
+    d06 and d10.
+- **The greyscale readability check stays** on every model, on the raw frames
+  (`test_artgen_readability.gd`, spread of 80 or more at 32 px). After the swap the 14 models read
+  129 to 212 raw. Recoloured, the lowest is 99 (the Tanker in Kul). That covers Signal, Kobolt,
+  Sne and Kul, which bracket the eight triads in value.
+
+### A5. ADR 0035's team pad and ring stay unchanged
+The pad under a unit's hull and the selection ring keep ADR 0035 §4. They take the same sentinel
+triad as the panels, so they wear the player's team colour, and the ring stays baked once for the
+local player. The pad is a mark on the ground, not a plate on the model (ADR 0035 §4.1), so it is
+outside TEAM_SHARE. Page 2's pins do not move (A2).
+
+### A6. Default team colours (the lead's proposal; Michael can override it)
+**This point is the lead's proposal, not Michael's answer.** It replaces §3's answer 3 ("own
+white (Sne), the computer red (Karmin)"). Michael can override it; Sne and Karmin would then come
+back as their own row, with a sheet and the classifier change described below.
+- **The proposal.** The defaults stay today's interim (P632), now as the rule. Each side wears
+  its own colour: Nordværn Signal (`WorldSort.TRIADS` 0), Facet Kobolt (3). In a mirror match the
+  second player wears the other one. The Skirmish scenarios' `team_triads` keep those values, so
+  no data changes and no balance run starts.
+- **P647's switch to Sne and Karmin is struck.** White or red panels over 30-65 % of a unit
+  would be a different look from the orange and blue that every sheet since P638 has shown:
+  - Sne's mid #DCE2E6 sits on Facet's ceramic #D5DBDC (a summed channel gap of 0.09), so a Facet
+    unit in Sne loses its panels into its body.
+  - Karmin (hue about 5°) is outside both of the classifier's faction hues (21.2° and 208.9°,
+    ±15°) and outside `SameScene.ROUTE_TRIAD`. The frozen `tone_sat` (A9) would count red
+    panels as neutral body: about 0.4 against its 0.30 cap.
+  - Taking Sne and Karmin back would need a new same-scene sheet for Michael, Karmin and Sne in
+    the classifier's marker list (`SameScene.gd`, code, not the frozen `.tres`), and a contrast
+    rule for white panels on Facet.
+- The eight wearable triads stay as they are (STYLE.md "Triads").
+
+### A7. Damage stages: what KRITISK does to the team panels
+§3 said the marker shows "at every damage stage except KRITISK". With the marker now the large
+panels, hiding it all at KRITISK would leave a wreck with no owner, so that clause is withdrawn.
+- **Units** (vehicles, squads, aircraft) have no KRITISK frame. Their stages are the neutral
+  overlays of ADR 0028 §4 (scars and the loose part, each slot at most 64 x 48 px at 2x, outside
+  every key band). The hull frames do not change with the stage, so the team panels stay at
+  every stage under the overlays. No change is needed.
+- **Buildings** (P644-P647) keep ADR 0029 §5's rule for the team area at KRITISK: 20 to 50 % of
+  the intact picture's key-band pixels stay in the band (the `char` and `hide` moves take the
+  rest out of it, and a charred team face must leave the band wholly). The transition band of
+  15-55 % (P632) is restored to 20-50 % in P647, as planned.
+  - Together with TEAM_SHARE's 30 % floor, this leaves at least 6 % of the intact picture's area
+    in team colour on a KRITISK building. That is the old marker's ceiling, so a wreck reads its
+    owner as well as an intact building with a marker did. No new test is needed: the two
+    existing bands imply it.
+  - The GDD's "little team colour left" still holds: at most half the team paint survives.
+- **Why this option.** Hiding all team colour at KRITISK (§3 as written) loses the owner of a
+  building that is still a target. Keeping all of it loses the damage read that ADR 0029 built
+  the stages on. ADR 0029's band does both, it is already tested per building, and it works on
+  any team area.
+
+### A8. same_scene.tres stays frozen
+`tools/artgen/same_scene.tres` does not change: its bands, its hues and its comments. The neutral
+body must still meet `tone_sat` 0.06 to 0.30, and the whole sprite `tone_sat_all_max` 0.55.
+
+### A9. How the same-scene check treats the team key today (read from the code)
+- `SameScene.sprite` renders every sprite through `IsoPlayerArt.recolour`, the bake's swap. The
+  audit and the sheet's main rows wear the side's route triad (`ROUTE_TRIAD`: Signal for
+  Nordværn, Kobolt for Facet). The mirror row wears the other one (`mirror_of`).
+- `SameScene.measure` takes `tone_sat` over the pixels that `SameScene.is_faction` calls neutral.
+  A pixel is not neutral when either:
+  - its hue is within `faction_hue_band` (15°) of a `faction_hues` entry (21.2° or 208.9°) at a
+    saturation of `faction_sat_min` (0.35) or more; or
+  - it is within `key_tolerance` (0.06, the summed channel gap) of a tone of the sentinel triad
+    or of either route triad.
+- So the team key is **excluded** from `tone_sat`: a team pixel shows as Signal or Kobolt, which
+  both tests take out (Signal's hues are 21.6° to 25.3° and Kobolt's 220.8° to 223.9°, all inside
+  the bands). It is **included** in `tone_sat_all`, which averages every opaque pixel (alpha of
+  0.9 or more).
+- Measured with `is_faction` on the default views (same thresholds):
+
+  | | `tone_sat` (0.06-0.30) | `tone_sat_all` (cap 0.55) |
+  | --- | --- | --- |
+  | Today, own route triad | 0.076-0.165 | 0.340-0.507 |
+  | After the swap, own route triad (the audit) | 0.074-0.166 | 0.339-0.536 |
+  | After the swap, the mirror triad (the mirror row) | 0.094-0.151 | 0.283-0.562 |
+
+  - Both bands hold for every sprite the audit measures. The highest `tone_sat_all` is the
+    Mortar Rig at 0.536.
+  - Only the mirror row's `renew_artillery` in Signal goes over 0.55 (0.562). The audit does not
+    measure mirror sprites, so nothing fails; Michael judges that pair by eye on the sheet.
+  - If a later row puts other triads on the sheet, `SameScene.ROUTE_TRIAD` and `is_faction`
+    (code) must learn them; the `.tres` stays as it is.
+- The comments that name P647's switch to Sne and Karmin become stale: in `SameScene.gd`,
+  `ScenarioDef.gd`, STYLE.md "Triads" and the tests. P652 rewrites them, except the comment in
+  `same_scene.tres`, which stays frozen (a comment-only change there needs its own yes).
+
+### A10. Cost against rule 6 and the web
+- **Frames:** the same bytes, hex strings only (A2). There is no export or web-size change.
+- **Atlas:** the mirror pages' page 1 grows by 82 and 60 rows (A2), and the cross-faction
+  page does not change. All pages stay within 3584 rows, so the sorted world stays on one page.
+- **Draw calls, sprites, frame time and bake time:** unchanged. The bake swaps more pixels of
+  the same strings, and the five newly keyed parts are baked once more in a mirror.
+
+### A11. What this replaces in the accepted text
+- **§3's title and first bullet** ("The faction colour is a fixed material, never replaced"): the
+  panels take the team key (A2). The two fixed materials stay for the item cards and the HUD
+  accents only.
+- **§3's team marker share** ("2 to 6 % of the visible surface") and its placement as the only
+  team colour: at detail 2 and up, TEAM_SHARE 30-65 % of the large panels (A3). The rimmed
+  plate may stay as part of it. Its white inner line and dark rim stay where a plate is kept.
+- **§3's "except KRITISK":** A7.
+- **§3's Migration step 6** (FACTION_SHARE 15-85 %) and **step 7** (the marker shrinks to 2-6 %,
+  the last batch narrows TEAM_SHARE to 2-6 %): A3 and A4.
+- **§3's "Default team colours" (answer 3, Sne and Karmin):** the lead's proposal in A6,
+  which Michael can override.
+- **§4's `svg-art-style` text** ("Fixed faction panels may cover large surfaces", "The team
+  marker covers 2-6 %"): the skill is not edited here. P652 brings the matching text change to
+  the lead, who asks Michael's yes for the skill, as P630b did.
+- **§7's per-batch line** "Marker and faction shares are in their bands": TEAM_SHARE (A3) and
+  the shape check (A4).
+- **The Consequences' "Factions read by colour at any distance, and players by a small marker.
+  Mirror matches lean on the marker, the pad and the ring":** players read by the team panels at
+  any distance, factions by shape, and a mirror match reads like any other match.
+- **The Alternatives' "Team-coloured large panels (P601 as built). Rejected":** chosen now by
+  Michael. P601's rejection rested on the 3-20 % team-share test and on fixed colours. Both are
+  replaced here, and the bodies are now neutral, which P601's were not.
+
+### A12. Consequences
+- A mirror match reads like a cross-faction match: two colours, one per player.
+- Faction identity moves from colour to shape. The shape check (A4) and Michael's eye on the
+  sheet guard it, and the end-on views stay the weak spot.
+- The 18 detail-2 models change in one mechanical row (P652). The batches after it (P643-P647)
+  are drawn straight to the new rule, so no model is drawn twice.
+- The bands of five suites change, and FACTION_SHARE and the detail-2 half of the roof-plate rule
+  go.
+- §3's answer 3 is open again as a proposal (A6).
+
+### A13. Alternatives considered
+- **Keep fixed colours with a larger marker** (for example 8-12 %). Rejected by Michael's
+  answer. A mirror match would still be two orange armies told apart by a patch.
+- **Team colour on the bodies as well** (everything but the lamps). Rejected: it leaves no
+  neutral body for `tone_sat`, and the sides lose their material language (steel against
+  ceramic).
+- **Sne and Karmin by default.** A6: the look changes, and the frozen same-scene bands fail
+  for Karmin.
+- **Keep FACTION_SHARE, inverted** (fixed colour at most 5 %). Rejected: no model paints the
+  material, so a band on it would test nothing. A prim-level "no `faction`" check is exact and
+  costs nothing.
+- **Re-band the exact-tone TEAM_SHARE** (about 14-41 % after the swap). Rejected: it counts the
+  seams and tints of each panel as body, so the number would follow the detail renderer rather
+  than the art.

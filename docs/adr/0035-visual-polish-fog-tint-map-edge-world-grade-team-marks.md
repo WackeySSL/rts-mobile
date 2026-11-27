@@ -26,6 +26,14 @@ now take the one sentinel key triad that ADR 0050 §3 puts in place of the per-f
 they wear the same colour as the unit's team marker (by default own white, the computer red).
 No accepted text changed.
 
+Status note (2026-11-26, P621c docs; ADR 0050 "Amendment (2026-11-26, P621c)", Michael "A:
+Holdfarve på pladerne"): §4's pad and ring stay unchanged. They take the same sentinel triad as a
+model's team panels, which now cover the large panels at detail 2 and up, so the pad, the ring
+and the panels wear one colour. The pad stays outside the model's team share. The default colours
+are now each side's own (Nordværn Signal, Facet Kobolt; in a mirror, the other one), which is the
+lead's proposal (ADR 0050 A6). That replaces "by default own white, the computer red" in the note
+above. No accepted text changed.
+
 Status note (2026-11-13, P200b, the lead): the answers are recorded above and under "Questions".
 The dated notes are placed: ADR 0010 §2 (fog colour), ADR 0023 §2 (z table, grade layers, forecast)
 and §5 (key colours in unit shadow frames), ADR 0027 §3 (the forecast; ADR 0027 carries it in §3's
