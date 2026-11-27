@@ -652,6 +652,7 @@ func _make_screen(kind: StringName) -> MenuScreen:
 	match kind:
 		MAIN:
 			var main: MainMenu = MainMenu.new()
+			main.progression = _progression
 			main.ad_service = _ads
 			main.resume_check = func() -> bool: return true  # Continue shows: the tallest column.
 			return main

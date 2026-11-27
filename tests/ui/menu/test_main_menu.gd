@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 
 const MENU_SCENE: String = "res://scenes/menu/menu.tscn"
 const SAVE_SCRIPT: String = "res://game/meta/save_service.gd"
+const SERVICE_SCRIPT: String = "res://game/meta/progression_service.gd"
 const ScreenSizes: GDScript = preload("res://tests/support/screen_sizes.gd")
 const UiProfiles: GDScript = preload("res://tests/support/ui_profiles.gd")
 const AdBandAsserts: GDScript = preload("res://tests/ui/support/ad_band_asserts.gd")
@@ -21,6 +22,7 @@ var _main: MainMenu
 var _ads: Node
 var _harness: RefCounted
 var _save: Node
+var _progression: Node
 var _routes: MenuRoutes
 var _resume: Array[bool] = [false]
 var _notice: Array[StringName] = [&""]
@@ -42,6 +44,8 @@ func before_test() -> void:
 	DirAccess.make_dir_recursive_absolute(_dir)
 	_save = (load(SAVE_SCRIPT) as GDScript).new()
 	_save.call("set_path_override", _dir.path_join("save.cfg"))
+	_progression = (load(SERVICE_SCRIPT) as GDScript).new()
+	_progression.call("bind", _save, null)
 	_routes = MenuRoutes.new()
 	_resume[0] = false
 	_notice[0] = &""
@@ -59,7 +63,7 @@ func after_test() -> void:
 	_close()
 	MenuRoutes.shared.clear()
 	ProjectSettings.set_setting(VERSION_KEY, _version_before)
-	for node: Node in [_ads, _save]:
+	for node: Node in [_ads, _save, _progression]:
 		if is_instance_valid(node):
 			node.free()
 	if _harness != null:
@@ -128,7 +132,7 @@ func test_the_band_lines_up_on_the_start_page_and_the_slot_is_tall_at_the_six_si
 			band.reserved_px(), 1.0
 		)
 		assert_float(_main.slot.size.y).override_failure_message(label).is_greater(0.0)
-		AdBandAsserts.assert_lines_up(self, band, _ads, _main.scroll, band.gap_dp(), label)
+		AdBandAsserts.assert_lines_up(self, band, _ads, _main._footer, band.gap_dp(), label)
 		_close()
 		UiScale.clear_override()
 
@@ -191,7 +195,7 @@ func test_the_title_the_sides_and_the_tagline_show() -> void:
 	var texts: Array[String] = []
 	_collect(_main.column, texts)
 	assert_array(texts).contains(
-		["TREADLINE", "Oil and gas against wind and sun. Choose your side."]
+		["TREADLINE", "OIL AND GAS AGAINST WIND AND SUN. CHOOSE YOUR SIDE."]
 	)
 	assert_array(texts).contains(["IRONWARD", "FACET"])
 
@@ -239,6 +243,7 @@ func _open(profile: UiMetrics, consent: bool) -> void:
 	_stack.quit_handler = func() -> void: _quits[0] += 1
 	_main = MainMenu.new()
 	_main.routes = _routes
+	_main.progression = _progression
 	_main.ad_service = _ads
 	_main.resume_check = func() -> bool: return _resume[0]
 	_main.take_notice = func() -> StringName: return _notice[0]
@@ -318,3 +323,34 @@ func _all_of(node: Node, type: Variant) -> Array[Node]:
 			found.append(child)
 		found.append_array(_all_of(child, type))
 	return found
+
+
+func test_the_items_stand_in_two_columns_only_where_the_measured_width_holds_them() -> void:
+	var two: int = 0
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size), false)
+		var fits: bool = _main.column_room_px() >= UiScale.dp(MainMenu.TWO_COLUMNS_DP)
+		two += 1 if fits else 0
+		assert_int(_main._grid.columns).override_failure_message(str(size)).is_equal(
+			2 if fits else 1
+		)
+		var items: Array[Button] = _main.items()
+		var first_y: float = items[0].get_global_rect().position.y
+		var across: bool = is_equal_approx(items[1].get_global_rect().position.y, first_y)
+		assert_bool(across).override_failure_message(str(size)).is_equal(fits)
+		_close()
+		UiScale.clear_override()
+	assert_int(two).is_greater(0)
+	assert_int(two).is_less(ScreenSizes.ALL.size())
+
+
+func test_the_profile_line_shows_the_rank_and_xp_and_opens_the_rank_screen() -> void:
+	_save.call("set_section", &"progress", {"xp": 100})
+	_routes.register(MenuRoutes.RANK, RankScreen.new)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
+	assert_str(_main._footer.text).is_equal("COMMANDER · RANK 2 SCOUT · 100 / 250 XP")
+	var rect: Rect2 = _main._footer.get_global_rect()
+	assert_float(rect.size.y).is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
+	assert_float(rect.end.y).is_less_equal(_main.slot.get_global_rect().position.y + TOLERANCE_PX)
+	_main._footer.pressed.emit()
+	assert_object(_stack.current()).is_instanceof(RankScreen)

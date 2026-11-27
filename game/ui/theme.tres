@@ -958,12 +958,30 @@ content_margin_left = 52.0
 content_margin_top = 15.0
 content_margin_right = 8.0
 content_margin_bottom = 15.0
-bg_color = Color(0.19607843, 0.15294118, 0.10196078, 1)
+bg_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+border_width_top = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_footer_down"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
+border_width_top = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_primary"]
 content_margin_left = 8.0
@@ -1537,6 +1555,23 @@ MenuItemOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/normal = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/pressed = SubResource("StyleBoxFlat_menu_item_on")
 ; MenuNumber (P664): the item number of the main menu, text_mute.
+; MenuNumberOn: the number on the amber first item, ground_deep. MenuFooter: the main menu's profile line, a flat button with a top rule, small text_dim caps.
+MenuNumberOn/base_type = &"MenuNumber"
+MenuNumberOn/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuFooter/base_type = &"Button"
+MenuFooter/colors/font_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuFooter/colors/font_focus_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuFooter/colors/font_hover_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuFooter/colors/font_hover_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuFooter/colors/font_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuFooter/colors/font_disabled_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
+MenuFooter/font_sizes/font_size = 14
+MenuFooter/styles/disabled = SubResource("StyleBoxFlat_menu_footer")
+MenuFooter/styles/focus = SubResource("StyleBoxFlat_pause_focus")
+MenuFooter/styles/hover = SubResource("StyleBoxFlat_menu_footer")
+MenuFooter/styles/hover_pressed = SubResource("StyleBoxFlat_menu_footer_down")
+MenuFooter/styles/normal = SubResource("StyleBoxFlat_menu_footer")
+MenuFooter/styles/pressed = SubResource("StyleBoxFlat_menu_footer_down")
 MenuNumber/base_type = &"Label"
 MenuNumber/colors/font_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
 ; MenuRow and MenuRowOn (P664): MenuItem and MenuItemOn with a 52 dp left margin, which the number of a main menu item stands in.
@@ -1547,6 +1582,11 @@ MenuRow/styles/hover_pressed = SubResource("StyleBoxFlat_menu_numbered_down")
 MenuRow/styles/normal = SubResource("StyleBoxFlat_menu_numbered")
 MenuRow/styles/pressed = SubResource("StyleBoxFlat_menu_numbered_down")
 MenuRowOn/base_type = &"MenuRow"
+MenuRowOn/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_focus_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_hover_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_hover_pressed_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_pressed_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
 MenuRowOn/styles/hover = SubResource("StyleBoxFlat_menu_numbered_on")
 MenuRowOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_numbered_on")
 MenuRowOn/styles/normal = SubResource("StyleBoxFlat_menu_numbered_on")

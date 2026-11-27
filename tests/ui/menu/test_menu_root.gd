@@ -53,7 +53,7 @@ func _check_defaults() -> void:
 	assert_int(_stack.depth()).is_equal(1)
 	var main: MainMenu = _stack.current() as MainMenu
 	var enabled: Array[String] = []
-	for child: Node in main.column.get_children():  # Continue is enabled, shown only with a file.
+	for child: Node in main._grid.get_children():  # Continue is enabled, shown only with a file.
 		var button: Button = child as Button
 		if button != null and not button.disabled:
 			enabled.append(button.text)

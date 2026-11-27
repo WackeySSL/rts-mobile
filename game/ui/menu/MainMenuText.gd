@@ -15,6 +15,7 @@ const HOW_TO_PLAY: StringName = &"MAIN_HOW_TO_PLAY"
 const SETTINGS: StringName = &"MAIN_SETTINGS"
 const RANK_ITEM: StringName = &"MAIN_RANK_ITEM"
 const RANK: StringName = &"MAIN_RANK"
+const PROFILE: StringName = &"MAIN_PROFILE"
 const BACK: StringName = &"MAIN_BACK"
 const CARD: StringName = &"MAIN_CARD"
 const NEXT: StringName = &"MAIN_NEXT"
@@ -42,6 +43,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	SETTINGS: "SETTINGS",
 	RANK_ITEM: "RANK",
 	RANK: "RANK %d  %s",
+	PROFILE: "COMMANDER · RANK %d %s · %s",
 	BACK: "BACK",
 	CARD: "COMMANDER",
 	NEXT: "NEXT UNLOCK",
