@@ -43,6 +43,11 @@ if [ ${#GD_DIRS[@]} -gt 0 ]; then
   fi
 fi
 
+if ! python3 -I -c 'import numpy, PIL' >/dev/null 2>&1; then
+  echo "numpy or Pillow missing: python3 -m pip install -r tools/prerender/requirements.txt"
+  FAILED+=("numpy or Pillow missing")
+fi
+
 run_step "seed extension list" bash scripts/seed-extension-list.sh
 run_step "import" godot --headless --path . --import
 
