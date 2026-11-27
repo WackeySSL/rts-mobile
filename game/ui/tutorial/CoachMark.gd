@@ -47,6 +47,7 @@ const THROUGH_VARIATION: StringName = &"GuideCardThrough"
 const THEME_PATH: String = "res://game/ui/theme.tres"
 const CHEVRON_PATH: String = "res://assets/art/svg/icons/glyph_chevron.svg"
 const CHEVRON_DP: Vector2 = Vector2(14.0, 10.0)
+const THROUGH_BAND_DP: float = 8.0  ## A unit's ring clears the card by this much to turn it back.
 ## Drawn above every other control of the layer, the pause menu included, whatever order the mark
 ## was added in: the card that asks for Resume must be seen over the open menu.
 const Z_ABOVE_MODALS: int = 100
@@ -55,6 +56,10 @@ var director: TutorialDirector
 var camera: RtsCamera
 ## The node under which the anchor controls are looked up by name.
 var hud_root: Node
+## What a `UNIT` step reads (ADR 0048 section 13.3): the match's runner and its two unit layers.
+var runner: MatchRunner
+var ground_layer: UnitLayer
+var air_layer: AirLayer
 ## The left-handed layout (ADR 0025 section 14): the dock flips with the HUD. Not wired in the game
 ## yet, as with the command bar's own flag.
 var mirror: bool = false
@@ -103,6 +108,7 @@ var _ring_now: Rect2 = Rect2()  ## What the last `_update` laid out.
 var _stalled_now: bool = false
 var _can_next_now: bool = false
 var _size_now: Vector2 = Vector2.ZERO
+var _laid_target: Control = null  ## The target the card was last laid out for.
 var _points: PackedVector2Array = PackedVector2Array()  ## The tile ring, about its centre.
 var _points_for: Vector2 = Vector2.ZERO
 var _dirty: bool = true
@@ -120,6 +126,7 @@ var _build: BuildButton = null
 var _pill: EconomyPill = null
 var _next_hud: int = 0
 var _lookup: GuideLookup = GuideLookup.new()
+var _unit: GuideUnitAnchor = GuideUnitAnchor.new()
 var _tab: Button
 
 
@@ -301,6 +308,12 @@ func ring_blinking() -> bool:
 	return _blink != null and _blink.is_valid()
 
 
+## The resolver of a `UNIT` step (ADR 0048 section 13.3): `unit_id` (-1 for none), `point` (INF for
+## none) and `in_field`, for the bot and the sweep. It holds nothing on other steps.
+func unit_anchor() -> GuideUnitAnchor:
+	return _unit
+
+
 ## The height of the top HUD row, dp, that the card keeps clear of (ADR 0025 section 2): the scope
 ## (56, taller than the pill and the toast) and a gap; upright the toast's slot under the pill and
 ## the scope as well.
@@ -453,8 +466,9 @@ func _update() -> void:
 			_stop_blink()
 	if covered:
 		return
-	var ring: Rect2 = _ring_box()
 	var docked: bool = _refresh_dock()
+	_unit.update(_aim, runner, camera, ground_layer, air_layer, _safe_rect, _dp, _dock_rects)
+	var ring: Rect2 = _ring_box()
 	_update_gesture(ring)
 	var stalled: bool = director != null and director.stalled() and not director.can_next()
 	var can_next: bool = director != null and director.can_next()
@@ -468,11 +482,12 @@ func _update() -> void:
 		or can_next != _can_next_now
 		or modal != _modal_now
 		or size != _size_now
+		or _target != _laid_target
 	)
-	var changed: bool = reshaped or ring != _ring_now or _meets(ring) != _through_now
-	if not changed and _again == 0:
+	if not reshaped and _again == 0:
+		_move_ring(ring)  # Only the ring moved, or nothing: the card is not laid out again.
 		return
-	if changed:
+	if reshaped:
 		_again = 2  # A label shapes its wrapped text a frame after its width changes: look twice.
 	_dirty = false
 	_ring_now = ring
@@ -480,19 +495,13 @@ func _update() -> void:
 	_can_next_now = can_next
 	_modal_now = modal
 	_size_now = size
+	_laid_target = _target  # A new target (another modal button) lays the card out again.
 	_fit.next.visible = can_next
 	_fit.skip.visible = _first_card()
 	_fit.hint.visible = stalled
 	_ring.global_position = Vector2.ZERO
 	_ring.size = _view
-	if ring.size != _points_for:
-		_points_for = ring.size
-		_points = GuideRing.ellipse(ring.size * 0.5)
-	_ring.queue_redraw()
-	if ring.has_area():
-		_start_blink()
-	else:
-		_stop_blink()
+	_show_ring()
 	var hand: Rect2 = _gesture_box
 	_layout_card(ring)
 	_update_gesture(ring)  # Again: the card's box stands now.
@@ -501,13 +510,45 @@ func _update() -> void:
 	_again -= 1
 
 
-## Whether the ring meets the card as laid out last (ADR 0048 section 3). The ring already stands
-## 6 dp outside its control, and the dock stands 8 dp from every HUD part, so a HUD neighbour never
-## meets the card; a tile, a modal's button or the ghost's check mark can.
+## The ring's look for `_ring_now`: its points, a redraw and the blink.
+func _show_ring() -> void:
+	var ring: Rect2 = _ring_now
+	if ring.size != _points_for:
+		_points_for = ring.size
+		_points = GuideRing.ellipse(ring.size * 0.5)
+	_ring.queue_redraw()
+	if ring.has_area():
+		_start_blink()
+	else:
+		_stop_blink()
+
+
+## A frame with no reshape (ADR 0048 section 13.5): a moved ring redraws and the hand was replanned;
+## the card turns see-through or back by its theme variation and mouse filters alone.
+func _move_ring(ring: Rect2) -> void:
+	if ring != _ring_now:
+		_ring_now = ring
+		_show_ring()
+	var through: bool = _meets(ring)
+	if through != _through_now:
+		_set_through(through)
+
+
+## Whether the ring meets the card as laid out last (ADR 0048 section 3). A unit's ring turns the
+## card back only once it clears it by `THROUGH_BAND_DP`, so a unit along its edge does not
+## flicker. The ring already stands 6 dp outside its control, and the dock stands 8 dp from every
+## HUD part, so a HUD neighbour never meets the card; a tile, a modal's button or the ghost's check
+## mark can.
 func _meets(ring: Rect2) -> bool:
 	if not _card.visible:
 		return false
-	return (ring.has_area() and _card_box.intersects(ring)) or _card_box.intersects(_gesture_box)
+	var band: float = 0.0
+	if _through_now and _aim != null and _aim.anchor == TutorialBeatDef.Anchor.UNIT:
+		band = THROUGH_BAND_DP * _dp
+	return (
+		(ring.has_area() and _card_box.intersects(ring.grow(band)))
+		or _card_box.intersects(_gesture_box)
+	)
 
 
 ## Stands the card in the dock, or on the folded tab's slot when the dock has no room (ADR 0048
@@ -540,18 +581,22 @@ func _layout_card(ring: Rect2) -> void:
 	_fit.fit(stand.size.x, stand.size.y, _dp, mirror, settings)
 	_card.global_position = stand.position
 	_card_box = Rect2(stand.position, _card.size)
-	_through_now = _meets(ring)
-	_card.theme_type_variation = THROUGH_VARIATION if _through_now else CARD_VARIATION
-	var passes: bool = _through_now or _modal_now
-	var filter: Control.MouseFilter = (
-		Control.MOUSE_FILTER_IGNORE if passes else Control.MOUSE_FILTER_STOP
-	)
-	_card.mouse_filter = filter
-	_fit.scroll.mouse_filter = filter
+	_set_through(_meets(ring))
 	if _modal_now and _fit.next.visible and _touches_modal(_modal_of(_target)):
 		_fit.next.visible = false  # Next shows over a modal only where it clears every button of it.
 	if not roomy:
 		_place_tab(false)
+
+
+## The card's look and touch for see-through or not: the variation and the mouse filters only.
+func _set_through(through: bool) -> void:
+	_through_now = through
+	_card.theme_type_variation = THROUGH_VARIATION if through else CARD_VARIATION
+	var filter: Control.MouseFilter = (
+		Control.MOUSE_FILTER_IGNORE if through or _modal_now else Control.MOUSE_FILTER_STOP
+	)
+	_card.mouse_filter = filter
+	_fit.scroll.mouse_filter = filter
 
 
 ## The tab at the dock's scope-side corner (right; mirrored, left), or in its own slot where the
@@ -594,7 +639,7 @@ func _update_gesture(ring: Rect2) -> void:
 		return
 	var lead: bool = _beat != null and _beat.lead_in.has(_aim)
 	var plan: GuideHintPlan = _gesture_plan
-	plan.resolve(_beat, _aim, lead, ring, camera, _field_of, _safe_rect, _dp, settings)
+	plan.resolve(_beat, _aim, lead, ring, camera, _field_of, _safe_rect, _dp, settings, _unit)
 	_gesture_box = plan.bounds
 	var shown: bool = plan.kind != TutorialBeatDef.Gesture.NONE
 	_gesture.visible = shown
@@ -639,7 +684,7 @@ func gesture_plan() -> GuideHintPlan:
 func _ring_box() -> Rect2:
 	if _beat == null:
 		return Rect2()
-	return GuideRing.box(_aim, _target, camera, hud_root, _view, _safe_rect, _dp)
+	return GuideRing.box(_aim, _target, camera, hud_root, _view, _safe_rect, _dp, _unit)
 
 
 ## Takes the active step of the director's chain (the beat's own anchor with no director).

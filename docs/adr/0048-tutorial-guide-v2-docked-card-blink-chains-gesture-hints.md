@@ -607,7 +607,7 @@ Checked against the code (`main` at 59efa29b):
 
 #### 13.5 Decision: the ring, the edge, the field and the card
 - **The ring** on a unit is the tile's ground ellipse (`_draw_ring`'s non-control branch), centred
-  on `point`, of `half` and at least 48 dp. As built the unit ring is square (a round ring of radius `half`), not the tile's 2:1 ellipse. It blinks, turns amber and doubles as §4 says.
+  on `point`, of `half` and at least 48 dp. As built the unit ring is circular (radius `half`), not the tile's 2:1 ellipse. It blinks, turns amber and doubles as §4 says.
 - **Off the screen:** a unit whose point is outside the safe rect gets its ring pinned to the
   nearest edge (`GuideRing.box`'s existing clamp). The pin slides along the edge as the unit moves.
 - **The field:** `in_field` is true when the point is inside the safe rect and under no rect of
@@ -621,6 +621,7 @@ Checked against the code (`main` at 59efa29b):
   point: the pan that brings it out. A tile does that only as the beat's own anchor. A unit gets it
   on a lead-in too, because a tap on a pinned ring selects nothing. An explicit `NONE` still
   suppresses it.
+  An explicit `NONE` is read from the active step's own gesture: a lead-in uses its own, and the final step copies the beat's.
 - **See-through for a moving target** (§3): the card turns see-through when the unit's ring box or
   the hand's bounds meet it. For a `UNIT` aim it turns back only once the ring's box grown by 8 dp
   and the hand's bounds are clear of it. This is a band of hysteresis, so a unit that walks along

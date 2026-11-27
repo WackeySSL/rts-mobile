@@ -50,6 +50,8 @@ const LEAD_LOOKS: int = 30
 const CONTACT_TILES: int = 8
 ## An order that has not done its work is sent again after this many ticks.
 const REORDER_TICKS: int = 150
+const UNIT_PANS: int = 2  ## Centrings tried before a unit that stays out of the field is told.
+const UNIT_WATCH_TICKS: int = 15  ## A unit tap must have passed its step after this long.
 ## Ticks after the first MOVE of a `move` beat that a bot with `stop_mid_move` taps STOP at.
 const STOP_AFTER_TICKS: int = 8
 const SELF_PAN: Array[Vector2] = [
@@ -103,6 +105,10 @@ var _contact: int = -1
 var _ring_noted: bool = false
 ## The tile step of a selection the bot tapped, to be seen passed on the next look.
 var _pending_tile: TutorialLeadInDef = null
+var _unit_tapped: Object = null  ## The beat or lead-in step whose unit was tapped (once).
+var _unit_tick: int = 0
+var _unit_pans: int = 0
+var _unit_noted: bool = false
 ## The lead-in steps of the beat on show that the bot has tapped (each once).
 var _led: Array[TutorialLeadInDef] = []
 var _lead_looks: int = 0
@@ -127,6 +133,13 @@ func _init(suite: Node, main: Node) -> void:
 	_sidebar = _hud.find_child("BuildSidebar", true, false) as BuildSidebar
 	_runner.set_process(false)  # The bot ticks the match; real frame time would tick it too.
 	_controller.command_sink = _on_command
+
+
+## The first node of the main scene whose script class is `type_name`.
+func _layer_of(type_name: String) -> Node:
+	for node: Node in _main.find_children("*", type_name, true, false):
+		return node
+	return null
 
 
 ## The controller's sink: the bot keeps a copy of what a tap sent, and the queue takes it.
@@ -157,6 +170,9 @@ func play(lesson: TutorialLessonDef) -> Dictionary:
 	_mark.director = _director
 	_mark.hud_root = _hud
 	_mark.camera = _camera
+	_mark.runner = _runner
+	_mark.ground_layer = _layer_of("UnitLayer") as UnitLayer
+	_mark.air_layer = _layer_of("AirLayer") as AirLayer
 	_hud.add_child(_mark)
 	await _suite.get_tree().process_frame
 	_director.start(lesson)
@@ -272,13 +288,17 @@ func _move() -> void:
 		_led.clear()
 		_lead_looks = 0
 		_pending_tile = null
+		_unit_tapped = null
+		_unit_pans = 0
+		_unit_noted = false
 		_note_missing(beat)
 		if drop_selection and _selection_lead(beat) != null:
 			_controller.selection.clear()
 			return  # The director looks at the empty selection before the bot acts.
 	var waited: int = _ticks_run - _beat_tick
+	_watch_unit(beat)
 	var thinking: bool = waited < think_ticks and not _runner.paused
-	if thinking or _tap_lead_in(beat) or not _ring_settled(beat, waited):
+	if thinking or _lead_unit(beat) or _tap_lead_in(beat) or not _ring_settled(beat, waited):
 		return
 	if (
 		_stop_at >= 0
@@ -289,6 +309,9 @@ func _move() -> void:
 		return
 	if beat.kind == TutorialConditions.Kind.NEXT:
 		_press_button(_mark.find_child("Next", true, false) as BaseButton, "the card's Next")
+		return
+	if beat.anchor == TutorialBeatDef.Anchor.UNIT:
+		_tap_unit(beat)
 		return
 	await _act(beat)
 
@@ -327,6 +350,20 @@ func _tap_lead_in(beat: TutorialBeatDef) -> bool:
 	if step.kind == TutorialConditions.Kind.SELECTED:
 		selection_steps += 1
 	_press_button(target as BaseButton, String(step.anchor_control))
+	return true
+
+
+## A lead-in on a unit (ADR 0048 section 13.7): panned to and tapped through `_tap_unit`. True while
+## the active step is one that is not tapped yet.
+func _lead_unit(beat: TutorialBeatDef) -> bool:
+	var step: TutorialLeadInDef = _director.active_target()
+	if step == null or step.anchor != TutorialBeatDef.Anchor.UNIT or _led.has(step):
+		return false
+	if not beat.lead_in.has(step):
+		return false
+	if _tap_unit(step):
+		_led.append(step)
+		selection_steps += int(step.kind == TutorialConditions.Kind.SELECTED)
 	return true
 
 
@@ -527,6 +564,54 @@ func _attack() -> void:
 		_failure = "beat '%s': no enemy to attack" % _where()
 		return
 	_tap_ground(goal)
+
+
+## ADR 0048 section 13.7: a unit the ring stands on is panned into the field when it is not in it,
+## then tapped once (`owner` is the beat or lead-in step, never tapped twice, so a selected unit is
+## not tapped inside the double-tap window) at `unit_anchor().point` as a finger would. True when it
+## tapped; false with no unit (the card alone) or while it pans. A unit still out of the field after
+## `UNIT_PANS` centrings, and an `attack` tap that sent no ATTACK on that unit, are told in
+## `ringless`.
+func _tap_unit(owner: Object) -> bool:
+	var unit: GuideUnitAnchor = _mark.unit_anchor()
+	if _unit_tapped == owner or unit.unit_id < 0:
+		return false
+	if not unit.in_field:
+		_unit_pans += 1
+		if _unit_pans > UNIT_PANS:
+			_note_unit("unit %d is not in the field after centring" % unit.unit_id)
+			return false
+		_camera.centre_on(_camera.screen_to_world(unit.point))
+		_camera.force_update_scroll()
+		return false
+	var before: int = _sent.size()
+	var tap: GestureEvent = GestureEvent.new()
+	tap.kind = GestureEvent.Kind.TAP
+	tap.position = unit.point
+	_controller.handle_gesture(tap)
+	_unit_tapped = owner
+	_unit_tick = _ticks_run
+	if _director.current.kind == TutorialConditions.Kind.ENEMY_LOSSES:
+		var sent: Command = _sent[-1] if _sent.size() > before else null
+		if sent == null or sent.type != Command.Type.ATTACK or sent.target_id != unit.unit_id:
+			_note_unit("the tap sent no ATTACK on unit %d" % unit.unit_id)
+	return true
+
+
+## Tells `text` of the current beat once in `ringless`.
+func _note_unit(text: String) -> void:
+	if not _unit_noted:
+		_unit_noted = true
+		_ringless.append("%s: %s" % [_where(), text])
+
+
+## A unit tap that has not passed its step after `UNIT_WATCH_TICKS` is told in `ringless`.
+func _watch_unit(beat: TutorialBeatDef) -> void:
+	if _unit_tapped == null or _unit_noted or _ticks_run - _unit_tick < UNIT_WATCH_TICKS:
+		return
+	var pending: bool = _unit_tapped == beat or _director.active_target() == _unit_tapped
+	if pending:
+		_note_unit("the tap on unit %d did not pass" % _mark.unit_anchor().unit_id)
 
 
 ## One TAP gesture on the ground point `ground` (milli-tiles): the view is panned onto it first.

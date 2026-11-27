@@ -13,7 +13,9 @@ extends RefCounted
 ##
 ## A tile off the screen shows a DRAG from the edge where it lies toward the free field, for `AUTO`
 ## and for any explicit gesture: that pan is what brings the tile into view. An explicit `NONE`
-## suppresses it.
+## suppresses it. A `UNIT` anchor (ADR 0048 section 13.5) is a TAP on the unit's point under `AUTO`;
+## a unit outside the field (off the screen or under the HUD) gets that same drag, on a lead-in
+## too, since a tap on its pinned ring selects nothing; with no unit there is no hand.
 ##
 ## Fitting the safe rect: the fingertip is never moved off a control or a tile. The hand hangs off
 ## the tip flipped (`flip_x`, `flip_y`) to the side that fits, a drag that would leave the screen
@@ -41,34 +43,39 @@ func resolve(
 	field_of: Callable,
 	safe: Rect2,
 	dp: float,
-	settings: GuideSettingsDef
+	settings: GuideSettingsDef,
+	unit: GuideUnitAnchor = null
 ) -> void:
 	kind = TutorialBeatDef.Gesture.NONE
 	bounds = Rect2()
 	off_screen = false
 	flip_x = false
 	flip_y = false
-	if beat == null:
-		return
+	var on_unit: bool = aim != null and aim.anchor == TutorialBeatDef.Anchor.UNIT
+	if beat == null or (on_unit and (unit == null or unit.point == Vector2.INF)):
+		return  # No unit: no hand.
 	vector_dp = Vector2(beat.gesture_vector_dp)
 	if vector_dp == Vector2.ZERO:
 		vector_dp = GestureHint.DEFAULT_DRAG_DP
 	var anchor: TutorialBeatDef.Anchor = aim.anchor if aim != null else TutorialBeatDef.Anchor.NONE
 	var want: TutorialBeatDef.Gesture = beat.gesture
 	var shiftable: bool = false  # The point aims at nothing: it may be moved to fit.
-	if anchor == TutorialBeatDef.Anchor.TILE and camera != null and not lead:
-		var screen: Vector2 = _tile_screen(aim, camera)
-		if not safe.has_point(screen):
-			if want == TutorialBeatDef.Gesture.NONE:
-				return
-			want = TutorialBeatDef.Gesture.DRAG
-			off_screen = true
-			shiftable = true
-			point = screen.clamp(safe.position, safe.end)
-			var field: Vector2 = field_of.call()
-			var way: Vector2 = (field - point) / dp
-			if way != Vector2.ZERO:
-				vector_dp = way.limit_length(settings.hint_drag_max_dp)
+	var on_tile: bool = anchor == TutorialBeatDef.Anchor.TILE and camera != null and not lead
+	var away: Vector2 = Vector2.ZERO  # Where the aimed tile or unit stands, when it is out of reach.
+	if on_tile:
+		away = _tile_screen(aim, camera)
+	elif on_unit and not unit.in_field:
+		away = unit.point
+	if (on_tile and not safe.has_point(away)) or (on_unit and not unit.in_field):
+		if (aim.gesture if on_unit else want) == TutorialBeatDef.Gesture.NONE:
+			return
+		want = TutorialBeatDef.Gesture.DRAG
+		off_screen = true
+		shiftable = true
+		point = away.clamp(safe.position, safe.end)
+		var way: Vector2 = (field_of.call() - point) / dp
+		if way != Vector2.ZERO:
+			vector_dp = way.limit_length(settings.hint_drag_max_dp)
 	if not off_screen:
 		if lead:
 			want = TutorialBeatDef.Gesture.TAP
@@ -85,6 +92,8 @@ func resolve(
 				if camera == null:
 					return
 				point = _tile_screen(aim, camera)
+			TutorialBeatDef.Anchor.UNIT:
+				point = unit.point
 			_:
 				point = field_of.call()
 				shiftable = true
@@ -154,7 +163,7 @@ static func _tile_screen(aim: TutorialLeadInDef, camera: RtsCamera) -> Vector2:
 static func _auto(
 	beat: TutorialBeatDef, anchor: TutorialBeatDef.Anchor, camera: RtsCamera
 ) -> TutorialBeatDef.Gesture:
-	if anchor == TutorialBeatDef.Anchor.CONTROL:
+	if anchor == TutorialBeatDef.Anchor.CONTROL or anchor == TutorialBeatDef.Anchor.UNIT:
 		return TutorialBeatDef.Gesture.TAP
 	if beat.kind == TutorialConditions.Kind.CAMERA_PANNED:
 		return TutorialBeatDef.Gesture.DRAG

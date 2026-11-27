@@ -57,6 +57,9 @@ func begin(id: StringName) -> void:
 	mark.name = &"CoachMark"
 	mark.director = director
 	mark.camera = director.camera
+	mark.runner = director.runner
+	mark.ground_layer = _find(main, "UnitLayer") as UnitLayer
+	mark.air_layer = _find(main, "AirLayer") as AirLayer
 	mark.hud_root = layer
 	layer.add_child(mark)
 	director.lesson_done.connect(_leave)
