@@ -25,7 +25,18 @@ const SHEEN: String = "sheen:"
 const SOLIDS: Array[StringName] = [&"box", &"wedge", &"prism"]
 const NONE: Array[StringName] = [&"lamp", &"glass", &"mint", &"hole", &"interior"]
 const METAL: Array[StringName] = [
-	&"steel", &"iron", &"olive", &"titanium", &"graphite", &"bluegrey", &"ceramic", &"rust", &"beam"
+	&"steel",
+	&"iron",
+	&"olive",
+	&"titanium",
+	&"graphite",
+	&"bluegrey",
+	&"ceramic",
+	&"rust",
+	&"beam",
+	&"gunmetal",
+	&"gunsteel",
+	&"gunbody",
 ]
 const CELL_TILES: float = 0.3  ## A panel cell, the tanks' size (ADR 0050 section 1).
 const SEAM_PX: float = 1.2
