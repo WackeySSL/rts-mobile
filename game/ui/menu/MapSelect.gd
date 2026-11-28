@@ -13,8 +13,8 @@ extends MenuScreen
 ## computer plays the other side. The banner band is the slot's; the offer slot holds Phase 6's
 ## `StartCreditsOffer` (P433), which owns every ad call; none lives here. Above the map
 ## rows the chosen map's picture (P666b, `MapPreview`: its terrain in the minimap's colours and each
-## side's start in its team colour, built from the scenario's data and kept per file) with the map's
-## name small on it; a map above the player's rank is dimmed by a theme token. It is a menu: no
+## side's start in its team colour, built from the scenario's data and kept per file), in a
+## frame that hugs it; a map above the player's rank is dimmed by a theme token. It is a menu: no
 ## Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
@@ -77,7 +77,6 @@ var _notes: Dictionary[StringName, Control] = {}  ## Its lock row (glyph and RAN
 var _choice_labels: Dictionary[StringName, Label] = {}  ## A step header's current choice.
 var _summary: Label
 var _preview: TextureRect
-var _preview_name: Label
 var _preview_dim: Panel
 var _seen_scroll: int = 0  ## The scroll at the end of the last frame (a turn clamps it first).
 var _step_words: Array[Label] = []  ## The numbers and titles of the step headers.
@@ -317,13 +316,14 @@ func _step(number: int, title: StringName, key: StringName) -> VBoxContainer:
 	return box
 
 
-## The map's picture: a framed panel holding the image, a dimming layer (shown for a locked map)
-## and the map's name small at its foot. It takes no touch.
+## The map's picture: a framed panel holding the image, a dimming layer (shown for a locked map).
+## The frame is as wide as the picture, centred. It takes no touch.
 func _build_preview(parent: Control) -> void:
 	var slot: PanelContainer = PanelContainer.new()
 	slot.name = &"MapPreviewSlot"
 	slot.theme_type_variation = &"MenuMapPreview"
 	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # The frame hugs the picture.
 	parent.add_child(slot)
 	_preview = TextureRect.new()
 	_preview.name = &"MapPreview"
@@ -337,11 +337,6 @@ func _build_preview(parent: Control) -> void:
 	_preview_dim.theme_type_variation = &"MenuMapPreviewDim"
 	_preview_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	slot.add_child(_preview_dim)
-	_preview_name = _label(slot, "", &"MenuMapPreviewName")
-	_preview_name.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_preview_name.autowrap_mode = TextServer.AUTOWRAP_OFF
-	_preview_name.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	_preview_name.size_flags_vertical = Control.SIZE_SHRINK_END
 
 
 ## Shows the picture of the chosen map for the chosen side (the team colours follow the side).
@@ -350,8 +345,12 @@ func _show_preview() -> void:
 		return
 	var opponent_side: StringName = RENEW if side == FOSSIL else FOSSIL
 	var path: String = catalog.scenario_path(map_id, side, opponent_side)
-	_preview.texture = MapPreview.texture_for(path) if not path.is_empty() else null
-	_preview_name.text = catalog.title(map_id).to_upper()
+	var texture: ImageTexture = MapPreview.texture_for(path) if not path.is_empty() else null
+	_preview.texture = texture
+	var aspect: float = (
+		1.0 if texture == null else float(texture.get_width()) / texture.get_height()
+	)
+	_preview.custom_minimum_size.x = UiScale.dp(PREVIEW_DP) * aspect
 	_preview_dim.visible = map_id != &"" and not is_open(KIND_MAP, map_id)
 
 

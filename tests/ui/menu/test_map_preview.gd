@@ -96,13 +96,11 @@ func test_the_picture_is_kept_per_scenario_file() -> void:
 func test_the_preview_follows_the_map_and_the_side() -> void:
 	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]))
 	assert_object(_screen._preview.texture).is_same(MapPreview.texture_for(KESTREL))
-	assert_str(_screen._preview_name.text).is_equal("KESTREL FLATS")
 	assert_bool(_screen._preview_dim.visible).is_false()
 	_progression.rank_now = 99
 	_screen._refresh()
 	_screen._pick_map(&"map_2")
 	assert_object(_screen._preview.texture).is_same(MapPreview.texture_for(HERON))
-	assert_str(_screen._preview_name.text).is_equal("HERON FORDS")
 	_screen._pick_map(&"kestrel_flats")
 	_screen._pick_side(&"renew")
 	assert_object(_screen._preview.texture).is_same(MapPreview.texture_for(KESTREL_MIRRORED))
