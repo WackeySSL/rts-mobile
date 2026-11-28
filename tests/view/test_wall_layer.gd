@@ -6,6 +6,7 @@ extends GdUnitTestSuite
 
 const Rig: GDScript = preload("res://tests/view/support/wall_rig.gd")
 const FogRig: GDScript = preload("res://tests/view/support/fog_rig.gd")
+const MenuRig: GDScript = preload("res://tests/support/menu_rig.gd")
 const BLOCK: Array[int] = [9, 10, 17, 18]  ## Cell indices, 8 wide.
 
 var _runner: MatchRunner
@@ -15,6 +16,7 @@ var _layer: WallLayer
 
 
 func before_test() -> void:
+	MenuRig.begin()  # One test builds the main scene (test_menu_rig_scan).
 	_runner = auto_free(MatchRunner.new())
 	_runner.snapshot = Rig.snapshot(true)
 	_sort = auto_free(WorldSort.new())
@@ -23,6 +25,10 @@ func before_test() -> void:
 	_fog.runner = _runner
 	add_child(_fog)
 	_fog.set_process(false)
+
+
+func after_test() -> void:
+	MenuRig.end()
 
 
 func test_with_the_flag_off_there_is_no_wall_node_and_no_band() -> void:
