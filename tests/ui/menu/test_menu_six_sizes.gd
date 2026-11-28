@@ -113,6 +113,10 @@ func test_the_profiles_cover_the_six_sizes_and_their_portrait_twins() -> void:
 func test_the_main_menu_and_the_rank_screen_fit_at_every_size() -> void:
 	await _check_every_size(MAIN, false)
 	await _check_every_size(RANK, false)
+	# P673d: the Trophies part again, some rows lit and some dim (with progress words).
+	var earned: Array[String] = ["first_sortie", "ground_won", "flats_fords_crags"]
+	_save.call("set_section", &"career", {"format": 1, "finished": 12, "wins": 4, "earned": earned})
+	await _check_every_size(RANK, true)
 
 
 func test_the_map_select_fits_at_every_size() -> void:
