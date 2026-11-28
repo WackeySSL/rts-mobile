@@ -178,7 +178,7 @@ func _fill(snap: MatchSnapshot) -> void:
 		if first or terrain[cell] != _seen[cell]:
 			touched.append(cell)
 			_put_base(terrain, Vector2i(cell % _cols, cell / _cols))
-	if _used_kit != null:
+	if _used_kit != null and _cols > 0:  # A snapshot with no map (tests, menus) has no columns.
 		var rows: int = terrain.size() / _cols
 		var near: Dictionary[int, bool] = {}
 		for cell: int in touched:
