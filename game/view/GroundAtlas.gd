@@ -145,7 +145,7 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 		for kind: StringName in kit.kinds.get(id, PackedStringArray()):
 			if kind != TerrainKit.BASE and kind != TerrainKit.BLEND and kind != TerrainKit.SHORE:
 				continue
-			for mask: StringName in kit.masks.get(kind, PackedStringArray()):
+			for mask: StringName in _masks_of(kit, id, kind):
 				var key: StringName = TerrainKitDef.key(id, kind, mask)
 				var image: Image = _kit_image(kit.path_of(id, kind, mask))
 				if image != null and kit.pieces.has(key):
@@ -164,6 +164,17 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 	var cell: Vector2i = RuntimeAtlas.cell_size(KIT_TILE_PX)
 	_kit_page = RuntimeAtlas.build_images(images, KIT_PAGE_WIDTH_PX)
 	_fill_tile_set(kit_tile_set, _kit_page, KIT_TILE_PX, images.keys(), cell, _kit_tiles)
+
+
+## The masks of `kind` on terrain `id`: a base takes every variant the kit lists for it (its
+## `variant_counts`, stones included), a blend or a shore the kind's mask names.
+static func _masks_of(kit: TerrainKitDef, id: StringName, kind: StringName) -> PackedStringArray:
+	if kind != TerrainKit.BASE:
+		return kit.masks.get(kind, PackedStringArray())
+	var names: PackedStringArray = PackedStringArray()
+	for variant: int in kit.variants_of(id, kind):
+		names.append(str(variant))
+	return names
 
 
 ## A piece's image, null when it is missing or not exactly 128 x 64 (every ground piece is flat).
