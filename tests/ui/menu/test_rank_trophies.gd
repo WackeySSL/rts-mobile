@@ -173,10 +173,9 @@ func _close() -> void:
 
 func _rows() -> Array[Node]:
 	var rows: Array[Node] = []
-	for child: Node in _screen.column.get_children():
-		for section: Node in child.get_children():
-			if section is RankTrophySection:
-				rows.assign(section.get_children())
+	# The section sits inside the screen's pair (column > Pair > one cell > box).
+	for section: Node in _screen.find_children("*", "RankTrophySection", true, false):
+		rows.assign(section.get_children())
 	return rows
 
 

@@ -2252,6 +2252,7 @@ Type variations of `game/ui/theme.tres` for the menu screens. They are the pause
 | `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
 | `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |
 | `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: the amber 2 dp edge on the dark amber fill (P666); locked: dim plate |
+| `MenuSectionPlate` (PanelContainer) | each paired section of the Rank screen (Progress, Trophies), heading included | the map card's dark fill at 88 % alpha, a 1 dp `border` edge, 8 dp corners, 12 dp margins; keeps the hint lines readable over the key art (P673e) |
 | `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp edge and 22 dp text in `money` (v3 #F4B653) |
 | `MenuXpBar` (ProgressBar) | the XP bar | `border` track (v3 #33434A), `money` fill (v3 #F4B653), 4 dp corners |
 
