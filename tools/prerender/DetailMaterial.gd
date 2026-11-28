@@ -15,3 +15,4 @@ enum Kind { BODY, TEAM, GEAR, GLASS, LAMP, CLOTH, GROUND, CLIFF }
 @export var kind: Kind = Kind.BODY
 
 @export var patch: Color = Color.WHITE  ## Ground: the tint of its low-frequency darker patches.
+@export var grain: Vector3 = Vector3(0.75, 0.6, 0.4)  ## Ground: soft, mid, fine grain weights.

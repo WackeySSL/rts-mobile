@@ -7,12 +7,10 @@ extends Resource
 ## `variants - 1`), a `road` piece's terrain is the ground it lies on.
 
 const TILE: Vector2i = Vector2i(128, 64)  ## A ground diamond in texels (drawn at scale 0.5).
-const RISE_MAX: int = 64  ## One diamond height, texels: a raised rock cell's rise (P656d2, P656d4).
-
-## Same names and values as P656d4's (the art lane): the later merge is trivial.
-## The wall pieces (ADR 0053 section 7, amendment A1 and A3): rock's `wall_top`, `wall_face` and
-## `wall_rim` kinds. Each is a 128 x 136 canvas whose ground centre is `WALL_ORIGIN`; the raised
-## prism fills rows 8 to 136 and at most `RIM_MAX` texels above it hold the ragged back edge.
+## A raised rock cell's rise, texels: one diamond height (ADR 0053 section 7, amendment A1).
+const RISE_MAX: int = 64
+## A wall piece's canvas, texels, and where the cell's ground centre lies in it (amendment A3): the
+## prism fills rows 8 to 136, `RIM_MAX` rows above it may hold the ragged back edge.
 const WALL_CANVAS: Vector2i = Vector2i(128, 136)
 const WALL_ORIGIN: Vector2i = Vector2i(64, 104)
 const RIM_MAX: int = 8
