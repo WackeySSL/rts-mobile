@@ -96,3 +96,27 @@ func _see_all() -> void:
 		for x: int in 32:
 			tiles.append(Vector2i(x, y))
 	Buildings.see(_runner.snapshot, 1, tiles)
+
+
+func test_a_falling_flyer_drifting_off_a_wall_drops_its_shadow_to_the_ground() -> void:
+	_layer.life.air_fall_drift_milli = 4000
+	_fly_to(WALL_TILE * 1000 + 500, 8500)
+	var rig: AirLayer.Rig = _layer.rig_of(FIGHTER_ID)
+	rig.aim = 0.0
+	rig.heading = 0.0  # Drifts +x, off the raised cell onto flat ground.
+	_runner.world.hp[ROW] = 0
+	_runner.run_ticks(1)
+	_see_all()
+	_layer._process(0.0)
+	assert_int(_layer.falling_count()).is_equal(1)
+	assert_bool(rig.shadow_up).is_true()
+	var left: bool = false
+	for _tick: int in 8:
+		_runner.run_ticks(1)
+		_layer._process(0.0)
+		if _layer.falling_count() == 0:
+			break
+		left = left or not rig.shadow_up
+	assert_bool(left).is_true()
+	assert_int(rig.shadow.z_index + _layer.z_index).is_equal(2)
+	assert_float(rig.shadow.position.y).is_equal(0.0)

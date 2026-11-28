@@ -470,6 +470,9 @@ func _fall(now_ms: float) -> void:
 			_pool_rig(rig)
 			continue
 		rig.position = rig.origin + rig.drift * t
+		if walls != null and runner.snapshot != null:
+			var at_milli: Vector2i = IsoProjection.px_to_ground(rig.position)
+			_shadow_to(rig, walls.is_wall(runner.snapshot.cell_of(at_milli.x, at_milli.y)))
 		_lift(rig, rig.lift * (1.0 - t * t))
 		at += 1
 
