@@ -64,9 +64,14 @@ func _add_section(
 			_pair = BoxContainer.new()
 			_pair.name = &"Pair"
 			column.add_child(_pair)
+		var plate: PanelContainer = PanelContainer.new()
+		plate.theme_type_variation = &"MenuSectionPlate"  # Dark ground over the key art.
+		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plate.mouse_filter = Control.MOUSE_FILTER_PASS
+		_pair.add_child(plate)
 		holder = VBoxContainer.new()
-		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		_pair.add_child(holder)
+		holder.mouse_filter = Control.MOUSE_FILTER_PASS
+		plate.add_child(holder)
 	_heading(heading_key, &"MenuEyebrow", holder)
 	var box: VBoxContainer = VBoxContainer.new()
 	holder.add_child(box)
