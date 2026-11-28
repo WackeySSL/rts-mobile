@@ -5,7 +5,7 @@ extends Node
 ## through it) and an own and an enemy tank in front of it. Not part of the game.
 ##   xvfb-run -a -s "-screen 0 1400x1400x24" godot --rendering-driver opengl3 --path . \
 ##     res://scenes/dev/silhouette_capture.tscn -- --out=<dir>
-## Writes `sil-<landscape|portrait>-<zoom>x.png` for zoom 0.75 and 2.0.
+## Writes `sil-<landscape|portrait>-<zoom>x.png` for zoom 0.75, 1.0 and 2.0.
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SCENARIO: String = "res://data/scenarios/skirmish_curlew_crags.tres"
@@ -14,7 +14,7 @@ const SIZES: Dictionary[String, Vector2i] = {
 	"landscape": Vector2i(1280, 720),
 	"portrait": Vector2i(720, 1280),
 }
-const ZOOMS: Array[float] = [0.75, 2.0]
+const ZOOMS: Array[float] = [0.75, 1.0, 2.0]
 const SETTLE_FRAMES: int = 24
 
 var _out: String = ""
