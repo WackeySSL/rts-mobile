@@ -980,7 +980,7 @@ body = "The main menu is a numbered list of big buttons, each with its arrow: Co
 script = ExtResource("3_ent")
 id = &"menus-rank"
 title = "Your rank"
-body = "Rank on the main menu opens your commander screen: your rank with its stripes and title, a bar that fills as you earn XP and, under Next unlock, the next map or computer opponent you will open and the rank that opens it. At the top rank it says that everything is open. Under Trophies, sixteen badges show what you have earned: a lit badge says EARNED, a dim one says how to earn it and, where it counts, how far you are, such as 7/10. Trophies give no reward; they are kept for good. Back returns to the main menu."
+body = "Rank on the main menu opens your commander screen: your rank with its stripes and title, a bar that fills as you earn XP and, under Next unlock, the next map or computer opponent you will open and the rank that opens it. At the top rank it says that everything is open. Progress comes first: a grid shows your skirmish wins for each map and level, where a map or level you have not opened yet shows a lock and the rank that opens it, then the lessons you have done, the matches you have played, your wins, the time you have played and your fastest win. Wins, time and the fastest win count from this update on. Under Trophies, sixteen badges show what you have earned: a lit badge says EARNED, a dim one says how to earn it and, where it counts, how far you are, such as 7/10. Trophies give no reward; they are kept for good. On a wide screen Progress and Trophies stand side by side, Progress on the left; on a narrow one Progress comes first and Trophies below it. Back returns to the main menu."
 
 [sub_resource type="Resource" id="e144"]
 script = ExtResource("3_ent")

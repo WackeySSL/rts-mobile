@@ -36,11 +36,38 @@ static func build(
 static func build_images(
 	sources: Dictionary[StringName, Image],
 	width_px: int = DEFAULT_WIDTH_PX,
-	keep_image: bool = true
+	keep_image: bool = true,
+	band: Dictionary[StringName, Image] = {}
 ) -> RuntimeAtlas:
 	var atlas: RuntimeAtlas = RuntimeAtlas.new()
 	var keys: Array[StringName] = []
 	var cells: Array[Vector2i] = []
+	_ready_cells(sources, keys, cells)
+	var band_keys: Array[StringName] = []
+	var band_cells: Array[Vector2i] = []
+	_ready_cells(band, band_keys, band_cells)
+	if keys.is_empty() and band_keys.is_empty():
+		return atlas
+	var places: Array[Vector2i] = []
+	var page: Vector2i = layout(cells, width_px, places)
+	# A band is packed after every source, on shelves of its own below them: no region above moves.
+	var band_places: Array[Vector2i] = []
+	var band_page: Vector2i = layout(band_cells, maxi(page.x, width_px), band_places)
+	atlas._image = Image.create(
+		maxi(page.x, band_page.x), page.y + band_page.y, false, Image.FORMAT_RGBA8
+	)
+	atlas._place(sources, keys, places, Vector2i.ZERO)
+	atlas._place(band, band_keys, band_places, Vector2i(0, page.y))
+	atlas._texture = ImageTexture.create_from_image(atlas._image)
+	if not keep_image:
+		atlas._image = Image.new()
+	return atlas
+
+
+## Makes the usable sources RGBA8 in place and lists their keys and padded cells.
+static func _ready_cells(
+	sources: Dictionary[StringName, Image], keys: Array[StringName], cells: Array[Vector2i]
+) -> void:
 	for key: StringName in sources:
 		var image: Image = sources[key]
 		if image == null or image.is_empty():
@@ -52,21 +79,21 @@ static func build_images(
 			image.convert(Image.FORMAT_RGBA8)
 		keys.append(key)
 		cells.append(cell_size(image.get_size()))
-	if keys.is_empty():
-		return atlas
-	var places: Array[Vector2i] = []
-	var page: Vector2i = layout(cells, width_px, places)
-	atlas._image = Image.create(page.x, page.y, false, Image.FORMAT_RGBA8)
+
+
+## Stamps `keys` of `sources` at `places` (cell top-lefts) plus `shift`, and records their regions.
+func _place(
+	sources: Dictionary[StringName, Image],
+	keys: Array[StringName],
+	places: Array[Vector2i],
+	shift: Vector2i
+) -> void:
 	for index: int in keys.size():
 		var image: Image = sources[keys[index]]
-		_stamp(atlas._image, image, places[index])
-		atlas._regions[keys[index]] = Rect2i(
-			places[index] + Vector2i(GUTTER_PX, GUTTER_PX), image.get_size()
+		_stamp(_image, image, places[index] + shift)
+		_regions[keys[index]] = Rect2i(
+			places[index] + shift + Vector2i(GUTTER_PX, GUTTER_PX), image.get_size()
 		)
-	atlas._texture = ImageTexture.create_from_image(atlas._image)
-	if not keep_image:
-		atlas._image = Image.new()
-	return atlas
 
 
 ## The padded cell of an image of `size`: the gutter on every side.

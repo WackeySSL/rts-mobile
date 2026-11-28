@@ -50,6 +50,21 @@ func test_each_label_look_reads_on_its_plate() -> void:
 		_check(look, _node(Label.new(), look).get_theme_color(&"font_color"), ground)
 
 
+## P673e: the Rank screen's section plate keeps the hint grey and the default label colour at
+## 4.5:1, over the menu backdrop and over white (the brightest the key art gets).
+func test_the_section_plate_keeps_hint_and_body_text_readable() -> void:
+	var panel: PanelContainer = _node(PanelContainer.new(), &"MenuSectionPlate") as PanelContainer
+	var box: StyleBoxFlat = panel.get_theme_stylebox(&"panel") as StyleBoxFlat
+	assert_float(box.bg_color.a).is_equal_approx(0.88, 0.01)
+	assert_int(box.corner_radius_top_left).is_equal(8)
+	assert_int(box.border_width_left).is_equal(1)
+	for ground: Color in [BACKDROP, Color(1.0, 1.0, 1.0, 1.0)]:
+		var plate: Color = _over(box, ground)
+		for look: StringName in [&"MenuFooterHint", &""]:
+			var text: Color = _node(Label.new(), look).get_theme_color(&"font_color")
+			_check(StringName("plate " + String(look)), text, plate)
+
+
 func test_each_button_look_reads_on_every_plate_state() -> void:
 	for look: StringName in BUTTONS:
 		var button: Control = _node(Button.new(), look)

@@ -33,6 +33,10 @@ extends Sprite2D
 ## the input lane): a snapshot with no map, or a player the fog has no grid for, has nothing to hide
 ## behind, so everything is seen.
 
+## The cells `_paint` just wrote (the whole grid on a rebuild): `WallLayer` switches the raised
+## walls' fog state from them (ADR 0053 A6). Read the target with `target_alpha`.
+signal painted(cells: PackedInt32Array)
+
 const UNEXPLORED_ALPHA: int = 255
 const VISIBLE_ALPHA: int = 0
 const BYTES_PER_TEXEL: int = 4  ## RGBA8: the colour bytes stay 0 (black) and the alpha is the last.
@@ -134,6 +138,14 @@ func last_update_usec() -> int:
 	return _update_usec
 
 
+## The alpha `cell` is painted to or fading to (the fade's goal): 0 seen, `explored_alpha` explored,
+## 255 never explored. 0 for a cell outside the image.
+func target_alpha(cell: int) -> int:
+	var bytes: PackedByteArray = _goal if _fading else _bytes
+	var at: int = cell * BYTES_PER_TEXEL + ALPHA_BYTE
+	return bytes[at] if cell >= 0 and at < bytes.size() else VISIBLE_ALPHA
+
+
 ## The CPU-side image that is uploaded: cols x rows, the alpha of each tile in RGBA8.
 func image() -> Image:
 	return _image
@@ -221,6 +233,7 @@ func _paint(fog: FogGrid, player: int, shade: int, cells: PackedInt32Array) -> v
 		if counts[base + cell] > 0:
 			alpha = VISIBLE_ALPHA
 		bytes[cell * BYTES_PER_TEXEL + ALPHA_BYTE] = alpha
+	painted.emit(cells)
 
 
 ## Starts a fade from what the image shows now; the goal begins equal and the paints move it.
