@@ -11,6 +11,11 @@ const PAGE_WIDTH: int = 4096  ## ADR 0053 section 7: the ground page is at most 
 const PAGE_ROWS: int = 512
 const GUTTER: int = 2  ## What the atlas keeps between two pieces, px.
 const WALL_KINDS: Array[StringName] = [&"wall_top", &"wall_face", &"wall_rim"]
+const STONE_SURFACES: Array[Array] = [
+	[&"grass", &"base", 32],
+	[&"rock", &"base", 32],
+	[&"rock", &"wall_top", 40],
+]
 
 
 func _kit() -> TerrainKitDef:
@@ -31,12 +36,35 @@ func _is_wall(item: Array) -> bool:
 	return item[1] in WALL_KINDS
 
 
-## Every piece the kit lists as [terrain, kind, mask, path].
+## The variant names of `terrain`'s `kind` (`base` or `wall_top`): the kit's `variant_counts` when
+## it has them (P656d1's schema), else the PNGs on disk, `<terrain>_<kind>_<n>.png` for n = 0, 1,
+## ...
+func _variant_names(kit: TerrainKitDef, terrain: StringName, kind: StringName) -> PackedStringArray:
+	var found: PackedStringArray = PackedStringArray()
+	var counts: Variant = kit.get("variant_counts")
+	var named: StringName = StringName("%s/%s" % [terrain, kind])
+	if counts is Dictionary and (counts as Dictionary).has(named):
+		for number: int in int((counts as Dictionary)[named]):
+			found.append(str(number))
+		return found
+	var stem: String = "%s_%s_" % [terrain, kind]
+	var number: int = 0
+	while FileAccess.file_exists(kit.dir.path_join("%s%d.png" % [stem, number])):
+		found.append(str(number))
+		number += 1
+	return found
+
+
+## Every piece the kit lists as [terrain, kind, mask, path]; the variants of `base` and `wall_top`
+## come from `_variant_names`.
 func _all(kit: TerrainKitDef) -> Array[Array]:
 	var found: Array[Array] = []
 	for terrain: StringName in kit.terrains:
 		for kind: StringName in kit.kinds[terrain]:
-			for mask: StringName in kit.masks[kind]:
+			var masks: PackedStringArray = kit.masks[kind]
+			if kind == &"base" or kind == &"wall_top":
+				masks = _variant_names(kit, terrain, kind)
+			for mask: StringName in masks:
 				found.append([terrain, kind, mask, kit.path_of(terrain, kind, mask)])
 	return found
 
@@ -45,9 +73,14 @@ func test_every_sim_terrain_has_all_its_base_variants() -> void:
 	var kit: TerrainKitDef = _kit()
 	for terrain: TerrainDef in _sim().terrains:
 		assert_bool(kit.terrains.has(String(terrain.id))).is_true()
-		for variant: int in kit.variants:
-			assert_str(kit.path_of(terrain.id, &"base", StringName(str(variant)))).is_not_empty()
-	assert_int(kit.variants).is_equal(4)
+		var names: PackedStringArray = _variant_names(kit, terrain.id, &"base")
+		assert_int(names.size()).is_greater_equal(4)
+		for name: String in names:
+			assert_str(kit.path_of(terrain.id, &"base", StringName(name))).is_not_empty()
+	# The stone variants: grass base 0 and 1 are plain, 2 to 7 carry stones; rock has 0 to 2 plain.
+	assert_int(_variant_names(kit, &"grass", &"base").size()).is_equal(8)
+	assert_int(_variant_names(kit, &"rock", &"base").size()).is_equal(9)
+	assert_int(_variant_names(kit, &"rock", &"wall_top").size()).is_equal(9)
 
 
 func test_every_mask_of_the_table_has_a_piece_that_exists() -> void:
@@ -303,78 +336,160 @@ func test_no_blend_or_shore_has_a_shadow_texel_at_the_diamond_edge() -> void:
 		)
 
 
-## A boulder is a raised stone, not a crater (Michael, 2026-11-28): the texels that differ from the
-## boulder-free sibling (the stone and its cast shadow) are lighter on the whole, the lit side is
-## well above the ground, and the darkest texels lie away from the light (the sun is up and to the
-## left, +gx is down and to the right on screen), beside the stone and not in a ring around it.
-func test_a_boulder_is_a_lit_stone_with_its_shadow_on_the_side_away_from_the_light() -> void:
-	var pairs: Array[Array] = [
-		[&"rock", &"wall_top", &"3", &"0", 40],
-		[&"rock", &"base", &"3", &"0", 32],
-		[&"grass", &"base", &"2", &"0", 32],
-	]
+## The stone variants (Michael, 2026-11-28: stones of different sizes, colours and positions). A
+## variant carries stones when it differs from its plain sibling (variant 0). For every one of them:
+## each stone (a lit patch) is clearly lighter than the ground under it, the darkest texels (crease
+## and shadow) lie away from the light (the sun is up and to the left, +gx is down and to the right
+## on screen), and nothing of a stone or its shadow comes within 12 texels of the diamond's edge.
+## Across a surface the variants differ in count, size and tone.
+
+
+## The 8-connected groups of `cells` (a set of Vector2i).
+func _groups(cells: Dictionary) -> Array[Array]:
+	var seen: Dictionary = {}
+	var groups: Array[Array] = []
+	for start: Vector2i in cells:
+		if seen.has(start):
+			continue
+		var group: Array[Vector2i] = []
+		var stack: Array[Vector2i] = [start]
+		seen[start] = true
+		while not stack.is_empty():
+			var at: Vector2i = stack.pop_back()
+			group.append(at)
+			for dy: int in range(-1, 2):
+				for dx: int in range(-1, 2):
+					var next: Vector2i = at + Vector2i(dx, dy)
+					if cells.has(next) and not seen.has(next):
+						seen[next] = true
+						stack.append(next)
+		groups.append(group)
+	return groups
+
+
+func _centroid(points: Array) -> Vector2:
+	var sum: Vector2 = Vector2.ZERO
+	for p: Vector2i in points:
+		sum += Vector2(p)
+	return sum / maxi(points.size(), 1)
+
+
+func test_every_stone_variant_has_lit_stones_and_its_shadow_away_from_the_light() -> void:
 	var kit: TerrainKitDef = _kit()
-	for pair: Array in pairs:
-		var image: Image = _image(kit.path_of(pair[0], pair[1], pair[2]))
-		var sibling: Image = _image(kit.path_of(pair[0], pair[1], pair[3]))
-		var name: String = "%s/%s/%s" % [pair[0], pair[1], pair[2]]
-		var changed: Array[Vector2i] = []
-		var lit: Array[Vector2i] = []
-		var sum_stone: float = 0.0
-		var sum_ground: float = 0.0
-		for y: int in image.get_height():
-			for x: int in image.get_width():
-				var c: Color = image.get_pixel(x, y)
-				var g: Color = sibling.get_pixel(x, y)
-				if c.a > 0.9 and absf(c.v - g.v) + absf(c.s - g.s) > 0.012:
-					changed.append(Vector2i(x, y))
-					sum_stone += c.v
-					sum_ground += g.v
-					if c.v - g.v > 0.05:
-						lit.append(Vector2i(x, y))
-					var rim: float = (
-						(1.0 - absf(x + 0.5 - 64.0) / 64.0 - absf(y + 0.5 - pair[4]) / 32.0) * 28.6
-					)
-					(
-						assert_float(rim)
-						. override_failure_message(
-							(
-								"%s: a stone or shadow texel at (%d, %d) reaches the diamond's edge"
-								% [name, x, y]
-							)
-						)
-						. is_greater(2.0)
-					)
-		assert_int(lit.size()).override_failure_message(name + ": no lit side").is_greater(60)
-		(
-			assert_float(sum_stone / changed.size() - sum_ground / changed.size())
-			. override_failure_message(
-				name + ": the stone is not lighter than the ground it sits on"
-			)
-			. is_greater(0.05)
-		)
-		# The darkest tenth of the changed texels against the centre of the lit side.
+	var away_axis: Vector2 = Vector2(64.0, 32.0).normalized()
+	for surface: Array in STONE_SURFACES:
+		var names: PackedStringArray = _variant_names(kit, surface[0], surface[1])
+		var plain: Image = _image(kit.path_of(surface[0], surface[1], &"0"))
+		var stone_variants: int = 0
+		var masks: Array[Dictionary] = []
+		var centres: Array[Vector2] = []
+		var areas: Array[int] = []
 		var values: Array[float] = []
-		for p: Vector2i in changed:
-			values.append(image.get_pixel(p.x, p.y).v)
-		values.sort()
-		var cut: float = values[changed.size() / 10]
-		var centre: Vector2 = Vector2.ZERO
-		for p: Vector2i in lit:
-			centre += Vector2(p)
-		centre /= lit.size()
-		var dark: Vector2 = Vector2.ZERO
-		var count: int = 0
-		for p: Vector2i in changed:
-			if image.get_pixel(p.x, p.y).v <= cut:
-				dark += Vector2(p)
-				count += 1
-		dark /= count
-		var away: float = (dark - centre).dot(Vector2(64.0, 32.0).normalized())
-		(
-			assert_float(away)
-			. override_failure_message(
-				name + ": the darkest texels are not on the side away from the light"
+		var tones: Array[float] = []
+		for name: String in names:
+			var image: Image = _image(kit.path_of(surface[0], surface[1], StringName(name)))
+			var changed: Dictionary = {}
+			var lit: Dictionary = {}
+			for y: int in image.get_height():
+				for x: int in image.get_width():
+					var c: Color = image.get_pixel(x, y)
+					var g: Color = plain.get_pixel(x, y)
+					if c.a > 0.9 and absf(c.v - g.v) + absf(c.s - g.s) > 0.012:
+						changed[Vector2i(x, y)] = c.v
+						if c.v - g.v > 0.05:
+							lit[Vector2i(x, y)] = c.v - g.v
+			if changed.size() < 60:
+				continue  # a plain variant
+			stone_variants += 1
+			var label: String = "%s/%s/%s" % [surface[0], surface[1], name]
+			masks.append(changed)
+			centres.append(_centroid(changed.keys()))
+			# Nothing of a stone or its shadow within 12 texels of the diamond's edge.
+			for p: Vector2i in changed:
+				var depth: float = (
+					(1.0 - absf(p.x + 0.5 - 64.0) / 64.0 - absf(p.y + 0.5 - surface[2]) / 32.0)
+					* 28.6
+				)
+				(
+					assert_float(depth)
+					. override_failure_message(
+						(
+							"%s: a stone or shadow texel at %s is %.1f texels inside the edge"
+							% [label, p, depth]
+						)
+					)
+					. is_greater_equal(12.0)
+				)
+			# Each stone is a lit patch clearly lighter than the ground under it.
+			var blobs: Array[Array] = _groups(lit)
+			var stones: int = 0
+			for blob: Array in blobs:
+				if blob.size() < 6:
+					continue
+				stones += 1
+				var gain: float = 0.0
+				var value: float = 0.0
+				var hue: float = 0.0
+				for p: Vector2i in blob:
+					gain += lit[p]
+					value += image.get_pixel(p.x, p.y).v
+					hue += image.get_pixel(p.x, p.y).s
+				(
+					assert_float(gain / blob.size())
+					. override_failure_message(
+						(
+							"%s: a stone of %d texels is only %.3f lighter than the ground"
+							% [label, blob.size(), gain / blob.size()]
+						)
+					)
+					. is_greater(0.10)
+				)
+				areas.append(blob.size())
+				values.append(value / blob.size())
+				tones.append(hue / blob.size())
+			assert_int(stones).override_failure_message(label + ": no stone").is_between(1, 3)
+			# The darkest texels (crease and shadow) lie away from the light.
+			var cells: Array[Vector2i] = []
+			var ordered: Array[float] = []
+			for p: Vector2i in changed:
+				ordered.append(changed[p])
+			ordered.sort()
+			var cut: float = ordered[ordered.size() / 8]
+			for p: Vector2i in changed:
+				if changed[p] <= cut:
+					cells.append(p)
+			var lit_cells: Array = lit.keys()
+			var away: float = (_centroid(cells) - _centroid(lit_cells)).dot(away_axis)
+			(
+				assert_float(away)
+				. override_failure_message(
+					"%s: the darkest texels are not away from the light (%.1f)" % [label, away]
+				)
+				. is_greater(2.5)
 			)
-			. is_greater(6.0)
+		(
+			assert_int(stone_variants)
+			. override_failure_message("%s/%s: stone variants" % [surface[0], surface[1]])
+			. is_equal(6)
 		)
+		# The variants differ: no two share the same texels, sizes run from pebbles to boulders and
+		# the tones differ (value and saturation).
+		for a: int in masks.size():
+			for b: int in range(a + 1, masks.size()):
+				var common: int = 0
+				for p: Vector2i in masks[a]:
+					common += 1 if masks[b].has(p) else 0
+				assert_float(float(common) / (masks[a].size() + masks[b].size() - common)).is_less(
+					0.8
+				)
+		var spread: float = 0.0
+		for a: Vector2 in centres:
+			for b: Vector2 in centres:
+				spread = maxf(spread, a.distance_to(b))
+		assert_float(spread).override_failure_message("the stones all sit in one place").is_greater(
+			8.0
+		)
+		assert_int(areas.min()).is_less(40)
+		assert_int(areas.max()).is_greater(200)
+		assert_float(values.max() - values.min()).is_greater(0.04)
+		assert_float(tones.max() - tones.min()).is_greater(0.04)

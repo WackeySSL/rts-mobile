@@ -3315,12 +3315,18 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 - **Look** (reworked after Michael's no on 2026-11-27 to the first kit: stones everywhere, colours too
   dark; his reference is the P653 prototype's terrain, `docs/proto/p653/terrain_z1.png`). A base piece
   is a flat sheet in the terrain's colour with a soft grain (three scales, whole periods per tile,
-  amplitude about 5 % of the value): no stones, bushes, flecks or rings. Only one of the four grass
-  variants (`base_2`) and one of the four rock variants (`base_3`) carry one boulder: three
-  overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide, 0.8 as high as wide) of a light grey-beige
-  stone (value 0.8, lit on the top and left, its own shade on the right) with a soft three-step cast
-  shadow on the ground beside it, away from the light and inside the tile (Michael, 2026-11-28: "gør den
-  lysere med skygge"). The first boulder was a dark flat oval: its albedo (0.38) against the ground (0.59)
+  amplitude about 5 % of the value): no stones, bushes, flecks or rings. **The stone set** (Michael, 2026-11-28: "i forskellige størrelser, farver og
+  i et tilfældigt mønster"): grass `base` has 8 variants (0 and 1 plain, 2 to 7 with stones), rock `base`
+  and `wall_top` 9 each (0 to 2 plain, 3 to 8 with stones; the two numberings match, so a rock cell shows
+  the same variant flat or raised). The six stone variants are one big boulder (radius 0.17 tile, light
+  grey, near the centre), one medium stone (0.10, beige), a brown stone with a beige chip (0.125 and
+  0.07), a cluster of three small ones (0.075, 0.06, 0.05), two pebbles (0.058 and 0.05) and three mixed
+  stones (0.125, 0.075, 0.055). Three tones, all lighter than the ground: light grey (0.90, 0.89, 0.84),
+  warm beige (0.92, 0.84, 0.70) and brown-grey (0.80, 0.72, 0.64). A stone is a dome 0.75 to 0.9 as high
+  as wide, lit on the top and left, its own shade on the right, with a soft three-step cast shadow on the
+  ground beside it, away from the light. Positions are seeded and every stone and shadow texel lies at
+  least 12 texels inside the diamond's edge (`tests/art/test_terrain_kit.gd` pins lit side, shade side,
+  contrast and distance per stone). The first boulder was a dark flat oval: its albedo (0.38) against the ground (0.59)
   and the dark contact patch under it, with domes too shallow to show form. The baked contact shadow was
   not the cause: it lies under the opaque ground. **P656d's cell hash
   should give the boulder variant one cell in eight** (the other three variants share the rest),
@@ -3942,3 +3948,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-28 | v1.62 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |
 | 2026-11-28 | v1.63 (P656d4, art-director, ADR 0053 amendment A1 to A4, no rule change; nothing draws the walls yet): the Terrain kit's wall part, flat-topped (no kerb, Michael 2026-11-28): the 12 rock lips are gone, 11 wall pieces (`wall_top` 0 to 3, `wall_face` se, sw, s, `wall_rim` ne, nw, n, inner_n) on the 128 x 136 canvas with origin (64, 104), a raised cell 64 texels, baked by the P653 cliff method; the two water shore pieces that rose 1 and 2 texels are cut to their diamond |
 | 2026-11-28 | v1.64 (P656d4b, art-director, no rule change): the boulders of grass `base_2` and rock `base_3`, `wall_top_3` are raised stones (lighter, taller, a soft cast shadow beside them) instead of dark ovals |
+| 2026-11-28 | v1.65 (P656d4b, art-director, no rule change): the stone set: grass base 8 variants and rock base and wall_top 9, six stone variants of different count, size, tone and position |

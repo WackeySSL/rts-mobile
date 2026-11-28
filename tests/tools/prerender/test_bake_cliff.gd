@@ -160,4 +160,5 @@ func test_no_rim_or_tongue_rises_above_the_top_plane() -> void:
 				. is_less_equal(top + 0.0001)
 			)
 		checked += 1
-	assert_int(checked).is_equal(8 + 6 + 0)  # 6 rim parts (ne, nw, n x2, inner_n x2) and 8 tongues
+	# 6 rim parts (ne, nw, n x2, inner_n x2) and a tongue pair for each of the 9 plateau variants.
+	assert_int(checked).is_equal(6 + 2 * 9)
