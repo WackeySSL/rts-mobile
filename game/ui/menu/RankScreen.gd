@@ -10,6 +10,8 @@ extends MenuScreen
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const XP_BAR_DP: float = 12.0
+## The narrowest a paired section may be: the wins grid's four columns and the stat lines.
+const SECTION_DP: float = 400.0
 
 ## Tests inject these before the screen is pushed; null means the autoload and the data file.
 var progression: ProgressionScript = null
@@ -21,38 +23,74 @@ var _xp_label: Label
 var _xp_bar: ProgressBar
 var _unlock_label: Label
 var _progression: ProgressionScript
+var _progress: RankProgressSection
+## The sections that share a row where the width fits two (`_apply`), else stack.
+var _pair: BoxContainer
 
 
 func _ready() -> void:
 	super()
 	MainMenuText.register()
 	MapSelectText.register()
+	RankText.register()
 	_progression = progression if progression != null else (Progression as ProgressionScript)
 	_heading(MainMenuText.CARD, &"CapsTitle")
 	_build_rank_block()
 	_unlock_label = _add_section(MainMenuText.NEXT).get_child(0) as Label
+	_progress = RankProgressSection.new()
+	_add_section(RankText.PROGRESS, true, _progress)
 	use_footer()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
+	_apply()  # The sections exist now: lay out the pair.
 
 
 ## A section under the rank block: its heading (a `MenuEyebrow`) and a box to fill, which holds one
-## label to start with. Sections stack in the order they are added.
-func _add_section(heading_key: StringName) -> VBoxContainer:
-	_heading(heading_key, &"MenuEyebrow")
+## label to start with, or `content` in its place. Sections stack in the order they are added; the
+## `paired` ones share a row where the safe width fits two (`_apply`), never by orientation.
+func _add_section(
+	heading_key: StringName, paired: bool = false, content: Control = null
+) -> VBoxContainer:
+	var holder: VBoxContainer = column
+	if paired:
+		if _pair == null:
+			_pair = BoxContainer.new()
+			_pair.name = &"Pair"
+			column.add_child(_pair)
+		holder = VBoxContainer.new()
+		holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_pair.add_child(holder)
+	_heading(heading_key, &"MenuEyebrow", holder)
 	var box: VBoxContainer = VBoxContainer.new()
-	column.add_child(box)
+	holder.add_child(box)
+	if content != null:
+		box.add_child(content)
+		return box
 	var text: Label = Label.new()
 	text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(text)
 	return box
 
 
-func _heading(text_key: StringName, variation: StringName) -> void:
+## Two columns where the safe width holds two of `SECTION_DP` and the gap, one otherwise.
+func _apply() -> void:
+	super()
+	if _pair == null:
+		return
+	var gap: float = UiScale.dp(GAP_DP)
+	var room: float = column_room_px()
+	var two: bool = room >= 2.0 * UiScale.dp(SECTION_DP) + gap
+	_pair.vertical = not two
+	_pair.add_theme_constant_override("separation", roundi(gap))
+	if two:
+		column.custom_minimum_size.x = room
+
+
+func _heading(text_key: StringName, variation: StringName, into: Container = null) -> void:
 	var label: Label = Label.new()
 	label.text = tr(text_key)
 	label.theme_type_variation = variation
-	column.add_child(label)
+	(into if into != null else column).add_child(label)
 
 
 func _build_rank_block() -> void:
@@ -92,6 +130,8 @@ func _refresh() -> void:
 		else tr(MainMenuText.XP) % [total, next_xp]
 	)
 	_unlock_label.text = _unlock_text()
+	var maps: MapCatalog = catalog if catalog != null else load(MapCatalog.DEFAULT_PATH)
+	_progress.refresh(_progression, maps, TutorialDirector.lessons_done())
 
 
 ## The next unlock in words: the map's name or the computer's level, and the rank that opens it.
