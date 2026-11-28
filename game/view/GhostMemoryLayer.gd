@@ -4,7 +4,8 @@ extends Node2D
 ## ADR 0010 section 2, plan P115c; P84c's acceptance), drawn at z 12 (ADR 0053 A9): over the sorted
 ## world (10, which holds the raised walls), so a wall behind a remembered building never covers its
 ## roof; a remembered building exists only where no own unit sees, so no live unit stands at it.
-## A ghost is the building's body, the same atlas region as the live one, in the colour of its owner's side, and the whole layer carries one dim colour (`modulate`, the
+## A ghost is the building's body, the same atlas region as the live one, in the colour of its
+## owner's side, and the whole layer carries one dim colour (`modulate`, the
 ## black of the explored fog over the sprite: `1 - explored_alpha / 255` on each channel), so the
 ## ghosts are one draw call however many there are and no sprite is tinted of its own. A ghost has
 ## no health bar, no ring and no pick shape: it is a sprite and nothing else, not a row, so the
