@@ -21,6 +21,8 @@ const RIM_MAX: int = 8
 ## The land terrains that blend onto their neighbours, highest priority first: a terrain's blend
 ## piece is drawn on the cell of a lower one.
 @export var priority: PackedStringArray = PackedStringArray()
+## Terrain -> the boulder variant shows on one cell in this many (as P656d1 declares it).
+@export var boulder_one_in: Dictionary[StringName, int] = {}
 @export var masks: Dictionary[StringName, PackedStringArray] = {}  ## Kind -> its mask names.
 @export var kinds: Dictionary[StringName, PackedStringArray] = {}  ## Terrain -> the kinds it has.
 @export var pieces: Dictionary[StringName, String] = {}  ## `terrain/kind/mask` -> PNG file name.

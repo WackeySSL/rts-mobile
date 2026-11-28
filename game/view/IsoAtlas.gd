@@ -72,6 +72,13 @@ const UNSORTED_PARTS: Array[StringName] = [&"shadow"]
 const DAMAGE_SCALE: float = 0.75
 const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 
+## The wall band (ADR 0053 A5, plan P656d2): the raised walls' pieces, lit and dim, packed on
+## shelves of their own under every sheet's frames of `PAGE_SORTED`, after them, so no frame's
+## region moves, and drawn with no material. At most `WALL_BAND_ROWS_MAX` rows.
+const WALL_BAND_ROWS_MAX: int = 224
+const WALL_LIT: String = "lit:"
+const WALL_DIM: String = "dim:"
+
 static var _keys_built: int = 0
 
 var _pages: Array[RuntimeAtlas] = []  ## By page; filled in `_init`.
@@ -84,6 +91,7 @@ var _offsets: PackedVector2Array = PackedVector2Array()
 var _spans: PackedInt32Array = PackedInt32Array()  ## Parallel to `_table`: frames at a base.
 var _scale: float = 0.0
 var _bake_usec: int = 0
+var _band_rows: int = 0
 
 
 func _init() -> void:
@@ -132,14 +140,19 @@ static func build(
 	players: Array[IsoPlayerArt],
 	bake_scale: float,
 	keep_image: bool = false,
-	reader: Callable = Callable()
+	reader: Callable = Callable(),
+	walls: Dictionary[StringName, Image] = {},
+	wall_shade: int = 0
 ) -> IsoAtlas:
 	var started: int = Time.get_ticks_usec()
 	var atlas: IsoAtlas = IsoAtlas.new()
 	var plan: Plan = _collect(sheets, players, reader if reader.is_valid() else read_text)
-	var scale: float = _fit_pages(plan, bake_scale)
-	if scale > 0.0 and not _packing_order(plan, PAGE_SORTED).is_empty():
-		atlas._bake(plan, scale, keep_image)
+	var band: Dictionary[StringName, Image] = wall_band(walls, wall_shade)
+	var rows: int = band_rows(band)
+	var scale: float = _fit_pages(plan, bake_scale, rows)
+	if scale > 0.0 and (not _packing_order(plan, PAGE_SORTED).is_empty() or rows > 0):
+		atlas._bake(plan, scale, keep_image, band)
+		atlas._band_rows = rows
 	atlas._bake_usec = Time.get_ticks_usec() - started
 	return atlas
 
@@ -221,13 +234,19 @@ static func page_size(
 
 ## The scale a bake gets when every page must fit: the lowest of `fit_scale` of each page (an empty
 ## page fits at the requested scale), so the rule the tests pin is the one a match runs.
-static func _fit_pages(plan: Plan, requested: float) -> float:
+static func _fit_pages(plan: Plan, requested: float, reserve: int = 0) -> float:
 	var scale: float = requested
 	for page: int in PAGES:
 		var order: Array[StringName] = _packing_order(plan, page)
 		scale = minf(
 			scale,
-			fit_scale(_canvases(plan, order), requested, _factors(plan, order), _boxes(plan, order))
+			fit_scale(
+				_canvases(plan, order),
+				requested,
+				_factors(plan, order),
+				_boxes(plan, order),
+				reserve if page == PAGE_SORTED else 0
+			)
 		)
 	return scale
 
@@ -237,13 +256,14 @@ static func fit_scale(
 	canvases: Array[Vector2i],
 	requested: float,
 	factors: Array[float] = [],
-	boxes: Array[Rect2i] = []
+	boxes: Array[Rect2i] = [],
+	reserve: int = 0
 ) -> float:
 	assert(factors.is_empty() or factors.size() == canvases.size(), "one factor per canvas")
 	var scale: float = requested
 	while scale >= MIN_SCALE:
 		var page: Vector2i = page_size(canvases, scale, factors, boxes)
-		if page.x <= PAGE_MAX_PX and page.y <= PAGE_MAX_PX:
+		if page.x <= PAGE_MAX_PX and page.y + reserve <= PAGE_MAX_PX:
 			return scale
 		scale *= SCALE_STEP
 	return 0.0
@@ -341,6 +361,44 @@ func textures() -> Array[Texture2D]:
 ## The CPU-side page `page`, for tests: empty unless `build` got `keep_image`.
 func image(page: int = PAGE_SORTED) -> Image:
 	return _pages[page].image()
+
+
+## The band of `walls` (piece key -> its image): each piece lit and dim. The dim copy is the
+## fog's black over it: each texel's RGB times `1 - shade / 255` with its alpha kept (native
+## `Image.adjust_bcs`, not a per-texel loop). A copy is made, the caller's images stay as they are.
+static func wall_band(
+	walls: Dictionary[StringName, Image], shade: int
+) -> Dictionary[StringName, Image]:
+	var band: Dictionary[StringName, Image] = {}
+	for key: StringName in walls:
+		var image: Image = walls[key]
+		if image == null or image.is_empty():
+			continue
+		band[StringName(WALL_LIT + key)] = image
+		var dim: Image = image.duplicate()
+		dim.adjust_bcs(1.0 - clampf(shade / 255.0, 0.0, 1.0), 1.0, 1.0)
+		band[StringName(WALL_DIM + key)] = dim
+	return band
+
+
+## The rows a band takes under the sheets' frames (its shelves, gutters included).
+static func band_rows(band: Dictionary[StringName, Image]) -> int:
+	var cells: Array[Vector2i] = []
+	for key: StringName in band:
+		cells.append(RuntimeAtlas.cell_size(band[key].get_size()))
+	var places: Array[Vector2i] = []
+	return RuntimeAtlas.layout(cells, PAGE_MAX_PX, places).y if not cells.is_empty() else 0
+
+
+## The region of wall piece `key` (`TerrainKitDef.key`) on `PAGE_SORTED`, lit or dim; empty for a
+## piece the band does not hold.
+func wall_region(key: StringName, dim: bool) -> Rect2i:
+	return _pages[PAGE_SORTED].region(StringName((WALL_DIM if dim else WALL_LIT) + key))
+
+
+## How many rows the wall band takes on the sorted page, 0 with no walls.
+func wall_band_rows() -> int:
+	return _band_rows
 
 
 ## The scale the match got, 0.0 for an empty atlas.
@@ -486,12 +544,16 @@ static func _boxes(plan: Plan, order: Array[StringName]) -> Array[Rect2i]:
 
 ## Rasterises every page's slots at `scale` and packs them; every frame gets its slot's region and
 ## its page (`_table_page`).
-func _bake(plan: Plan, scale: float, keep_image: bool) -> void:
+func _bake(
+	plan: Plan, scale: float, keep_image: bool, band: Dictionary[StringName, Image] = {}
+) -> void:
+	var no_band: Dictionary[StringName, Image] = {}
 	for page: int in PAGES:
 		var order: Array[StringName] = _packing_order(plan, page)
-		if not order.is_empty():
+		if not order.is_empty() or (page == PAGE_SORTED and not band.is_empty()):
+			var page_band: Dictionary[StringName, Image] = band if page == PAGE_SORTED else no_band
 			_pages[page] = RuntimeAtlas.build_images(
-				_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image
+				_rasterise(plan, order, scale), PAGE_MAX_PX, keep_image, page_band
 			)
 	_scale = scale if texture() != null else 0.0
 	for page: int in PAGES:

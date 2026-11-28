@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The last-seen ghosts (plan P115c, ADR 0023 sections 2 and 3, P84c's acceptance): a remembered
-## enemy building is drawn at z 5 in `GhostMemoryLayer` from the local player's block of the
+## enemy building is drawn at z 12 in `GhostMemoryLayer` from the local player's block of the
 ## snapshot's ghost arrays, as the live building's body (the same atlas region, offset and scale)
 ## under one dim colour on the layer, on a footprint no cell of which is seen now, so exactly one
 ## of the live building and its ghost is drawn. The layer reads the arrays by `p * ghost_cap + i`,
@@ -76,9 +76,9 @@ func after_test() -> void:
 	CommandQueue.clear()
 
 
-func test_the_layer_is_flat_at_z_5_sorted_by_y_and_carries_one_dim_colour() -> void:
-	assert_int(_ghosts.z_index).is_equal(5)
-	assert_int(GhostMemoryLayer.Z_GHOSTS).is_equal(5)
+func test_the_layer_is_flat_at_z_12_sorted_by_y_and_carries_one_dim_colour() -> void:
+	assert_int(_ghosts.z_index).is_equal(12)
+	assert_int(GhostMemoryLayer.Z_GHOSTS).is_equal(12)
 	assert_bool(_ghosts.z_as_relative).is_false()
 	assert_bool(_ghosts.y_sort_enabled).is_true()
 	# The explored fog is black at alpha 140, which leaves 115/255 of a colour: that, on each
