@@ -17,6 +17,10 @@
 script = ExtResource("1_kit")
 terrains = PackedStringArray("grass", "sand", "scrub", "rock", "water", "ore")
 variants = 4
+boulder_one_in = Dictionary[StringName, int]({
+&"grass": 48,
+&"rock": 16
+})
 priority = PackedStringArray("ore", "scrub", "sand", "grass")
 masks = Dictionary[StringName, PackedStringArray]({
 &"base": PackedStringArray("0", "1", "2", "3"),

@@ -15,9 +15,8 @@ const DIAGONALS: Array[StringName] = [&"n", &"e", &"s", &"w"]
 const BASE: StringName = &"base"
 const BLEND: StringName = &"blend"
 const SHORE: StringName = &"shore"
-## The base variant that carries a boulder, shown on one cell in `BOULDER_ONE_IN`.
+## The base variant that carries a boulder; how rare it is lives in the kit's `boulder_one_in`.
 const BOULDERS: Dictionary[StringName, int] = {&"grass": 2, &"rock": 3}
-const BOULDER_ONE_IN: int = 8
 ## The cell offset of each edge and each diagonal neighbour, in the order above.
 const EDGE_STEPS: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)
@@ -40,11 +39,13 @@ static func cell_hash(x: int, y: int) -> int:
 
 ## The base variant of `terrain` on cell (`x`, `y`): the boulder variant on one cell in eight where
 ## the terrain has one, else one of the other variants.
-static func base_variant(terrain: StringName, x: int, y: int, variants: int) -> int:
+static func base_variant(
+	terrain: StringName, x: int, y: int, variants: int, one_in: int = 0
+) -> int:
 	var h: int = cell_hash(x, y)
 	var boulder: int = BOULDERS.get(terrain, -1)
 	if boulder >= 0 and boulder < variants:
-		if (h >> 8) % BOULDER_ONE_IN == 0:
+		if one_in > 0 and (h >> 8) % one_in == 0:
 			return boulder
 		var plain: int = (h >> 12) % (variants - 1)
 		return plain if plain < boulder else plain + 1
@@ -54,7 +55,7 @@ static func base_variant(terrain: StringName, x: int, y: int, variants: int) -> 
 ## The key of the base piece of `terrain` on (`x`, `y`): its hashed variant, else variant 0, else
 ## "" (the caller draws the SVG diamond).
 static func base_key(kit: TerrainKitDef, terrain: StringName, x: int, y: int) -> StringName:
-	var variant: int = base_variant(terrain, x, y, kit.variants)
+	var variant: int = base_variant(terrain, x, y, kit.variants, kit.boulder_one_in.get(terrain, 0))
 	for pick: int in [variant, 0]:
 		if kit.has_piece(terrain, BASE, StringName(str(pick))):
 			return TerrainKitDef.key(terrain, BASE, StringName(str(pick)))

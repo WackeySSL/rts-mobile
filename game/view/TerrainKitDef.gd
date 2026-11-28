@@ -12,6 +12,8 @@ const RISE_MAX: int = 36  ## The most a piece rises above its diamond's top corn
 @export var dir: String = "res://assets/art/terrain"  ## Where the PNGs are.
 @export var terrains: PackedStringArray = PackedStringArray()  ## The sim terrains the kit draws.
 @export var variants: int = 4  ## Base pieces per terrain.
+## Terrain -> the boulder variant shows on one cell in this many (a look tunes it here).
+@export var boulder_one_in: Dictionary[StringName, int] = {}
 ## The land terrains that blend onto their neighbours, highest priority first: a terrain's blend
 ## piece is drawn on the cell of a lower one.
 @export var priority: PackedStringArray = PackedStringArray()

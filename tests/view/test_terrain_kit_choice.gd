@@ -46,24 +46,31 @@ func test_the_hash_is_fixed_on_crafted_cells() -> void:
 	for cell: Vector2i in expected:
 		var row: Array = expected[cell]
 		assert_int(TerrainKit.cell_hash(cell.x, cell.y)).is_equal(row[0])
-		assert_int(TerrainKit.base_variant(&"grass", cell.x, cell.y, 4)).is_equal(row[1])
-		assert_int(TerrainKit.base_variant(&"rock", cell.x, cell.y, 4)).is_equal(row[2])
+		assert_int(TerrainKit.base_variant(&"grass", cell.x, cell.y, 4, 8)).is_equal(row[1])
+		assert_int(TerrainKit.base_variant(&"rock", cell.x, cell.y, 4, 8)).is_equal(row[2])
 
 
-func test_the_boulder_variant_is_one_cell_in_eight_on_a_64_by_64_grid() -> void:
+func test_the_kit_data_sets_how_rare_each_boulder_is() -> void:
+	var rates: Dictionary[StringName, int] = _kit().boulder_one_in
+	assert_int(rates[&"grass"]).is_equal(48)
+	assert_int(rates[&"rock"]).is_equal(16)
 	for terrain: StringName in [&"grass", &"rock"]:
+		var one_in: int = rates[terrain]
 		var boulder: int = TerrainKit.BOULDERS[terrain]
 		var counts: Array[int] = [0, 0, 0, 0]
 		for y: int in 64:
 			for x: int in 64:
-				counts[TerrainKit.base_variant(terrain, x, y, 4)] += 1
+				counts[TerrainKit.base_variant(terrain, x, y, 4, one_in)] += 1
 		var cells: int = 64 * 64
-		assert_int(counts[boulder]).is_between(cells / 8 - cells / 80, cells / 8 + cells / 80)
+		assert_int(counts[boulder]).is_between(cells / one_in * 7 / 10, cells / one_in * 13 / 10)
+		var rest: int = (cells - counts[boulder]) / 3
 		for variant: int in 4:
 			if variant != boulder:  # The other three share the rest about evenly.
-				assert_int(counts[variant]).is_between(
-					cells * 7 / 8 / 3 - 60, cells * 7 / 8 / 3 + 60
-				)
+				assert_int(counts[variant]).is_between(rest - 80, rest + 80)
+	# Data off or 0: no boulder at all.
+	for y: int in 32:
+		for x: int in 32:
+			assert_int(TerrainKit.base_variant(&"grass", x, y, 4, 0)).is_not_equal(2)
 
 
 func test_a_terrain_without_a_boulder_uses_its_four_variants_evenly() -> void:
@@ -79,8 +86,8 @@ func test_a_terrain_without_a_boulder_uses_its_four_variants_evenly() -> void:
 func test_the_variant_is_a_function_of_the_cell_alone() -> void:
 	for y: int in 12:
 		for x: int in 12:
-			var first: int = TerrainKit.base_variant(&"grass", x, y, 4)
-			assert_int(TerrainKit.base_variant(&"grass", x, y, 4)).is_equal(first)
+			var first: int = TerrainKit.base_variant(&"grass", x, y, 4, 48)
+			assert_int(TerrainKit.base_variant(&"grass", x, y, 4, 48)).is_equal(first)
 			assert_int(first).is_between(0, 3)
 			assert_str(TerrainKit.base_key(_kit(), &"grass", x, y)).is_equal(
 				StringName("grass/base/%d" % first)
