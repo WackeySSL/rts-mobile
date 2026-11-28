@@ -55,6 +55,11 @@ var neutral_path: String = IsoAtlas.NEUTRAL_SHEET
 ## Sheets baked beside the index's (a test's crafted art, as `neutral_path`); the id filter applies,
 ## and one replaces the index's sheet of its art id (P245: the shipped Torchjet has art now).
 var extra_sheets: Array[IsoSheetDef] = []
+## Raised walls (ADR 0053 A5, `WallLayer`): look -> the look's wall pieces (piece key -> image), set
+## by `WallLayer` only while its `walls_enabled` is on. Unset, no band is baked and the atlas is
+## what it was. `wall_shade` is the fog's explored alpha, which the dim copies are made with.
+var wall_loader: Callable = Callable()
+var wall_shade: int = 140
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
 var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
@@ -127,6 +132,9 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 	# After the art-id filter and after `_player_arts`, whose faction lookup reads the type sheets.
 	var neutral: IsoSheetDef = IsoAtlas.load_neutral_sheet(neutral_path)
 	var key: String = "%s|%s|%s" % [ids.keys(), arts.map(_describe), _neutral_key(neutral)]
+	var walls: Dictionary[StringName, Image] = _wall_pieces(scenario)
+	if not walls.is_empty():
+		key += "|walls %s %d %d" % [_look_of(scenario), walls.size(), wall_shade]
 	if key != _key:
 		_key = key
 		_arts = arts
@@ -138,10 +146,22 @@ func bake(scenario: ScenarioDef) -> IsoAtlas:
 			baked.append(neutral)
 			if neutral_clash(ids, neutral):
 				push_error("WorldSort: a type has the neutral sheet's art id %s" % neutral.art_id)
-		atlas = IsoAtlas.build(baked, arts, bake_scale)
+		atlas = IsoAtlas.build(baked, arts, bake_scale, false, Callable(), walls, wall_shade)
 		_resolve_neutral(neutral)
 		print(atlas.report())  # `atlas_bake_ms` for the log of CI and the web preview's console.
 	return atlas
+
+
+static func _look_of(scenario: ScenarioDef) -> StringName:
+	return scenario.map.ground_look if scenario != null and scenario.map != null else &""
+
+
+## The wall pieces of the scenario's look, empty without a loader (the flag off).
+func _wall_pieces(scenario: ScenarioDef) -> Dictionary[StringName, Image]:
+	var walls: Dictionary[StringName, Image] = {}
+	if wall_loader.is_valid():
+		walls = wall_loader.call(_look_of(scenario))
+	return walls
 
 
 ## The atlas base of `part` of the neutral sheet for `owner_id` (every overlay has one view; its

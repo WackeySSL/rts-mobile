@@ -1,10 +1,10 @@
 class_name GhostMemoryLayer
 extends Node2D
 ## The enemy buildings the local player has seen and cannot see now (ADR 0023 sections 2 and 3,
-## ADR 0010 section 2, plan P115c; P84c's acceptance), drawn at z 5: over the fog on the ground (4),
-## under every live object (`WorldSort`, 10), so a unit that walks over a remembered building is
-## drawn in front of it. A ghost is the building's body, the same atlas region as the live one,
-## in the colour of its owner's side, and the whole layer carries one dim colour (`modulate`, the
+## ADR 0010 section 2, plan P115c; P84c's acceptance), drawn at z 12 (ADR 0053 A9): over the sorted
+## world (10, which holds the raised walls), so a wall behind a remembered building never covers its
+## roof; a remembered building exists only where no own unit sees, so no live unit stands at it.
+## A ghost is the building's body, the same atlas region as the live one, in the colour of its owner's side, and the whole layer carries one dim colour (`modulate`, the
 ## black of the explored fog over the sprite: `1 - explored_alpha / 255` on each channel), so the
 ## ghosts are one draw call however many there are and no sprite is tinted of its own. A ghost has
 ## no health bar, no ring and no pick shape: it is a sprite and nothing else, not a row, so the
@@ -44,7 +44,7 @@ extends Node2D
 ## enough: a record changes only on a tile the player sees, where its ghost is not drawn, and what
 ## the player sees changes only with the fog version.
 
-const Z_GHOSTS: int = 5
+const Z_GHOSTS: int = 12
 const PART: StringName = BuildingLayer.BODY  ## The sheet part a ghost draws: a building's body.
 const ALPHA_MAX: int = 255
 

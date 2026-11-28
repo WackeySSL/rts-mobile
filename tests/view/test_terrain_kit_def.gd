@@ -25,7 +25,7 @@ func test_the_defaults_are_the_standard_kit() -> void:
 	assert_str(def.dir).is_equal("res://assets/art/terrain")
 	assert_int(def.variants).is_equal(4)
 	assert_vector(Vector2(TerrainKitDef.TILE)).is_equal(Vector2(128, 64))
-	assert_int(TerrainKitDef.RISE_MAX).is_equal(36)
+	assert_int(TerrainKitDef.RISE_MAX).is_equal(64)
 
 
 func test_a_piece_is_found_by_terrain_kind_and_mask() -> void:
