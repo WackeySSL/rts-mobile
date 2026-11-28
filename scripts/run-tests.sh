@@ -124,10 +124,14 @@ while [ "$i" -lt "${#ARGS[@]}" ]; do
 done
 
 # Godot's --verbose is for the CI shards (RUN_TESTS_VERBOSE_EXIT=1); the filter keeps the output readable.
+# It applies to this run only: the variable is dropped from the environment Godot inherits, so a test
+# that starts run-tests.sh itself (tests/project/test_run_tests_order.gd) sees the plain command line.
+VERBOSE_EXIT="${RUN_TESTS_VERBOSE_EXIT:-0}"
+unset RUN_TESTS_VERBOSE_EXIT
 VERBOSE_RAW="reports/gdunit-verbose.log"
 GODOT_FLAGS=()
 FILTER=(cat)
-if [ "${RUN_TESTS_VERBOSE_EXIT:-0}" = "1" ]; then
+if [ "$VERBOSE_EXIT" = "1" ]; then
   GODOT_FLAGS=(--verbose)
   # Order matters: the StringName list goes first, then the lines to keep, then the verbose-only noise.
   FILTER=(sed -E
@@ -142,7 +146,7 @@ set +e
   -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --ignoreHeadlessMode -c -rd "$REPORT_DIR" -rc 1 ${GD_ARGS[@]+"${GD_ARGS[@]}"} 2>&1 |
   sed -e $'s/\x1b\\[2J//g' -e $'s/\x1b\\[H//g' | # drop gdUnit4's clear-screen codes
-  { if [ "${RUN_TESTS_VERBOSE_EXIT:-0}" = "1" ]; then tee "$VERBOSE_RAW"; else cat; fi; } |
+  { if [ "$VERBOSE_EXIT" = "1" ]; then tee "$VERBOSE_RAW"; else cat; fi; } |
   "${FILTER[@]}" |
   tee "$CONSOLE"
 status=${PIPESTATUS[0]}
