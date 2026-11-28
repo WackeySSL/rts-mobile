@@ -28,13 +28,15 @@ func _stone_kit(count: int, stones: Array[int], permille: int, cells: int) -> Te
 
 func test_the_kit_data_names_the_stones_and_the_rule() -> void:
 	var kit: TerrainKitDef = _kit()
-	assert_array(Array(kit.stone_variants[&"grass/base"])).is_equal([2])
-	assert_array(Array(kit.stone_variants[&"rock/base"])).is_equal([3])
-	assert_array(Array(kit.stone_variants[&"rock/wall_top"])).is_equal([3])
-	assert_int(kit.stone_permille[&"grass/base"]).is_between(1, 1000)
-	assert_int(kit.stone_cluster_cells).is_greater(0)
-	assert_array(Array(kit.variants_of(&"grass", &"base"))).is_equal([0, 1, 2, 3])
-	assert_array(Array(kit.variants_of(&"rock", &"wall_top"))).is_equal([0, 1, 2, 3])
+	assert_array(Array(kit.stone_variants[&"grass/base"])).is_equal([2, 3, 4, 5, 6, 7])
+	assert_array(Array(kit.stone_variants[&"rock/base"])).is_equal([3, 4, 5, 6, 7, 8])
+	assert_array(Array(kit.stone_variants[&"rock/wall_top"])).is_equal([3, 4, 5, 6, 7, 8])
+	assert_int(kit.stone_permille[&"grass/base"]).is_equal(150)
+	assert_int(kit.stone_permille[&"rock/base"]).is_equal(240)
+	assert_int(kit.stone_permille[&"rock/wall_top"]).is_equal(240)
+	assert_int(kit.stone_cluster_cells).is_equal(8)
+	assert_array(Array(kit.variants_of(&"grass", &"base"))).is_equal([0, 1, 2, 3, 4, 5, 6, 7])
+	assert_array(Array(kit.variants_of(&"rock", &"wall_top"))).is_equal([0, 1, 2, 3, 4, 5, 6, 7, 8])
 
 
 func test_no_stone_variant_when_the_density_is_zero() -> void:
