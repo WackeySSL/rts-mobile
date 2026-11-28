@@ -124,6 +124,35 @@ func test_the_back_link_pops_the_stack_and_a_section_lands_below_the_block() -> 
 	assert_int(_stack.depth()).is_equal(depth - 1)
 
 
+## A resize runs `_apply`, which holds the scroll for two frames; popping and freeing the screen
+## in the same frame must leave no error and no orphan.
+func test_a_screen_freed_while_it_holds_the_scroll_leaves_nothing_behind() -> void:
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	var screen: RankScreen = _screen
+	var other: UiMetrics = _profile_with_window(ScreenSizes.LANDSCAPE[0])
+	UiScale.set_override(other)
+	get_window().size = other.window_size
+	await await_idle_frame()  # The size change reaches the screen: `_apply` ran.
+	screen._apply()
+	assert_bool(screen._held_scroll >= 0).is_true()
+	_stack.back()
+	_close()  # Freed in the same frame.
+	assert_bool(is_instance_valid(screen)).is_false()
+	for _frame: int in range(4):
+		await await_idle_frame()
+	# Reaching here without a script error is the check; gdUnit reports an orphan as a failure.
+
+
+## Not in the tree when `_apply` runs: no wait on a missing tree, nothing held.
+func test_apply_outside_the_tree_holds_nothing() -> void:
+	var screen: RankScreen = RankScreen.new()
+	screen.progression = _progression
+	auto_free(screen)
+	screen._held_scroll = 5
+	screen._restore_scroll()
+	assert_int(screen._held_scroll).is_equal(-1)
+
+
 func _open(profile: UiMetrics) -> void:
 	assert_object(profile).is_not_null()
 	UiScale.set_override(profile)
