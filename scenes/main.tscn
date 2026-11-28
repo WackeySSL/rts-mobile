@@ -164,13 +164,14 @@ world_sort = NodePath("../WorldSort")
 fog = NodePath("../FogLayer")
 walls_enabled = false
 
-[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
+[node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects", "walls")]
 z_index = 20
 z_as_relative = false
 script = ExtResource("93_air")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 effects = NodePath("../EffectsLayer")
+walls = NodePath("../WallLayer")
 
 [node name="RallyLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 z_index = 61

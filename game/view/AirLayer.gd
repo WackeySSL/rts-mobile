@@ -28,6 +28,11 @@ const HULL: StringName = &"hull"
 const SHADOW: StringName = &"shadow"
 const NO_FRAME: int = -1
 const SALT_BOB: int = 0x41
+## A shadow whose ground point lies in a raised cell (`WallLayer.is_wall`) is drawn this far up,
+## at this z, so it lies on the wall top (ADR 0053 section 7, A9, P656d5). Every other shadow
+## stays at `WorldSort.Z_SHADOW`.
+const SHADOW_WALL_LIFT_PX: float = TerrainKitDef.RISE_MAX / 2.0
+const Z_SHADOW_WALL: int = 19
 ## What stands in for a sheet's `fly_px` and `low_fly_px`: a type with no art, or a sheet of 0.
 const DEFAULT_FLY_PX: float = 28.0
 const DEFAULT_LOW_FLY_PX: float = 12.0
@@ -39,6 +44,9 @@ const DEFAULT_LIFE: LifeSettings = preload("res://data/life_settings.tres")
 ## Where a fall ends in its burst (the DIED burst of a flyer is this layer's, not `EffectsLayer`'s).
 @export var effects: EffectsLayer
 @export var reveal_enemies: bool = false
+## The walls whose raised cells lift a shadow; none, or `walls_enabled` off, leaves every shadow on
+## the ground.
+@export var walls: WallLayer
 @export var turn_rate: float = 12.0  ## Radians a second a hull turns, as `UnitLayer`'s.
 
 var _serial: int = -1
@@ -75,6 +83,7 @@ class Rig:
 	var drift: Vector2 = Vector2.ZERO
 	var origin: Vector2 = Vector2.ZERO  ## Where the fall began.
 	var ring: UnitLayer.Ring = null  ## The selection ring on the ground, made when first selected.
+	var shadow_up: bool = false  ## The shadow is lifted onto a wall top.
 
 
 func _init() -> void:
@@ -294,6 +303,7 @@ func _new_rig(snap: MatchSnapshot, row: int) -> Rig:
 	rig.aim = 0.0
 	rig.born_ms = -1.0
 	rig.frame = NO_FRAME
+	_shadow_to(rig, false)
 	rig.hull.visible = art
 	rig.shadow.visible = art
 	rig.marker.visible = not art
@@ -376,6 +386,20 @@ func _size_ring(snap: MatchSnapshot, row: int, rig: Rig, unit: float) -> void:
 	RingSize.apply(rig.ring, semi, unit)
 
 
+## Puts the shadow of `rig` on the ground (z 2) or, `up`, on a wall top (32 px up, z 19). Writes
+## only when the state changes.
+func _shadow_to(rig: Rig, up: bool) -> void:
+	if up == rig.shadow_up and rig.shadow.z_index == _shadow_z(up):
+		return
+	rig.shadow_up = up
+	rig.shadow.position.y = -SHADOW_WALL_LIFT_PX if up else 0.0
+	rig.shadow.z_index = _shadow_z(up)
+
+
+func _shadow_z(up: bool) -> int:
+	return (Z_SHADOW_WALL if up else WorldSort.Z_SHADOW) - Z_AIR
+
+
 ## Raises the hull, or the marker, `px` above the rig's ground point; the shadow stays on it.
 func _lift(rig: Rig, px: float) -> void:
 	rig.hull.position.y = -px
@@ -407,6 +431,14 @@ func _place(snap: MatchSnapshot, now_ms: float, delta: float) -> void:
 		var from: Vector2 = IsoProjection.ground_to_px(snap.prev_pos_x[row], snap.prev_pos_y[row])
 		var to: Vector2 = IsoProjection.ground_to_px(snap.pos_x[row], snap.pos_y[row])
 		rig.position = from.lerp(to, alpha)
+		if walls != null:  # The cell of the drawn ground point: a byte lookup.
+			var x: int = (
+				snap.prev_pos_x[row] + int(float(snap.pos_x[row] - snap.prev_pos_x[row]) * alpha)
+			)
+			var y: int = (
+				snap.prev_pos_y[row] + int(float(snap.pos_y[row] - snap.prev_pos_y[row]) * alpha)
+			)
+			_shadow_to(rig, walls.is_wall(snap.cell_of(x, y)))
 		if rig.ring != null and rig.ring.visible and resize:
 			_size_ring(snap, row, rig, UiScale.base_px_per_dp() / zoom)
 		# As `UnitLayer`: a flyer that moved under half a step in the tick keeps its heading.
