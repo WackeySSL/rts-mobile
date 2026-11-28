@@ -31,6 +31,7 @@ func _ready() -> void:
 	_heading(MainMenuText.CARD, &"CapsTitle")
 	_build_rank_block()
 	_unlock_label = _add_section(MainMenuText.NEXT).get_child(0) as Label
+	RankTrophySection.new().attach(_add_section(RankText.TROPHIES), _progression)
 	use_footer()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
