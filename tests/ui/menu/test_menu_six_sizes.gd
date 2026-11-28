@@ -397,6 +397,9 @@ func _check_turns(kind: StringName, must_hold: bool) -> void:
 			_assert_same_stack(label + " turned", screen, depth, kind)
 			var range_to: int = maxi(floori(bar.max_value - bar.page), 0)
 			var expected: int = mini(kept, range_to)
+			# The map select's `_hold_scroll` keeps the position through a size where the whole page fits
+			# (no range), and puts it back on the turn back; the other screens come back at the clamp.
+			var back: int = kept if kind == MAP_SELECT and range_to == 0 else expected
 			(
 				assert_int(scroll.scroll_vertical)
 				. override_failure_message("%s scroll %d, range %d" % [label, kept, range_to])
@@ -412,10 +415,10 @@ func _check_turns(kind: StringName, must_hold: bool) -> void:
 				. override_failure_message(
 					(
 						"%s scroll back: %d, kept %d, then %d"
-						% [label, scroll.scroll_vertical, kept, expected]
+						% [label, scroll.scroll_vertical, kept, back]
 					)
 				)
-				. is_equal(expected)
+				. is_equal(back)
 			)
 			_close()
 			UiScale.clear_override()

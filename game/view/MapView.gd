@@ -17,20 +17,7 @@ const MISSING: Color = Color.MAGENTA  ## Shown for a terrain or colour key the d
 
 ## STYLE.md colours: a terrain id, and `<id>_b` and `<id>_c` for the second and third tone of its
 ## tile. The gallery's `TERRAIN_COLORS` holds the same keys (P52 compares the two).
-@export var colors: Dictionary[StringName, Color] = {
-	&"grass": Color("5E7D4A"),
-	&"grass_b": Color("6F8F57"),
-	&"sand": Color("CDB98F"),
-	&"scrub": Color("4E5A3A"),
-	&"scrub_b": Color("6B7A4F"),
-	&"scrub_c": Color("8C9A6B"),
-	&"rock": Color("6E6A66"),
-	&"rock_b": Color("8C8782"),
-	&"rock_c": Color("4F4B48"),
-	&"water": Color("2E5E7E"),
-	&"water_b": Color("3C7396"),
-	&"ore": Color("8A6F4D"),
-}
+@export var colors: Dictionary[StringName, Color] = TerrainPalette.COLORS.duplicate()
 ## STYLE.md tiles: per terrain id the filled rects "x,y,w,h,key" in drawing order, the first being
 ## the base. A key `<id>_b` is the same terrain's tile on tiles with x + y odd (grass has one).
 @export var tiles: Dictionary[StringName, String] = {
