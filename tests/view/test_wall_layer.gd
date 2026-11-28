@@ -139,9 +139,13 @@ func test_a_look_without_wall_pieces_draws_no_wall() -> void:
 	assert_int(_sort.atlas.wall_band_rows()).is_equal(0)
 
 
-func test_the_standard_kit_has_no_wall_pieces_yet_so_the_loader_gives_none() -> void:
+func test_the_standard_kit_has_every_wall_piece_so_the_loader_gives_all() -> void:
 	_make(false)
-	assert_int(_layer.load_pieces(&"").size()).is_equal(0)  # P656d4's art is not in the kit.
+	# P656d4 baked the standard kit's wall pieces: every key loads at the full wall canvas.
+	var pieces: Dictionary[StringName, Image] = _layer.load_pieces(&"")
+	assert_int(pieces.size()).is_equal(WallKit.all_keys().size())
+	for key: StringName in WallKit.all_keys():
+		assert_object(pieces.get(key)).override_failure_message(String(key)).is_not_null()
 
 
 func test_a_map_version_with_the_same_rock_keeps_the_nodes_and_new_rock_rebuilds() -> void:

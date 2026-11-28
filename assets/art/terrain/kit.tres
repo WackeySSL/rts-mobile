@@ -7,9 +7,13 @@
 ; (edge neighbours ne, se, sw, nw; diagonal ones n, e, s, w):
 ;   blend  side_<edge>: that edge neighbour is a higher-priority terrain; corner_<diag>: only that
 ;          diagonal neighbour is. Drawn on the lower terrain's cell, in the higher terrain's look.
-;   lip    (rock) and shore (water), on the rock or water cell itself, towards the other terrain:
-;          side_<edge> one edge neighbour differs, outer_<diag> the two edge neighbours at that
-;          corner differ, inner_<diag> only the diagonal neighbour differs.
+;   shore  (water), on the water cell itself, towards the land: side_<edge> one edge neighbour
+;          differs, outer_<diag> the two edge neighbours at that corner differ, inner_<diag> only
+;          the diagonal neighbour differs.
+;   wall_* (rock, ADR 0053 amendment A3): the raised cell, each piece the 128 x 136 canvas with the
+;          ground centre at (64, 104). wall_top <variant> is the plateau, wall_face se / sw / s the
+;          front faces (the low edge neighbour (c + 1, r), (c, r + 1), or both), wall_rim ne / nw / n
+;          a flat trim carrying the plateau outline raggedly past the back edge where the back neighbour is lower, inner_n at the north vertex.
 ;   road   <edge>_<edge>: the road leaves the cell through those two edges; it replaces the base.
 ; priority: highest first. A higher terrain's blend is drawn on the cells of a lower one.
 
@@ -25,7 +29,9 @@ priority = PackedStringArray("ore", "scrub", "sand", "grass")
 masks = Dictionary[StringName, PackedStringArray]({
 &"base": PackedStringArray("0", "1", "2", "3"),
 &"blend": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "corner_n", "corner_e", "corner_s", "corner_w"),
-&"lip": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "outer_n", "outer_e", "outer_s", "outer_w", "inner_n", "inner_e", "inner_s", "inner_w"),
+&"wall_top": PackedStringArray("0", "1", "2", "3"),
+&"wall_face": PackedStringArray("se", "sw", "s"),
+&"wall_rim": PackedStringArray("ne", "nw", "n", "inner_n"),
 &"shore": PackedStringArray("side_ne", "side_se", "side_sw", "side_nw", "outer_n", "outer_e", "outer_s", "outer_w", "inner_n", "inner_e", "inner_s", "inner_w"),
 &"road": PackedStringArray("nw_se", "ne_sw", "nw_ne", "ne_se", "se_sw", "sw_nw")
 })
@@ -33,7 +39,7 @@ kinds = Dictionary[StringName, PackedStringArray]({
 &"grass": PackedStringArray("base", "road"),
 &"sand": PackedStringArray("base", "blend", "road"),
 &"scrub": PackedStringArray("base", "blend"),
-&"rock": PackedStringArray("base", "lip"),
+&"rock": PackedStringArray("base", "wall_top", "wall_face", "wall_rim"),
 &"water": PackedStringArray("base", "shore"),
 &"ore": PackedStringArray("base", "blend")
 })
@@ -82,18 +88,17 @@ pieces = Dictionary[StringName, String]({
 &"rock/base/1": "rock_base_1.png",
 &"rock/base/2": "rock_base_2.png",
 &"rock/base/3": "rock_base_3.png",
-&"rock/lip/side_ne": "rock_lip_side_ne.png",
-&"rock/lip/side_se": "rock_lip_side_se.png",
-&"rock/lip/side_sw": "rock_lip_side_sw.png",
-&"rock/lip/side_nw": "rock_lip_side_nw.png",
-&"rock/lip/outer_n": "rock_lip_outer_n.png",
-&"rock/lip/outer_e": "rock_lip_outer_e.png",
-&"rock/lip/outer_s": "rock_lip_outer_s.png",
-&"rock/lip/outer_w": "rock_lip_outer_w.png",
-&"rock/lip/inner_n": "rock_lip_inner_n.png",
-&"rock/lip/inner_e": "rock_lip_inner_e.png",
-&"rock/lip/inner_s": "rock_lip_inner_s.png",
-&"rock/lip/inner_w": "rock_lip_inner_w.png",
+&"rock/wall_top/0": "rock_wall_top_0.png",
+&"rock/wall_top/1": "rock_wall_top_1.png",
+&"rock/wall_top/2": "rock_wall_top_2.png",
+&"rock/wall_top/3": "rock_wall_top_3.png",
+&"rock/wall_face/se": "rock_wall_face_se.png",
+&"rock/wall_face/sw": "rock_wall_face_sw.png",
+&"rock/wall_face/s": "rock_wall_face_s.png",
+&"rock/wall_rim/ne": "rock_wall_rim_ne.png",
+&"rock/wall_rim/nw": "rock_wall_rim_nw.png",
+&"rock/wall_rim/n": "rock_wall_rim_n.png",
+&"rock/wall_rim/inner_n": "rock_wall_rim_inner_n.png",
 &"water/base/0": "water_base_0.png",
 &"water/base/1": "water_base_1.png",
 &"water/base/2": "water_base_2.png",
