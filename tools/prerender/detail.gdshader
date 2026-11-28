@@ -66,6 +66,7 @@ void fragment() {
 		float streak = texture(nz, vec2(along * 11.0, mp.y * 0.55)).r + 0.5 * texture(nz, vec2(along * 29.0, mp.y * 0.3 + 0.4)).r - 0.75;
 		float face = clamp(1.0 - abs(mn.y), 0.0, 1.0);
 		ALBEDO = base * mix(1.0 + 0.4 * (tri(mp, mn, 2.0) - 0.5), 0.58 + 1.1 * streak, face);
+		ALBEDO *= 1.0 - 0.5 * edge; // the carve depth (COLOR.r): crevices darker, never black
 		METALLIC = metal;
 		ROUGHNESS = rough;
 	} else if (kind == 3 || kind == 4) {

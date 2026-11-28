@@ -27,11 +27,11 @@ func _image(path: String) -> Image:
 	return image
 
 
-## Every piece the kit lists as [terrain, kind, mask, path].
 func _is_wall(item: Array) -> bool:
 	return item[1] in WALL_KINDS
 
 
+## Every piece the kit lists as [terrain, kind, mask, path].
 func _all(kit: TerrainKitDef) -> Array[Array]:
 	var found: Array[Array] = []
 	for terrain: StringName in kit.terrains:
@@ -244,3 +244,54 @@ func test_the_sheet_generator_reads_no_detail_model_as_an_art_model() -> void:
 	for path: String in paths:
 		assert_str(path).not_contains("_detail.tres").not_contains("/terrain/")
 		assert_object(load(path) as ArtModel).is_not_null()
+
+
+func test_the_ground_leaves_no_pinhole_where_four_tiles_meet() -> void:
+	var kit: TerrainKitDef = _kit()
+	var n: int = 4
+	var canvas: Image = Image.create(n * 128 + 128, n * 64 + 64, false, Image.FORMAT_RGBA8)
+	for terrain: String in ["grass", "rock"]:
+		var tile: Image = _image(kit.path_of(StringName(terrain), &"base", &"0"))
+		canvas.fill(Color(0, 0, 0, 0))
+		for r: int in n:
+			for c: int in n:
+				canvas.blend_rect(
+					tile,
+					Rect2i(Vector2i.ZERO, tile.get_size()),
+					Vector2i((c - r) * 64 + n * 64, (c + r) * 32)
+				)
+		# The inner area, one tile in from the outline: every texel opaque.
+		var holes: int = 0
+		for y: int in range(64, n * 64 - 32):
+			for x: int in range(n * 64 - 128 + 64, n * 64 + 128 - 64):
+				var inside: bool = (
+					(
+						absf(float(x) + 0.5 - n * 64) / 128.0
+						+ absf(float(y) + 0.5 - 32.0 - n * 32) / 64.0
+					)
+					< 1.0
+				)
+				if inside and canvas.get_pixel(x, y).a < 1.0:
+					holes += 1
+		assert_int(holes).override_failure_message(terrain + " tiles leave holes").is_zero()
+
+
+## The baked contact shadow must stay clear of the diamond's edge (within 3 texels): a texel there,
+## half transparent and near black, reads over a neighbouring cell as a dashed seam line.
+func test_no_blend_or_shore_has_a_shadow_texel_at_the_diamond_edge() -> void:
+	for item: Array in _all(_kit()):
+		if item[1] != &"blend" and item[1] != &"shore":
+			continue
+		var image: Image = _image(item[3])
+		var bad: int = 0
+		for y: int in 64:
+			for x: int in 128:
+				var s: float = absf(x + 0.5 - 64.0) / 64.0 + absf(y + 0.5 - 32.0) / 32.0
+				var c: Color = image.get_pixel(x, y)
+				if (1.0 - s) * 28.6 <= 3.0 and c.a >= 90.0 / 255.0 and c.a <= 200.0 / 255.0:
+					bad += 1 if c.r + c.g + c.b < 150.0 / 255.0 else 0
+		(
+			assert_int(bad)
+			. override_failure_message("%s: %d shadow texels at the edge" % [item[3], bad])
+			. is_zero()
+		)

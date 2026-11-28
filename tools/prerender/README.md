@@ -46,11 +46,14 @@ bash scripts/prerender.sh --kit --out /tmp/prerender-kit --publish res://assets/
 
 `--kit` bakes every `assets/art/models/terrain/<id>_detail.tres` (or the one `--model`) with
 `bake_kit.gd`, one PNG per part, named `<id>_<part>.png`. There is no sheet: a piece is framed on
-its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries a 0.02 tile
-bleed past each edge, never past a corner). The empty rows above the highest pixel are cut, so a
-ground piece is its 64-row diamond, whatever rises above it is cut. A part named `wall_*` is the
-whole 128 x 136 canvas of a raised rock cell, origin (64, 104) (`TerrainKitDef.WALL_CANVAS`,
-`WALL_ORIGIN`), with no baked shadow; `cliff` (a face) and `ridge` (the back edge) are its shapes. A piece's shadow (what reaches 0.02 tile high, flattened along
+its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries a 0.04 tile
+bleed past each edge and corner, so four tiles meeting at a vertex leave no pinhole). A ground piece
+is baked on a canvas with `GROUND_HEADROOM` (36) rows above the diamond and cut to the diamond; one
+that reaches more than `BLEED_MAX` (3) texels above it is refused. A part named `wall_*` is the whole
+128 x 136 canvas of a raised rock cell, origin (64, 104) (`TerrainKitDef.WALL_CANVAS`, `WALL_ORIGIN`),
+with no baked shadow, refused when it touches the canvas's top row; `cliff` (a face), `tongue` (the
+top's lip over it, the same crest line) and `ridge` (the back edge) are its shapes.
+A piece's shadow (what reaches 0.02 tile high, flattened along
 +gx by `ArtShadow.REACH` as `bake_model.gd` does) is laid under it at the shadow band's alpha, so a
 shore's shadow falls beside it; the lit render shades the pieces inside themselves. The
 manifest line of a piece lists its model file only. `--check` re-bakes kit entries the same way.

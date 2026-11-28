@@ -5,6 +5,7 @@ extends RefCounted
 ## away from their axis, so a facet never shows as a flat patch.
 
 const DOME_RISE: float = 0.55  ## A dome rises this share of its radius.
+const CREST_MAX: float = 0.12  ## The deepest the plateau's lip hangs over a face, tiles.
 
 
 ## An oriented box: `xf` places its centre and axes, `size` is its extent along each axis.
@@ -186,12 +187,31 @@ static func _cap(
 	)
 
 
+## How far the plateau's lip hangs over the face along its foot, `u` of the way from `a` to `b`, in
+## tiles: 0 at both ends (so that neighbours meet), up to `CREST_MAX` between, ragged. The face's
+## cap and the top piece's tongue both read it, so the two lines are one.
+static func crest_drop(noise: FastNoiseLite, u: float) -> float:
+	var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u))
+	var n: float = 0.8 * noise.get_noise_2d(u * 11.0, 2.2) + 0.5 * noise.get_noise_2d(u * 39.0, 8.8)
+	return pin * CREST_MAX * clampf(0.5 + 0.9 * n, 0.05, 1.0)
+
+
+static func _noise(seed_value: int) -> FastNoiseLite:
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.frequency = 1.0
+	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	return noise
+
+
 ## A wall face (P653's cliff method, one prism side): its foot runs from `a` to `b` on the ground,
-## `height` tall, the face looking away from the tile centre. The surface is carved INWARD only, by
-## grooves that run top to bottom (noise fast along the wall, slow up it), a slow strata ripple and
-## a ragged flush cap just under the crest, so nothing leaves the prism. Both ends, the foot and the
-## crest are pinned (no carving), so faces that meet at a tile edge or a corner match, whatever
-## `seed_value` is, and the crest is exactly `height`. `amp` is the deepest groove, tiles.
+## `height` tall, the face looking away from the tile centre. The surface is carved INWARD only,
+## into columns of uneven width and depth with narrow dark crevices between (the carve depth is
+## also the vertex's `edge` value, which the cliff shader darkens), a slow irregular strata ledge,
+## and a flush cap under the crest that ends on the lip line of `crest_drop` (the top piece's
+## tongue covers the cap). Both ends, the foot and the crest are pinned (no carving), so faces that
+## meet at a tile edge or a corner match, whatever `seed_value` is. `amp` is the deepest crevice,
+## tiles.
 static func cliff(
 	m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, height: float, amp: float, seed_value: int
 ) -> void:
@@ -199,41 +219,81 @@ static func cliff(
 	const NV: int = 48
 	var along: Vector3 = (b - a).normalized()
 	var out: Vector3 = _away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
-	var noise: FastNoiseLite = FastNoiseLite.new()
-	noise.seed = seed_value
-	noise.frequency = 1.0
-	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	var noise: FastNoiseLite = _noise(seed_value)
 	var length: float = a.distance_to(b)
 	var face: Array[PackedVector3Array] = []
+	var carve: Array[PackedFloat32Array] = []
 	for i: int in NU + 1:
 		var u: float = float(i) / NU
 		var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u))
-		var cap: float = 0.9 + 0.05 * noise.get_noise_2d(u * 17.0, 2.2)
+		var cap: float = 1.0 - crest_drop(noise, u)
+		var uw: float = u + 0.08 * noise.get_noise_2d(u * 5.0, 3.3)
+		var width: float = 0.6 + 0.4 * (0.5 + 0.5 * noise.get_noise_2d(u * 3.3, 7.7))
 		var column: PackedVector3Array = PackedVector3Array()
+		var depths: PackedFloat32Array = PackedFloat32Array()
 		for j: int in NV + 1:
 			var v: float = float(j) / NV
 			var flow: float = (
-				0.65 * noise.get_noise_2d(u * length * 9.0, v * 0.5)
-				+ 0.35 * noise.get_noise_2d(u * length * 21.0, v * 0.3 + 9.0)
+				0.5 * noise.get_noise_2d(uw * length * 5.0, v * 0.35)
+				+ 0.35 * noise.get_noise_2d(uw * length * 13.0, v * 0.55 + 9.0)
+				+ 0.15 * noise.get_noise_2d(uw * length * 30.0, v * 0.8 + 4.0)
 			)
-			var strata: float = 0.5 + 0.5 * sin(v * 24.0 + 4.0 * noise.get_noise_2d(u * 3.0, 5.5))
-			var groove: float = clampf(0.5 + 0.5 * flow + 0.1 * strata - 0.05, 0.0, 1.0)
+			var ledge: float = (
+				0.5
+				+ (
+					0.5
+					* sin(
+						(
+							v * (14.0 + 6.0 * noise.get_noise_2d(u * 4.0, 1.0))
+							+ 5.0 * noise.get_noise_2d(u * 2.5, 6.6)
+						)
+					)
+				)
+			)
+			var groove: float = clampf(
+				smoothstep(-0.1, 0.35, flow) * width + 0.12 * ledge, 0.0, 1.0
+			)
 			var held: float = (
-				pin * smoothstep(0.0, 0.15, v) * (1.0 - smoothstep(cap - 0.03, cap, v))
+				pin * smoothstep(0.0, 0.15, v) * (1.0 - smoothstep(cap - 0.04, cap, v))
 			)
 			column.append(
 				a.lerp(b, u) - out * (amp * groove * held) + Vector3(0.0, 0.0, v * height)
 			)
+			depths.append(groove * held)
 		face.append(column)
+		carve.append(depths)
 	for i: int in NU:
 		for j: int in NV:
-			_tris(m, mat, [face[i][j], face[i + 1][j], face[i + 1][j + 1], face[i][j + 1]], out)
+			var q: Array[Vector3] = [face[i][j], face[i + 1][j], face[i + 1][j + 1], face[i][j + 1]]
+			var e: PackedFloat32Array = PackedFloat32Array(
+				[carve[i][j], carve[i + 1][j], carve[i + 1][j + 1], carve[i][j + 1]]
+			)
+			_tris(m, mat, q, out, e)
+
+
+## The top piece's tongue on one front edge: the plateau's surface carried on past the edge `a` to
+## `b` by `crest_drop` (the same line as the face's cap, same seed), a ragged lip over the face. It
+## lies within the prism and `CREST_MAX` x 64 texels below the edge.
+static func tongue(m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, seed_value: int) -> void:
+	const NU: int = 64
+	var along: Vector3 = (b - a).normalized()
+	var out: Vector3 = _away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
+	var noise: FastNoiseLite = _noise(seed_value)
+	var inner: PackedVector3Array = PackedVector3Array()
+	var rim: PackedVector3Array = PackedVector3Array()
+	for i: int in NU + 1:
+		var u: float = float(i) / NU
+		inner.append(a.lerp(b, u) - out * 0.01)
+		rim.append(a.lerp(b, u) + out * crest_drop(noise, u))
+	for i: int in NU:
+		_tris(m, mat, [inner[i], inner[i + 1], rim[i + 1], rim[i]], Vector3.BACK)
 
 
 ## A ragged ridge on the back edge of a raised top: from `a` to `b` at the top's height, `depth`
 ## tiles wide towards the tile centre, rising to `height` tiles at the edge. Its height along the
-## edge runs from `ha` to `hb` (shares of `height`) with a bump between, pinned at both ends, so
-## ridges of neighbouring cells meet flush at the tile edge.
+## edge runs from `ha` to `hb` (shares of `height`): with a ragged bump between when they are equal,
+## a straight ramp when they differ. Both ends are pinned and closed by a cap, so ridges of
+## neighbouring cells meet flush at the tile edge and a free end leaves no notch.
 static func ridge(
 	m: BakeMesh,
 	mat: StringName,
@@ -249,10 +309,7 @@ static func ridge(
 	const NT: int = 6
 	var along: Vector3 = (b - a).normalized()
 	var inward: Vector3 = -_away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
-	var noise: FastNoiseLite = FastNoiseLite.new()
-	noise.seed = seed_value
-	noise.frequency = 1.0
-	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	var noise: FastNoiseLite = _noise(seed_value)
 	var rows: Array[PackedVector3Array] = []
 	for i: int in NU + 1:
 		var u: float = float(i) / NU
@@ -276,6 +333,17 @@ static func ridge(
 				[rows[i][k], rows[i + 1][k], rows[i + 1][k + 1], rows[i][k + 1]],
 				Vector3.BACK
 			)
+	# End caps: the profile closed by the vertical drop at the edge and the top plane, so that a free
+	# end shows no see-through notch (a neighbour's ridge meets it flush at the same height).
+	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
+	for end: int in [0, NU]:
+		var profile: PackedVector3Array = rows[end]
+		if profile[NT].z - profile[0].z < 0.001:
+			continue
+		var side: Vector3 = along if end == NU else -along
+		var foot: Vector3 = Vector3(profile[NT].x, profile[NT].y, profile[0].z)
+		for k: int in NT:
+			m.tri(mat, [foot, profile[k], profile[k + 1]], [side, side, side], flat)
 
 
 ## The unit horizontal `dir` or its opposite, whichever points away from the tile centre at `mid`.
@@ -287,9 +355,14 @@ static func _away(dir: Vector3, mid: Vector3) -> Vector3:
 
 
 ## A quad as two flat triangles, its normal turned to the `toward` side.
-static func _tris(m: BakeMesh, mat: StringName, q: Array[Vector3], toward: Vector3) -> void:
+static func _tris(
+	m: BakeMesh,
+	mat: StringName,
+	q: Array[Vector3],
+	toward: Vector3,
+	e: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0, 0.0])
+) -> void:
 	var n: Vector3 = (q[1] - q[0]).cross(q[3] - q[0]).normalized()
 	n = n if n.dot(toward) > 0.0 else -n
-	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
-	m.tri(mat, [q[0], q[1], q[2]], [n, n, n], flat)
-	m.tri(mat, [q[0], q[2], q[3]], [n, n, n], flat)
+	m.tri(mat, [q[0], q[1], q[2]], [n, n, n], PackedFloat32Array([e[0], e[1], e[2]]))
+	m.tri(mat, [q[0], q[2], q[3]], [n, n, n], PackedFloat32Array([e[0], e[2], e[3]]))

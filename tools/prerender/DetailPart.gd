@@ -11,14 +11,17 @@ extends Resource
 ##   solid    `planes` (nx, ny, nz, d) outward, `bevel`
 ##   cliff    a wall face: `a` to `b` the foot, `size.z` tall, `radius` the groove depth,
 ##            `radius2` the noise seed (see `BakeShapes.cliff`)
+##   tongue   the top piece's lip over a face: `a` to `b` the front edge at the top's height,
+##            `radius2` the seed (the face's; see `BakeShapes.tongue`)
 ##   ridge    `a` to `b` on a raised top's back edge, `size.y` wide, `size.z` tall at most, `radius`
-##            and `size.x` its height at `a` and at `b` (shares), `radius2` the seed
+##            and `size.x` its height at `a` and at `b` (shares; a ragged bump between when equal,
+##            a ramp when not), `radius2` the seed
 ##   quad     `a` centre, `size.x` and `size.y` across: one flat face facing up, no sides (ground)
 ## `mirror` adds the copy across y = 0; `count` repeats along `step`, each copy moved by up to
 ## `jitter` of a step from the model's variation seed.
 
 const SHAPES: Array[StringName] = [
-	&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid", &"quad", &"cliff", &"ridge"
+	&"box", &"bar", &"cylinder", &"dome", &"torus", &"solid", &"quad", &"cliff", &"ridge", &"tongue"
 ]
 
 @export var part: StringName = &"hull"  ## The sheet part it belongs to: hull, turret or head.
@@ -55,6 +58,8 @@ func top() -> float:
 			above = radius2
 		&"cliff", &"ridge":
 			above = size.z
+		&"tongue":
+			above = 0.0
 	return a.z + above
 
 
@@ -76,6 +81,8 @@ func emit(m: BakeMesh, flip: bool) -> void:
 			BakeShapes.quad(m, material, a * s, Vector2(size.x, size.y))
 		&"cliff":
 			BakeShapes.cliff(m, material, a * s, b * s, size.z, radius, int(radius2))
+		&"tongue":
+			BakeShapes.tongue(m, material, a * s, b * s, int(radius2))
 		&"ridge":
 			BakeShapes.ridge(
 				m, material, a * s, b * s, size.y, size.z, radius, size.x, int(radius2)

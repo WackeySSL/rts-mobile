@@ -65,17 +65,64 @@ func test_the_carving_is_inward_only() -> void:
 		assert_float(v.x).is_less_equal(FOOT_A.x + 0.0001)
 
 
-func test_a_ridge_is_pinned_at_its_ends_and_stays_in_its_height() -> void:
-	var edge: Vector3 = Vector3(0.5, 0.0, 0.0)
+func test_a_ridge_is_pinned_at_its_ends_closed_and_stays_in_its_height() -> void:
 	var m: BakeMesh = BakeMesh.new(&"ridge_fixture")
-	BakeShapes.ridge(
-		m, MAT, Vector3(-0.5, -0.5, HEIGHT), Vector3(0.5, -0.5, HEIGHT), 0.1, 0.1, 0.5, 0.5, 3
-	)
+	var a: Vector3 = Vector3(-0.5, -0.5, HEIGHT)
+	var b: Vector3 = Vector3(0.5, -0.5, HEIGHT)
+	BakeShapes.ridge(m, MAT, a, b, 0.1, 0.1, 0.5, 0.5, 3)
 	var top: float = 0.0
-	var ends: Array[float] = []
-	for v: Vector3 in m.batches[MAT].vertices:
+	var at_a: float = 0.0
+	var at_b: float = 0.0
+	var caps: int = 0
+	var batch: BakeMesh.Batch = m.batches[MAT]
+	for v: Vector3 in batch.vertices:
 		top = maxf(top, v.y)
-		if absf(v.z + 0.5) < 0.0001 and absf(absf(v.x) - edge.x) < 0.0001:
-			ends.append(snappedf(v.y, 0.0001))
+		if absf(v.z + 0.5) < 0.0001 and absf(v.x + 0.5) < 0.0001:
+			at_a = maxf(at_a, v.y)
+		if absf(v.z + 0.5) < 0.0001 and absf(v.x - 0.5) < 0.0001:
+			at_b = maxf(at_b, v.y)
+	for n: Vector3 in batch.normals:
+		caps += 1 if absf(n.x) > 0.99 else 0
 	assert_float(top).is_between(HEIGHT, HEIGHT + 0.1)
-	assert_float(ends.max()).is_equal_approx(HEIGHT + 0.05, 0.0001)
+	assert_float(at_a).is_equal_approx(HEIGHT + 0.05, 0.0001)
+	assert_float(at_b).is_equal_approx(at_a, 0.0001)
+	assert_int(caps).is_equal(2 * 6 * 3)  # both ends capped: 6 triangles, 3 vertices each
+
+
+func test_the_crest_lies_on_the_foot_line_and_the_cap_under_the_lip_is_flush() -> void:
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 1.0
+	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	var batch: BakeMesh.Batch = _wall(11)
+	var crest: int = 0
+	for v: Vector3 in batch.vertices:
+		var u: float = v.z + 0.5  # the foot runs along gy
+		var share: float = v.y / HEIGHT
+		if is_equal_approx(share, 1.0) or share < 0.0001:
+			crest += 1
+			assert_float(v.x).is_equal_approx(FOOT_A.x, 0.0001)  # the crest and the foot are pinned
+		if share >= 1.0 - BakeShapes.crest_drop(noise, u) + 0.0001:
+			assert_float(v.x).is_equal_approx(FOOT_A.x, 0.0001)  # flush under the lip
+	assert_int(crest).is_greater(100)
+
+
+func test_the_tongue_follows_the_crest_line_of_the_face() -> void:
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.seed = 11
+	noise.frequency = 1.0
+	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	var m: BakeMesh = BakeMesh.new(&"tongue_fixture")
+	BakeShapes.tongue(m, MAT, Vector3(0.5, -0.5, HEIGHT), Vector3(0.5, 0.5, HEIGHT), 11)
+	var deepest: float = 0.0
+	for v: Vector3 in m.batches[MAT].vertices:
+		var out: float = v.x - 0.5
+		deepest = maxf(deepest, out)
+		if out > 0.0001:
+			assert_float(out).is_equal_approx(BakeShapes.crest_drop(noise, v.z + 0.5), 0.0001)
+		assert_float(v.y).is_equal_approx(HEIGHT, 0.0001)
+	assert_float(deepest).is_between(0.03, BakeShapes.CREST_MAX + 0.0001)
+	for end: float in [-0.5, 0.5]:  # pinned: no lip at either tile edge
+		for v: Vector3 in m.batches[MAT].vertices:
+			if absf(v.z - end) < 0.0001:
+				assert_float(v.x).is_less_equal(0.5001)

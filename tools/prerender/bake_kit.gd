@@ -15,6 +15,14 @@ const DIAMOND: Vector2i = KitDef.TILE
 ## The ground canvas's headroom over the diamond: what P656c baked with, kept so that the ground
 ## pieces stay byte-identical (the rows above the diamond are cut).
 const GROUND_HEADROOM: int = 36
+## What a ground piece may reach above its diamond, texels: the bleed past the corners (ADR 0053
+## section 7). Higher is refused, as is a wall piece that touches the canvas's top row.
+const BLEED_MAX: int = 3
+## A texel's distance in from the diamond's edge is `(1 - |dx| - |dy|)` times this: the edge's
+## length 2 x 32 x 64 over its normal factor, `sqrt(64 ^ 2 + 32 ^ 2)`.
+const EDGE_TEXELS: float = 28.6
+const SHADOW_CLEAR: float = 4.0  ## The shadow is gone this close to the edge, texels.
+const SHADOW_FULL: float = 9.0  ## and whole this far in.
 ## What reaches less than this (tiles) lies on the ground and casts no baked shadow.
 const SHADOW_MIN_TOP: float = 0.02
 
@@ -58,6 +66,9 @@ func _pieces(model: DetailModel) -> int:
 		var wall: bool = String(part).begins_with("wall_")
 		var raw: Image = await _render(node, wall)
 		node.free()
+		if not _fits(raw, wall):
+			push_error("bake_kit: %s_%s rises over its limit" % [model.art_id, part])
+			return 0
 		var piece: Image = raw
 		if not wall:
 			piece = _cut(_under(raw, await _shadow_of(model, part)))
@@ -109,9 +120,34 @@ func _under(piece: Image, shade: Image) -> Image:
 	for y: int in range(box.position.y, box.end.y):
 		for x: int in range(box.position.x, box.end.x):
 			if shade.get_pixel(x, y).a > 0.0:
-				shade.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha * shade.get_pixel(x, y).a))
+				var fade: float = _edge_fade(x, y, shade.get_size())
+				shade.set_pixel(x, y, Color(0.0, 0.0, 0.0, alpha * shade.get_pixel(x, y).a * fade))
 	shade.blend_rect(piece, Rect2i(Vector2i.ZERO, piece.get_size()), Vector2i.ZERO)
 	return shade
+
+
+## How much of the shadow stays at raw texel (`x`, `y`) of the ground canvas: none outside the
+## diamond or within `SHADOW_CLEAR` texels (1x) of its edge, full from `SHADOW_FULL` in. A shadow
+## that reaches the edge would show over the neighbouring cell as a dashed seam line.
+func _edge_fade(x: int, y: int, size: Vector2i) -> float:
+	var scale: float = _scale()
+	var dx: float = absf(float(x) + 0.5 - size.x * 0.5) / (DIAMOND.x * 0.5 * scale)
+	var dy: float = (
+		absf(float(y) + 0.5 - (size.y - DIAMOND.y * 0.5 * scale)) / (DIAMOND.y * 0.5 * scale)
+	)
+	var inside: float = (1.0 - dx - dy) * EDGE_TEXELS  # texels (1x) inside the diamond's edge
+	return smoothstep(SHADOW_CLEAR, SHADOW_FULL, inside)
+
+
+## Whether the render stays in its limit: a wall piece must leave the canvas's top row empty (its
+## rim may be taller than `RIM_MAX`, which would be cut), a ground piece may rise `BLEED_MAX` above
+## its diamond's top corner.
+func _fits(raw: Image, wall: bool) -> bool:
+	if raw.is_invisible():
+		return true
+	var top: int = raw.get_used_rect().position.y
+	var limit: int = 1 if wall else (GROUND_HEADROOM - BLEED_MAX) * int(_scale())
+	return top >= limit
 
 
 ## The piece's diamond: the canvas without its headroom rows.
