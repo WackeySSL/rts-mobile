@@ -67,6 +67,7 @@ func _add_section(
 		var plate: PanelContainer = PanelContainer.new()
 		plate.theme_type_variation = &"MenuSectionPlate"  # Dark ground over the key art.
 		plate.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		plate.size_flags_vertical = Control.SIZE_SHRINK_BEGIN  # Each plate is as tall as its content.
 		plate.mouse_filter = Control.MOUSE_FILTER_PASS
 		_pair.add_child(plate)
 		holder = VBoxContainer.new()
