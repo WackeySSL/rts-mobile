@@ -1,18 +1,28 @@
 class_name MainMenu
 extends MenuScreen
-## The main menu (ADR 0043 section 5, ADR 0025 section 12, plan P524): TREADLINE, the two sides
-## each in its accent's light (`SideNameRenew`, `SideNameFossil`), the tagline, Continue (only
-## while a resume file exists), Skirmish, Tutorial, How to play, Settings, the rank line and XP
-## bar (`Progression`; `MenuRankLabel` and `MenuXpBar`, the plate `MenuRankBadge` is for screens
-## that frame it), the version line and, at the foot, the real `AdBannerBand` on the start page
-## (its 48 dp of air is the band's data). Every button leads through `MenuRoutes`: a route nobody
-## registered yet leaves the button present and disabled, and enables when the route is
+## The main menu (ADR 0043 section 5, ADR 0052 section 3, plans P524 and P664), after the Figma
+## main menu: TREADLINE, its tagline in amber caps and the two sides (`SideNameRenew`,
+## `SideNameFossil`) top left over the picture's dark side (`top_left`), then the numbered items
+## as a grid: two columns where the measured width holds them (`TWO_COLUMNS_DP`, never the
+## orientation), else one. Each item is a number, the word and an arrow: Continue (only while a
+## resume file exists, so the numbers count the items shown), Skirmish, Tutorial, Rank
+## (`RankScreen`), How to play and Settings; the first shown is filled amber. The commander is one
+## thin profile line in the footer bar above the banner (`_profile`; a tap opens the Rank
+## screen), never a card. Then the version line and, at the foot, the real `AdBannerBand` on the
+## start page (its 48 dp of air is the band's data). Every item leads through `MenuRoutes`: a
+## route nobody registered yet leaves the item present and disabled, and enables when the route is
 ## registered later. It is a menu: no Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const AdServiceScript: GDScript = preload("res://game/ads/AdService.gd")
+const TOKENS: StringName = &"HudTokens"
+const ARROW: Texture2D = preload("res://assets/art/svg/ui/menu_arrow.svg")
 const EMBLEM_DP: float = 32.0
-const XP_BAR_DP: float = 12.0
+const TWO_COLUMNS_DP: float = 560.0  ## The room at which the items stand in two columns,
+const TWO_COLUMNS_MAX_DP: float = 600.0  ## taking at most this width.
+const ITEM_PAD_DP: float = 14.0  ## The number's and the arrow's distance from the item's edge.
+const NUMBER_DP: float = 28.0
+const ARROW_DP: float = 18.0
 const VERSION_SETTING: String = "application/config/version"
 const SIDES: Array[Array] = [
 	[
@@ -39,24 +49,31 @@ var take_notice: Callable = func() -> StringName: return MenuFlow.take_pending_n
 
 var _continue: Button
 var _routed: Dictionary[Button, StringName] = {}
-var _rank_label: Label
-var _xp_label: Label
-var _xp_bar: ProgressBar
+var _numbers: Dictionary[Button, Label] = {}
+var _arrows: Dictionary[Button, TextureRect] = {}
+var _grid: GridContainer
+var _profile: Button
+var _rank_item: Button
 var _progression: ProgressionScript
 var _sides: HBoxContainer
 var _names: Array[Label] = []
 
 
 func _ready() -> void:
+	top_left = true
 	super()
 	MainMenuText.register()
 	_build_header()
+	_grid = GridContainer.new()
+	_grid.add_theme_constant_override("h_separation", roundi(UiScale.dp(GAP_DP)))
+	_grid.add_theme_constant_override("v_separation", roundi(UiScale.dp(GAP_DP)))
+	column.add_child(_grid)
 	_continue = _route_button(MainMenuText.CONTINUE, MenuRoutes.CONTINUE)  # P515.
 	_route_button(MainMenuText.SKIRMISH, MenuRoutes.SKIRMISH)  # P525.
 	_route_button(MainMenuText.TUTORIAL, MenuRoutes.TUTORIAL)  # P544.
+	_rank_item = _route_button(MainMenuText.RANK_ITEM, MenuRoutes.RANK)  # P664 (RankScreen).
 	_route_button(MainMenuText.HOW_TO_PLAY, MenuRoutes.HOW_TO_PLAY)  # P527.
 	_route_button(MainMenuText.SETTINGS, MenuRoutes.SETTINGS)  # P526.
-	_build_rank()
 	var notice: StringName = take_notice.call()
 	if notice != &"":
 		_label(tr(notice), &"PauseMuted")
@@ -65,6 +82,20 @@ func _ready() -> void:
 		tr(MainMenuText.VERSION) % version if version != "" else tr(MainMenuText.COPYRIGHT),
 		&"PauseMuted"
 	)
+	_profile = Button.new()  # The profile line, in the footer bar (P664).
+	_profile.theme_type_variation = &"MenuProfile"
+	_profile.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_profile.clip_text = true
+	_profile.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	var floor_dp: DpMinSize = DpMinSize.new()
+	floor_dp.min_dp = BUTTON_DP
+	_profile.add_child(floor_dp)
+	_profile.pressed.connect(_open.bind(MenuRoutes.RANK))
+	footer.visible = true  # The screen's footer bar (P672a), with the profile line in it.
+	back_link.visible = false  # The root has nothing to go back to.
+	hint_label.visible = false
+	_profile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	footer.get_child(0).add_child(_profile)
 	var band: AdBannerBand = AdBannerBand.new()
 	band.start_page = true
 	band.service = ad_service
@@ -72,6 +103,7 @@ func _ready() -> void:
 	_progression = progression if progression != null else (Progression as ProgressionScript)
 	_listen()
 	_refresh()
+	_apply()
 
 
 func _notification(what: int) -> void:
@@ -80,35 +112,45 @@ func _notification(what: int) -> void:
 		_refresh()
 	elif what == NOTIFICATION_EXIT_TREE and _continue != null:
 		routes.changed.disconnect(_refresh)
-		_progression.xp_changed.disconnect(_refresh_rank)
+		_progression.xp_changed.disconnect(_refresh_profile)
 
 
 func _listen() -> void:
 	routes.changed.connect(_refresh)
-	_progression.xp_changed.connect(_refresh_rank)
+	_progression.xp_changed.connect(_refresh_profile)
 
 
 func _refresh() -> void:
 	_continue.visible = resume_check.call()
+	var shown: int = 0
 	for button: Button in _routed:
 		button.disabled = not routes.has(_routed[button])
-	_refresh_rank()
+		_arrows[button].visible = not button.disabled
+		if button.visible:
+			shown += 1
+			_numbers[button].text = "%02d" % shown
+			var first: bool = shown == 1
+			button.theme_type_variation = &"MenuRowOn" if first else &"MenuRow"
+			_numbers[button].theme_type_variation = &"MenuNumberOn" if first else &"MenuNumber"
+			_arrows[button].modulate = _arrows[button].get_theme_color(
+				&"ground_deep" if first else &"text", TOKENS
+			)
+	_profile.disabled = not routes.has(MenuRoutes.RANK)
+	_refresh_profile()
 
 
-func _refresh_rank() -> void:
+## The profile line "COMMANDER · RANK 1 · 0 / 100 XP", and the title as the Rank item's hint.
+func _refresh_profile() -> void:
 	var rank: int = _progression.rank()
 	var total: int = _progression.xp()
-	var floor_xp: int = _progression.rank_floor_xp()
 	var next_xp: int = _progression.next_rank_xp()
-	_rank_label.text = tr(MainMenuText.RANK) % [rank, _progression.title(rank).to_upper()]
-	_xp_bar.min_value = floor_xp
-	_xp_bar.max_value = maxi(next_xp, floor_xp + 1)
-	_xp_bar.value = total
-	_xp_label.text = (
+	var xp: String = (
 		tr(MainMenuText.XP_TOP) % total
-		if next_xp <= floor_xp
+		if next_xp <= _progression.rank_floor_xp()
 		else tr(MainMenuText.XP) % [total, next_xp]
 	)
+	_profile.text = tr(MainMenuText.PROFILE) % [rank, xp]
+	_rank_item.text = tr(MainMenuText.RANK_HINT) % _progression.title(rank).to_upper()
 
 
 func _open(route: StringName) -> void:
@@ -117,16 +159,53 @@ func _open(route: StringName) -> void:
 		stack.push(routes.make(route))
 
 
+## An item (P664): a `MenuRow` of at least 48 dp holding its word, with its number on the left (in
+## `text_mute`, set by `_refresh`) and the arrow on the right, both over it and taking no touch.
 func _route_button(text_key: StringName, route: StringName) -> Button:
-	var button: Button = add_button(tr(text_key), _open.bind(route))
+	var button: Button = Button.new()
+	button.theme_type_variation = &"MenuRow"
+	button.text = tr(text_key)
+	button.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var floor_dp: DpMinSize = DpMinSize.new()
+	floor_dp.min_dp = BUTTON_DP
+	button.add_child(floor_dp)
+	button.pressed.connect(_open.bind(route))
+	var number: Label = Label.new()
+	number.theme_type_variation = &"MenuNumber"
+	number.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	number.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	button.add_child(number)
+	number.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	var arrow: TextureRect = TextureRect.new()
+	arrow.texture = ARROW
+	arrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	arrow.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	arrow.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	button.add_child(arrow)
+	_grid.add_child(button)
 	_routed[button] = route
+	_numbers[button] = number
+	_arrows[button] = arrow
 	return button
+
+
+## The items shown, in order.
+func items() -> Array[Button]:
+	var shown: Array[Button] = []
+	for button: Button in _routed:
+		if button.visible:
+			shown.append(button)
+	return shown
 
 
 func _build_header() -> void:
 	_label(tr(MainMenuText.TITLE), &"MenuTitle")
+	_label(tr(MainMenuText.TAGLINE).to_upper(), &"MenuEyebrow").autowrap_mode = (
+		TextServer.AUTOWRAP_WORD_SMART
+	)
 	var sides: HBoxContainer = HBoxContainer.new()
-	sides.alignment = BoxContainer.ALIGNMENT_CENTER
+	sides.alignment = BoxContainer.ALIGNMENT_BEGIN
 	sides.add_theme_constant_override("separation", roundi(UiScale.dp(GAP_DP)))
 	column.add_child(sides)
 	for index: int in range(SIDES.size()):
@@ -148,14 +227,30 @@ func _build_header() -> void:
 		_names.append(name_label)
 	_sides = sides
 	_fit_names.call_deferred()
-	_label(tr(MainMenuText.TAGLINE), &"").autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
 
 ## The screen's layout hook: the row is fitted again once every handler of the resize has run.
 func _apply() -> void:
 	super()
-	if _sides != null:
-		_fit_names.call_deferred()
+	if _routed.is_empty() or not is_inside_tree():
+		return
+	var room: float = column_room_px()
+	var two: bool = room >= UiScale.dp(TWO_COLUMNS_DP)
+	_grid.columns = 2 if two else 1
+	if two:
+		column.custom_minimum_size.x = minf(room, UiScale.dp(TWO_COLUMNS_MAX_DP))
+	var pad: float = UiScale.dp(ITEM_PAD_DP)
+	for button: Button in _routed:
+		var number: Label = _numbers[button]
+		number.offset_left = pad
+		number.offset_right = pad + UiScale.dp(NUMBER_DP)
+		var arrow: TextureRect = _arrows[button]
+		arrow.set_anchors_and_offsets_preset(Control.PRESET_CENTER_RIGHT)
+		arrow.offset_left = -(pad + UiScale.dp(ARROW_DP))
+		arrow.offset_right = -pad
+		arrow.offset_top = -UiScale.dp(ARROW_DP) * 0.5
+		arrow.offset_bottom = UiScale.dp(ARROW_DP) * 0.5
+	_fit_names.call_deferred()
 
 
 ## Compact and centred while the row's natural width fits the widest column the screen allows (the
@@ -181,21 +276,10 @@ func _fit_names() -> void:
 		label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART if wrap else TextServer.AUTOWRAP_OFF
 
 
-func _build_rank() -> void:
-	_rank_label = _label("", &"MenuRankLabel")
-	_xp_bar = ProgressBar.new()
-	_xp_bar.theme_type_variation = &"MenuXpBar"
-	_xp_bar.show_percentage = false
-	_xp_bar.custom_minimum_size.y = UiScale.dp(XP_BAR_DP)
-	column.add_child(_xp_bar)
-	_xp_label = _label("", &"")
-
-
 func _label(text: String, variation: StringName) -> Label:
 	var label: Label = Label.new()
 	label.text = text
 	label.theme_type_variation = variation
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	column.add_child(label)
 	return label
 

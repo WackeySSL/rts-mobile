@@ -27,6 +27,7 @@ const TOLERANCE_PX: float = 0.5
 const TOUCH_DP: float = 48.0
 const SETTLE_FRAMES: int = 2
 const MAIN: StringName = &"main"
+const RANK: StringName = &"rank"
 const MAP_SELECT: StringName = &"map_select"
 const SETTINGS: StringName = &"settings"
 const HOW_LIST: StringName = &"how_to_play_list"
@@ -57,6 +58,11 @@ var _save: Node
 var _progression: Node
 ## Set by the store-row tests: the AdService stand-in Settings talks to (null: the autoload).
 var _store: CountingPurchaseService = null
+## The main menu's ad service: a fresh one with no consent, so no banner appears while a case runs.
+## The `/root/AdService` autoload keeps what earlier suites did to it (a scene scan boots it, and a
+## banner then loads a few frames in and shrinks the scroll under a measured position).
+var _ad_harness: AdServiceHarness = null
+var _ads: Node = null
 
 
 func before() -> void:
@@ -76,15 +82,19 @@ func before_test() -> void:
 	_save.call("set_path_override", PrefsRig.dir().path_join("six_sizes_save.cfg"))
 	_progression = (load(SERVICE_SCRIPT) as GDScript).new()
 	_progression.call("bind", _save, null)
+	_ad_harness = AdServiceHarness.new()
+	_ads = _ad_harness.make(false)
+	add_child(_ads)
 
 
 func after_test() -> void:
 	get_tree().quit_on_go_back = _quit_on_go_back_before
 	_close()
 	UiStateGuard.restore(get_window(), _window_size_before)
-	for node: Node in [_rank, _flow, _progression, _save]:
+	for node: Node in [_rank, _flow, _progression, _save, _ads]:
 		if is_instance_valid(node):
 			node.free()
+	_ad_harness.dispose()
 	PrefsRig.end()
 
 
@@ -100,8 +110,9 @@ func test_the_profiles_cover_the_six_sizes_and_their_portrait_twins() -> void:
 	assert_int(portrait).is_greater_equal(ScreenSizes.PORTRAIT.size())
 
 
-func test_the_main_menu_fits_at_every_size() -> void:
+func test_the_main_menu_and_the_rank_screen_fit_at_every_size() -> void:
 	await _check_every_size(MAIN, false)
+	await _check_every_size(RANK, false)
 
 
 func test_the_map_select_fits_at_every_size() -> void:
@@ -173,12 +184,9 @@ func test_the_side_names_wrap_only_where_the_row_does_not_fit_and_stay_centred_o
 			var row: Control = names[0].get_parent() as Control
 			var column: Rect2 = _screen.column.get_global_rect()
 			var left: float = row.get_child(0).get_global_rect().position.x - column.position.x
-			var right: float = column.end.x - names[1].get_global_rect().end.x
 			(
-				assert_float(absf(left - right))
-				. override_failure_message(
-					"%s: slack left %.1f, right %.1f" % [profile_name, left, right]
-				)
+				assert_float(left)
+				. override_failure_message("%s: the row starts %.1f px in" % [profile_name, left])
 				. is_less_equal(1.5)
 			)
 		_close()
@@ -269,7 +277,7 @@ func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
 	for kind: StringName in [
-		MAIN, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
+		MAIN, RANK, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
 	]:
 		await _check_turns(kind, false)
 
@@ -645,6 +653,7 @@ func _make_screen(kind: StringName) -> MenuScreen:
 		MAIN:
 			var main: MainMenu = MainMenu.new()
 			main.progression = _progression
+			main.ad_service = _ads
 			main.resume_check = func() -> bool: return true  # Continue shows: the tallest column.
 			return main
 		MAP_SELECT:
@@ -665,6 +674,15 @@ func _make_screen(kind: StringName) -> MenuScreen:
 			if kind == HOW_LONG_SECTION:
 				how.help = _long_help(60)
 			return how
+	return _make_other(kind)
+
+
+## The screens that need little set-up: Rank, Tutorial, and the build's own Licences.
+func _make_other(kind: StringName) -> MenuScreen:
+	if kind == RANK:
+		var rank: RankScreen = RankScreen.new()
+		rank.progression = _progression
+		return rank
 	if kind == TUTORIAL:
 		var tutorial: TutorialScreen = TutorialScreen.new()
 		tutorial.flow = _flow
