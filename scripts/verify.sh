@@ -83,7 +83,8 @@ if [ "$RUN_TESTS" -eq 0 ]; then
   echo "::: unit tests skipped (--no-tests)"
 elif [ -f scripts/run-tests.sh ]; then
   if [ -n "$SHARD" ]; then
-    run_step "unit tests (gdUnit4, shard ${SHARD})" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh --shard "$SHARD"
+    # CI shards only: Godot --verbose names what the exit check finds (see run-tests.sh); job-summary.sh shows it.
+    run_step "unit tests (gdUnit4, shard ${SHARD})" env RUN_TESTS_SKIP_IMPORT=1 RUN_TESTS_VERBOSE_EXIT=1 bash scripts/run-tests.sh --shard "$SHARD"
   else
     run_step "unit tests (gdUnit4)" env RUN_TESTS_SKIP_IMPORT=1 bash scripts/run-tests.sh
   fi

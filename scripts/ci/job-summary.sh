@@ -29,6 +29,7 @@ sections=(
   "WATCH ai~^WATCH ai ~WATCH ai (the opponent AI, report-only lines)~no WATCH ai line in this log"
 )
 
+leak_pattern='still in use|Leaked instance|ObjectDB instances were leaked|^Orphan '
 has_summary() { [ -f "$log" ] && grep -q -x '===== VERIFY SUMMARY =====' "$log"; }
 print_summary() {
   if has_summary; then
@@ -53,6 +54,15 @@ if [ "$mode" = "--summary" ]; then
       if [ -n "$found" ]; then echo "$found"; else echo "$none"; fi
       echo '```'
     done
+    # The exit check of Godot (run-tests.sh with RUN_TESTS_VERBOSE_EXIT=1, which the shards set): what it
+    # found still in use at exit, with paths.
+    echo
+    echo "### Still in use at exit (Godot --verbose, report only)"
+    echo
+    echo '```'
+    found="$(lines_of "$leak_pattern")"
+    if [ -n "$found" ]; then echo "$found"; else echo "no leak line in this log"; fi
+    echo '```'
   fi
 else
   echo "::group::VERIFY SUMMARY"
@@ -66,6 +76,10 @@ else
       if [ -n "$found" ]; then echo "$found"; else echo "$none"; fi
       echo "::endgroup::"
     done
+    echo "::group::Still in use at exit"
+    found="$(lines_of "$leak_pattern")"
+    if [ -n "$found" ]; then echo "$found"; else echo "no leak line in this log"; fi
+    echo "::endgroup::"
   fi
 fi
 exit 0
