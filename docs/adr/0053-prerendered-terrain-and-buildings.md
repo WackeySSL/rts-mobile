@@ -21,6 +21,10 @@ the same day by the architect in row P654 on branch `claude/p654-prerender-adr` 
 7648d987), and accepted in that PR; the planned acceptance row P654b was folded into it. Plan:
 `docs/plans/2026-11-27-prerender.md`.
 
+**Amended 2026-11-28** (dated sections, no accepted line rewritten): §8, the ground bands judged
+per scene (Michael, "Ja til alle"); §7, raised rock walls in the sorted world with silhouettes
+(Michael's option C, "husk nu vi skal lave det bedste spil"), rows P656d1-P656d5.
+
 **Acceptance note.** CLAUDE.md's Legal, Layout and Stack lines are edited by the lead (#686, approved by Michael's answer 2), before any PNG art merges (P656 / P644). No row edits CLAUDE.md. The tool rows P656a and P656b may merge before
 that edit; no PNG frame or kit tile may.
 Evidence: two prototype branches that are never merged, and that stay the reference:
@@ -447,6 +451,192 @@ No sim rule, Command, `STATE_FORMAT`, hash, `data/` value or balance number chan
   not change movement, because the sim has no road terrain. A road that sped units up would be a
   sim and balance change for a later phase (question 4, answered: decoration only). `HOW_TO_PLAY.md` says roads are only
   looks.
+
+**Amendment (Michael, 2026-11-28, P656d step 0: option C, "real occlusion"): raised rock walls
+in the sorted world, with silhouettes.** Michael chose option C after the step-0 study: raised
+rock walls are drawn in the y-sorted world, so they hide the units and buildings behind them, and
+a unit hidden behind a wall shows a silhouette, so it stays readable and tappable. His words,
+verbatim: "husk nu vi skal lave det bedste spil" (remember, we are making the best game). He
+rejected the cheaper view rule of the step-0 draft (raise only rock whose three back cells are
+rock, water or off the map, and keep the ground under the sorted world). That draft is not
+adopted. Plan rows P656d1-P656d5 (`docs/plans/2026-11-27-prerender.md`).
+
+This amendment replaces, for rock, three things in §7 above: the lip rule's 36 texels and its
+sentence "the ground draws at z 0, under the sorted world, so no unit or building can stand behind
+a lip and be drawn over it"; the draw-call row's "Sorted world unchanged. Ground: at most +1"; and
+the 150-units row's "no per-frame work". It also changes ADR 0023 §2's z table (a dated note is
+placed there). §4's "the sorted world keeps no material" holds as written. The sim, the Commands,
+`STATE_FORMAT`, the hashes and `data/` do not change.
+
+- **A1. Which cells rise, and how high.**
+  - **Every rock cell rises** when the map's look has the wall pieces (A3). A look without them
+    keeps rock flat (its base piece), as the fallback. Rock blocks every move class
+    (`TerrainDef.cost` 0 for all three), so no unit or building ever stands on a wall.
+  - **`RISE_MAX` is 64 texels (32 world px), one diamond height.** The top of a raised cell
+    (c, r) lies exactly on the screen diamond of the cell behind it, (c - 1, r - 1). This is the
+    largest raise whose cover stays within ring 1, the three cells behind (c - 1, r), (c, r - 1)
+    and (c - 1, r - 1); from 33 px on, ring 2 is covered too. It is Michael's "64-80" at its low
+    end, 1.3 times P653's plateau (48.6 texels, 24.3 px).
+  - Measured on the five shipped maps (step 0, 4 samples a px), all 628 rock cells raised:
+
+    | Map | Rock cells | Passable cells | Hidden in part at 32 px | Of these wholly | Share of passable |
+    | --- | --- | --- | --- | --- | --- |
+    | kestrel_flats | 160 | 3,860 | 119 | 89 | 3.1 % |
+    | curlew_crags | 396 | 2,740 | 281 | 224 | 10.3 % |
+    | heron_fords | 46 | 3,330 | 60 | 36 | 1.8 % |
+    | tutorial_basics | 20 | 1,270 | 13 | 11 | 1.0 % |
+    | tutorial_drills | 6 | 1,016 | 6 | 4 | 0.6 % |
+    | **All** | **628** | **12,216** | **479** | **364** | **3.9 %** |
+
+    At P653's 24.3 px the same 479 cells are touched (364 of them by half or more, none wholly),
+    so the lower wall hides no fewer cells, only less of each. No start cell and no ore cell is
+    touched at either height. `perf_bases` has 34 rock cells and 26 touched cells.
+- **A2. The ground layers stay flat.** Every piece the base and edge layers draw is exactly its
+  128 x 64 diamond: blends, shores and roads rise 0. The rock lips of P656c (up to 27 texels into
+  the cell behind) are not drawn by the ground layers; P656d4 replaces them with the wall pieces.
+  So the edge layer's draw order no longer matters, and the old lip rule becomes: **no ground
+  piece rises; all height is in the sorted world.**
+- **A3. The wall pieces.** Three kinds per look, from the kit (`kit.tres`, kind names
+  `wall_top`, `wall_face`, `wall_rim` on `rock`), re-baked by P656d4 with P653's own cliff method
+  (the strata and ragged edge of `docs/proto/p653/tools/build4.py` and
+  `tools/prerender/bake_terrain.gd` on `claude/p653-prerender-prototype`):
+  - `wall_top/0-3`: the rock base variants, drawn 32 px up (the boulder on one cell in eight, by
+    §7's cell hash);
+  - `wall_face/se`, `sw`, `s` (both): the front faces, chosen by which of the two front edge
+    neighbours (c + 1, r) and (c, r + 1) is not raised. Back faces are never seen and not made;
+  - `wall_rim/ne`, `nw`, `n` (both), `inner_n`: the top's ragged back edge where a back neighbour
+    is not raised.
+  - Each piece is a crop of one 128 x 136 texel canvas whose ground centre is at (64, 104): the
+    raised prism fills rows 8 to 136, and at most `RIM_MAX` = 8 texels above it may hold the
+    ragged edge. Nothing of a wall piece lies outside the prism except that edge, so a wall casts
+    no shadow onto the ground in a sorted piece (a cast shadow, if the look gate asks for one, is
+    a ground piece in a later row).
+  - The inner-corner stub must not show: two faces that meet round a lower cell end on the
+    shared corner. The pieces are made so; the look gate checks it.
+- **A4. The sort rule.**
+  - One `Node2D` per diagonal row d = c + r that holds a raised cell, a child of `WorldSort`, at
+    y = (d + 1) x 16 px: the centre y of every cell on that row. Its children are the row's pieces,
+    each at its cell's centre, in the order face, top, rim. The row node does not y-sort its
+    children. So a wall cell sorts exactly as a 1 x 1 footprint does (ADR 0023 §2, the centre
+    key), and cells on one row never overlap except at their tips.
+  - Why it is exact: a unit's ground point is never inside a rock diamond. A point behind the
+    cell's two back edges has a smaller y than its centre and is drawn first, so the wall covers
+    it; a point in front of the two front edges has a larger y and is drawn after. Against a
+    square footprint the separation argument of ADR 0023 §2 holds unchanged, and two raised cells
+    of one height are in painter's order by d. Only a unit within half a tile of a cell's east or
+    west tip can sort wrongly, by a few px at the tip, as at a building's tip.
+  - Per diagonal row, not per cell, so the engine sorts at most cols + rows - 1 more items
+    (127 on a 64 x 64 map, 75 on Curlew), not 628.
+- **A5. The texture.** The wall pieces are frames of the sorted page (`IsoAtlas.PAGE_SORTED`),
+  packed once (they are neutral: no key colour), after every sheet so that no sheet's region
+  moves. Interleaved with units and buildings they stay in the sorted world's one batch: same
+  texture, no material. The kit's own page (the ground) is never drawn in the sorted world.
+  Budget: two states (A6) of about 11 pieces, at most 2 shelves, **at most 224 rows**; the
+  cross-faction page goes from 2756 to at most 2980 of its 3584 rows (about +3.7 MB of texture at
+  most). `test_iso_atlas_budget` pins it.
+- **A6. Fog on walls.** The fog (z 4) lies under the sorted world, so it cannot dim a wall. Each
+  wall cell shows one of three states, from the local player's fog at that cell:
+  - seen: the lit pieces;
+  - explored, not seen: a dim copy of the pieces, each texel's RGB times
+    (1 - `explored_alpha` / 255) with its alpha kept, exactly what the fog's black does to the
+    ground. The copy is made once at the bake, natively (`Image.adjust_bcs` if a test shows it is
+    that multiply, else a native blend), never per texel in GDScript;
+  - never explored: hidden. The cells behind show their own ground and fog.
+  The state changes by a region write, so no batch breaks and no material is added.
+  `FogLayer` hands `WallLayer` each cell it patches (and the whole grid on a rebuild); a cell that
+  is not a wall costs one byte read. The satellite fade (P235) fades the ground; walls switch to
+  their new state when the fade starts. A wall's state steps per cell while the ground fog is
+  soft across one tile; the look gate judges it.
+- **A7. Silhouettes.**
+  - **What shows one:** a ground unit's rig that is shown (own always; an enemy or neutral one
+    only where the local player sees it, the rig's own fog rule, so the fog is respected) and
+    whose cell is in the near-wall set: a raised cell among (c + 1, r), (c, r + 1),
+    (c + 1, r + 1), (c + 2, r + 1), (c + 1, r + 2), (c + 1, r - 1) and (c - 1, r + 1). The set is
+    one byte per cell, built with the walls and on a `map_version` change. A rig reads its byte
+    when its cell changes: O(1), no search.
+  - **How:** each rig has two more `Sprite2D` children, the silhouettes of its Hull and its
+    Turret: the same atlas region as the part they copy, written where the part's region is
+    written, at absolute z 11 (above the sorted world at 10, under the aircraft at 20 and the bars
+    at 30). They are made with the rig and pooled with it, so nothing is allocated per frame.
+  - **The shader** (`silhouette.gdshader`, canvas_item, Compatibility and web): one material
+    shared by every silhouette, so all of them are **one draw call**. A texel is drawn only where
+    a raised cell in front of the unit covers it. With the raise exactly one diamond height, the
+    raised cells whose walls cover a point p are exactly the three cells that the ground segment
+    from p's flat ground point (u, v) to (u + 1, v + 1) crosses: (floor u, floor v), then
+    (floor u + 1, floor v) if frac u > frac v, else (floor u, floor v + 1), then
+    (floor u + 1, floor v + 1). The texel is drawn when one of them is raised (a one-byte-per-cell
+    mask texture, nearest filter) and its centre y is larger than the unit's ground y. The
+    unit's ground y is the sprite's own origin (`MODEL_MATRIX`), so each silhouette sprite stands
+    at the rig's ground point with the part's mount folded into its offset. The projection's 32
+    and 16 reach the shader as uniforms from `IsoProjection`, which stays the one file that
+    holds them.
+  - **The look:** an x-ray, not a flat fill: a texel of team colour (saturation at least
+    `team_sat_min`) keeps its hue, every other texel is one flat dark body colour, all at the
+    silhouette alpha. So own and enemy read apart by their team panels (TEAM_SHARE 30-65 % of a
+    unit) with one material for all players. The values are the material's, set by eye at the
+    look gate. If Michael prefers a flat fill in each player's colour, that is one material per
+    player and one draw call more per player with a silhouette on screen.
+  - **Buildings get none.** A wall hides at most 32 px of a building, its pick shape works
+    through the wall, and its bar and selection frame draw at z 30 over the wall. The look gate
+    may ask for building silhouettes in a later row.
+  - A hidden unit's ring and shadow stay on the ground under the wall; its health bar (z 30),
+    its projectiles (40) and its effects (50) draw over the wall, as before.
+  - The GDScript twin `game/view/WallCover.gd` (static, pure) holds the same three-cell test. It
+    is the reference the tests read, the picking's inverse (A8) and the near-wall builder. A CI
+    render test of shader against twin joins P644a's xvfb step when that step exists.
+- **A8. Picking and placement.**
+  - **A tap on a silhouette selects the unit:** `Picker` hits a unit on its lifted centre and
+    radius, not on its pixels, and a unit is hit before the ground and buildings, so a hidden
+    unit is tapped as a visible one. Box select and double-tap use the units' centres and include
+    hidden units. Nothing in `Picker` changes.
+  - **A tap on a wall resolves to the wall's cell.** The ground taps (move, the strike's aim, the
+    carrier's unload point) go through `WallCover.ground_at(p)`: the front-most raised cell of
+    p's three cells (A7), the larger centre y first, gives that cell's centre; with none, the
+    flat `IsoProjection.px_to_ground(p)` as today. So a tap on a wall top no longer lands on the
+    hidden cell behind it, and the sim's rule for a blocked target applies as for a tap on flat
+    rock today.
+  - **Placement keeps the flat inverse.** The ghost and its marks draw at z 60, over the walls, so
+    a site behind a wall stays readable under the finger; the sim decides what is buildable, as
+    today.
+- **A9. Other layers.**
+  - `GhostMemoryLayer` (remembered enemy buildings, one dim colour) moves from z 5 to **z 12**:
+    at z 5 a wall behind a remembered building would draw over its roof. At 12 it draws over
+    walls; a remembered building exists only where no own unit sees, so no live unit stands at
+    it. Still one draw call.
+  - **Air:** aircraft (z 20) draw over walls, unchanged. An aircraft's shadow whose ground point
+    lies in a raised cell is drawn 32 px up at **z 19**, so it lies on the wall top and not under
+    it: one draw call more while any shadow is on a wall (P656d5).
+  - Field props (wellheads) stay at z 1 under the sorted world. On Curlew two wellheads, (27, 19)
+    and (27, 35), have a raised cell two rows behind; it covers at most 3 px of the prop's top
+    corner. Accepted; no shipped ore cell is touched by a wall.
+  - Unchanged: the minimap and `MinimapImage` (rock is the wall), `MapView`'s bake and the
+    fallback, the decals and craters (under walls, as on the ground), the move markers.
+- **A10. Draw calls and the budget.**
+  - On `PerfBases` (code today: `CALLS_FORECAST` 17, `CALLS_STRIKE` 18, `CALLS_WORST` 23; ADR
+    0035 §7's 18 / 19 / 25 wait on P216, which has not landed): the edge layer +1 (P656d1), the
+    walls **+0** (A5), `GhostMemoryLayer`'s move +0, the silhouettes **+1 while any is on
+    screen** (P656d3). So **18** in an ordinary moment, **19** with a unit behind a wall or a
+    strike aimed, 20 with both, **about 25** at the worst moment. The constants become 18, 19 and
+    25 with a card line clause for the silhouettes. The ordinary moment keeps the gate of 19; all
+    figures stay under the trigger of 40 and the ceiling of 60. If P216 lands, it adds its two.
+  - 150 units at 60 fps on the 2021 phone: the walls are static (nodes made at match start and on
+    a `map_version` change; per tick only the patched fog cells that are walls, per frame
+    nothing in script). The engine sorts at most 127 more items and culls the wall sprites off
+    screen (Curlew has about 870: 396 tops, 240 faces and the rims). The
+    silhouettes cost a byte read when a rig changes cell and fill only on near-wall units (four
+    texture reads a texel). No timing figure is claimed here; P659's phone card is the check.
+- **A11. Tests (headless).** The wall-piece choice tables (every front and back mask); one row
+  node per diagonal at y = (d + 1) x 16; for every shipped map, the sort keys put each raised cell
+  after a unit in its ring 1 behind and before a unit in front; every wall sprite shows a region
+  of `PAGE_SORTED` and has no material; the three fog states and the write bound (a patch of k
+  wall cells writes at most 3 k sprites); the twin's three-cell set equals a brute-force prism
+  sweep at 4 samples a px on crafted grids; `ground_at` on tops, faces and flat ground; the
+  near-wall bytes; no node made after warm-up over 300 frames; the page pins with the wall band at
+  most 224 rows; `RISE_MAX` equals one diamond height (2 x 2 x `IsoProjection.HALF_H` texels);
+  no start cell and no ore cell in a raised cell's ring 1 on any shipped map, and the counts of
+  A1 pinned per map; the fallback (a look without wall pieces draws no wall and covers nothing).
+  Not headless: the shader's output (the CI render test), the look (Michael's gate) and the frame
+  time (P659's card).
 
 ### 8. Same-scene coherence with SVG units on pre-rendered terrain (ADR 0050 §8)
 The sheet shows the SVG units and the pre-rendered buildings on the kit's ground. Recoloured
