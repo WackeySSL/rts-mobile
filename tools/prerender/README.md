@@ -52,7 +52,7 @@ vertex leave no pinhole). A ground piece is baked on a canvas with `GROUND_HEADR
 that reaches more than `BLEED_MAX` (3) texels above it is refused. A part named `wall_*` is the whole
 128 x 136 canvas of a raised rock cell, origin (64, 104) (`TerrainKitDef.WALL_CANVAS`, `WALL_ORIGIN`),
 with no baked shadow, refused when it touches the canvas's top row; `cliff` (a face), `tongue` (the
-top's lip over it, the same crest line) and `ridge` (the back edge) are its shapes.
+top's lip over it, the same crest line) and `trim` (the flat back edge) are its shapes.
 A piece's shadow (what reaches 0.02 tile high, flattened along
 +gx by `ArtShadow.REACH` as `bake_model.gd` does) is laid under it at the shadow band's alpha, so a
 shore's shadow falls beside it; the lit render shades the pieces inside themselves. The

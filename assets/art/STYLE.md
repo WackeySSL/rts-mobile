@@ -3290,20 +3290,24 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
   rises `RISE_MAX` = 64 texels (32 world px, one diamond height; P653's own plateau is 48.6). Each
   wall piece is one 128 x 136 canvas whose ground centre is at (64, 104): the raised prism fills rows
   8 to 136 and at most `RIM_MAX` = 8 texels above it hold the ragged back edge (shipped: at most 6.8;
-  `tests/art/test_terrain_kit.gd` pins the hexagon plus 8). `wall_top` is the rock base look drawn
-  raised (light beige-grey, fine seamless grain, the boulder on variant 3). `wall_face` is a front
-  face of the prism, `se` (the cell at x + 1 is lower), `sw` (y + 1) or `s` (both, one piece). `wall_rim` is
-  the plateau's ragged back edge where a back neighbour is lower: `ne`, `nw`, `n` (both) and
-  `inner_n`, two short ridges at the north vertex. Drawn in the order face, top, rim (A4). Built with
-  P653's cliff method (`BakeShapes.cliff`, `ridge`): grooves run top to bottom (noise fast along the
-  wall, slow up it) with a slow strata ripple, carved inward only, so nothing leaves the prism and the
-  two faces of `s` end on the shared corner with no stub; the foot, the crest and both ends are pinned,
-  so pieces meet at the tile edge; a ragged flush cap sits just under the crest. The front crest is the
-  top piece's straight edge, the raggedness is in the rim ridge and the cap. A wall casts no baked
-  shadow. **Light order**: the `sw` face is the brightest (value 0.50), the top 0.46 and the `se` face
-  the darkest (0.34), so the left faces read a little brighter than the right (the same sun as the
-  sprites). Face saturation 0.09 to 0.13 (P653's cliff 0.10), mean face value 0.42 (P653's 0.33 to
-  0.39 in the shade, 0.45 to 0.48 lit).
+  `tests/art/test_terrain_kit.gd` pins the hexagon plus 8). **The top is flat** (Michael, 2026-11-28:
+  "kan den ikke flade ud"): nothing rises above the top plane at the edge, no lip, kerb or ridge
+  (`test_no_rim_or_tongue_rises_above_the_top_plane`); only the plan shape of the edge is ragged.
+  `wall_top` is P653's plateau: light beige-grey (hue 32, saturation 0.12, value 0.56, grain 0.035), a
+  fine grain with little blotch, the boulder on variant 3 (a stone on the plateau, the one thing that
+  rises). `wall_face` is a front face of the prism, `se` (the cell at x + 1 is lower), `sw` (y + 1) or
+  `s` (both, one piece). `wall_rim` is a flat trim at the top's height that carries the plateau's
+  outline raggedly past the back edge (up to 6.7 texels) where a back neighbour is lower: `ne`, `nw`,
+  `n` (both) and `inner_n`, two short trims at the north vertex. Drawn in the order face, top, rim
+  (A4). The faces use P653's cliff method (`BakeShapes.cliff`): columns of uneven width and depth with
+  narrow dark crevices (the carve depth darkens the shader), a slow strata ledge, carved inward only,
+  so nothing leaves the prism and the two faces of `s` end on the shared corner with no stub; the
+  foot, the crest and both ends are pinned, so pieces meet at the tile edge. The top's front edges
+  carry a `tongue` that lies on the face's lip line texel for texel (`BakeShapes.crest_drop`), so the
+  crest where top meets face is ragged. A wall casts no baked shadow. **Light order**: the top is the
+  brightest (0.56), then the `sw` face (0.46) and the `se` face the darkest (0.36), so the left faces
+  read brighter than the right (the same sun as the sprites). Face saturation 0.09 to 0.13 (P653's
+  cliff 0.10).
 - **Seamless.** The ground reaches 0.02 tile (about 1 texel) past each edge, never past a corner,
   so two tiles overlap and no hairline shows; its mottling repeats a whole number of times per tile
   and so runs on across the seam. A stone's or a shore's shadow is baked (the bake's sun, along +gx,
@@ -3931,4 +3935,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-27 | v1.60 (P643, art-director, ADR 0050 amendment A1 to A9, no rule change): the Facet Linecar, Seeder, Glint and Sunfall at detail 2 with the team colour on their large panels (33 to 42 % of the default view, 28 to 52 % in every direction; no model paints `faction`) over graphite, titanium and white bodies; their silhouettes, the Seeder's hull canvas (152 x 118) and the Linecar's shadow canvas (214 x 110) are updated above. The four ids' 128 frames and 4 cards are regenerated; atlas page 1 moves +8, 0 and +11 and page 2 +2, 0 and 0 (the aircraft add 0). The 32 px mirror matrix over the four ids against the 22 detail-2 models has a maximum of 0.76 (0.77 before); no pair rose by 0.03 or more. |
 | 2026-11-27 | v1.61 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain, against P653's terrain, and the look reworked after Michael's no to the first kit (calm grain, no stones, P653 colours, tall cliff columns); the twelve SVG diamonds and every other ground rule stay as they were |
 | 2026-11-28 | v1.62 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |
-| 2026-11-28 | v1.63 (P656d4, art-director, ADR 0053 amendment A1 to A4, no rule change; nothing draws the walls yet): the Terrain kit's wall part: the 12 rock lips are gone, 11 wall pieces (`wall_top` 0 to 3, `wall_face` se, sw, s, `wall_rim` ne, nw, n, inner_n) on the 128 x 136 canvas with origin (64, 104), a raised cell 64 texels, baked by the P653 cliff method; the two water shore pieces that rose 1 and 2 texels are cut to their diamond |
+| 2026-11-28 | v1.63 (P656d4, art-director, ADR 0053 amendment A1 to A4, no rule change; nothing draws the walls yet): the Terrain kit's wall part, flat-topped (no kerb, Michael 2026-11-28): the 12 rock lips are gone, 11 wall pieces (`wall_top` 0 to 3, `wall_face` se, sw, s, `wall_rim` ne, nw, n, inner_n) on the 128 x 136 canvas with origin (64, 104), a raised cell 64 texels, baked by the P653 cliff method; the two water shore pieces that rose 1 and 2 texels are cut to their diamond |

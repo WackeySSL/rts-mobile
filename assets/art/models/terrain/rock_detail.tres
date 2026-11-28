@@ -77,10 +77,11 @@ kind = 7
 [sub_resource type="Resource" id="m_r_plateau"]
 script = ExtResource("1_mat")
 id = &"r_plateau"
-base = Color(0.69, 0.642, 0.559, 1)
+base = Color(0.59, 0.548, 0.496, 1)
 roughness = 0.88
 kind = 6
-patch = Color(0.72, 0.72, 0.77, 1)
+patch = Color(1, 1, 1, 1)
+grain = Vector3(0.25, 0.35, 1.9)
 
 [sub_resource type="Resource" id="p0"]
 script = ExtResource("2_part")
@@ -531,66 +532,66 @@ radius2 = 313055
 [sub_resource type="Resource" id="p52"]
 script = ExtResource("2_part")
 part = &"wall_rim_ne"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(0.5, -0.5, 0.8164966)
-size = Vector3(0.5, 0.11, 0.10206)
+size = Vector3(0.5, 0, 0.105)
 radius = 0.5
 radius2 = 515151
 
 [sub_resource type="Resource" id="p53"]
 script = ExtResource("2_part")
 part = &"wall_rim_nw"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(-0.5, 0.5, 0.8164966)
-size = Vector3(0.5, 0.11, 0.10206)
+size = Vector3(0.5, 0, 0.105)
 radius = 0.5
 radius2 = 616161
 
 [sub_resource type="Resource" id="p54"]
 script = ExtResource("2_part")
 part = &"wall_rim_n"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(0.5, -0.5, 0.8164966)
-size = Vector3(0.5, 0.11, 0.10206)
+size = Vector3(0.5, 0, 0.105)
 radius = 0.5
 radius2 = 515151
 
 [sub_resource type="Resource" id="p55"]
 script = ExtResource("2_part")
 part = &"wall_rim_n"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(-0.5, 0.5, 0.8164966)
-size = Vector3(0.5, 0.11, 0.10206)
+size = Vector3(0.5, 0, 0.105)
 radius = 0.5
 radius2 = 616161
 
 [sub_resource type="Resource" id="p56"]
 script = ExtResource("2_part")
 part = &"wall_rim_inner_n"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(-0.2, -0.5, 0.8165)
-size = Vector3(0.0, 0.11, 0.10206)
+size = Vector3(0.0, 0, 0.105)
 radius = 0.5
 radius2 = 717171
 
 [sub_resource type="Resource" id="p57"]
 script = ExtResource("2_part")
 part = &"wall_rim_inner_n"
-shape = &"ridge"
-material = &"ground"
+shape = &"trim"
+material = &"r_plateau"
 a = Vector3(-0.5, -0.5, 0.8164966)
 b = Vector3(-0.5, -0.2, 0.8165)
-size = Vector3(0.0, 0.11, 0.10206)
+size = Vector3(0.0, 0, 0.105)
 radius = 0.5
 radius2 = 818181
 

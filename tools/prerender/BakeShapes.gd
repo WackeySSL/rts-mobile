@@ -296,61 +296,39 @@ static func tongue(m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, seed_va
 		_tris(m, mat, [inner[i], inner[i + 1], rim[i + 1], rim[i]], Vector3.BACK)
 
 
-## A ragged ridge on the back edge of a raised top: from `a` to `b` at the top's height, `depth`
-## tiles wide towards the tile centre, rising to `height` tiles at the edge. Its height along the
-## edge runs from `ha` to `hb` (shares of `height`): with a ragged bump between when they are equal,
-## a straight ramp when they differ. Both ends are pinned and closed by a cap, so ridges of
-## neighbouring cells meet flush at the tile edge and a free end leaves no notch.
-static func ridge(
+## A flat trim on the back edge of a raised top: the plateau's surface carried on past the edge `a`
+## to `b`, at the top's height, by a ragged amount of at most `span` tiles (on screen `64 x span`
+## texels up). Only the outline of the edge is ragged; nothing rises above the top plane. The amount
+## runs from `ha` to `hb` (shares of `span`) at the two ends, with a ragged bump between when they
+## are equal and a straight ramp when they differ, so trims of neighbouring cells meet at the tile
+## edge.
+static func trim(
 	m: BakeMesh,
 	mat: StringName,
 	a: Vector3,
 	b: Vector3,
-	depth: float,
-	height: float,
+	span: float,
 	ha: float,
 	hb: float,
 	seed_value: int
 ) -> void:
 	const NU: int = 64
-	const NT: int = 6
 	var along: Vector3 = (b - a).normalized()
-	var inward: Vector3 = -_away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
+	var out: Vector3 = _away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
 	var noise: FastNoiseLite = _noise(seed_value)
-	var rows: Array[PackedVector3Array] = []
+	var inner: PackedVector3Array = PackedVector3Array()
+	var rim: PackedVector3Array = PackedVector3Array()
 	for i: int in NU + 1:
 		var u: float = float(i) / NU
 		var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u)) if ha == hb else 0.0
 		var bump: float = (
 			0.3 * noise.get_noise_2d(u * 9.0, 1.7) + 0.12 * noise.get_noise_2d(u * 31.0, 4.1)
 		)
-		var top: float = height * clampf(lerpf(ha, hb, u) + pin * bump, 0.0, 1.0)
-		var column: PackedVector3Array = PackedVector3Array()
-		for k: int in NT + 1:
-			var t: float = float(k) / NT
-			column.append(
-				a.lerp(b, u) + inward * (depth * (1.0 - t)) + Vector3(0.0, 0.0, top * t * t)
-			)
-		rows.append(column)
+		var reach: float = span * clampf(lerpf(ha, hb, u) + pin * bump, 0.0, 1.0)
+		inner.append(a.lerp(b, u) - out * 0.01)
+		rim.append(a.lerp(b, u) + out * reach)
 	for i: int in NU:
-		for k: int in NT:
-			_tris(
-				m,
-				mat,
-				[rows[i][k], rows[i + 1][k], rows[i + 1][k + 1], rows[i][k + 1]],
-				Vector3.BACK
-			)
-	# End caps: the profile closed by the vertical drop at the edge and the top plane, so that a free
-	# end shows no see-through notch (a neighbour's ridge meets it flush at the same height).
-	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
-	for end: int in [0, NU]:
-		var profile: PackedVector3Array = rows[end]
-		if profile[NT].z - profile[0].z < 0.001:
-			continue
-		var side: Vector3 = along if end == NU else -along
-		var foot: Vector3 = Vector3(profile[NT].x, profile[NT].y, profile[0].z)
-		for k: int in NT:
-			m.tri(mat, [foot, profile[k], profile[k + 1]], [side, side, side], flat)
+		_tris(m, mat, [inner[i], inner[i + 1], rim[i + 1], rim[i]], Vector3.BACK)
 
 
 ## The unit horizontal `dir` or its opposite, whichever points away from the tile centre at `mid`.

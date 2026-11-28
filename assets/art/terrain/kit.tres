@@ -13,7 +13,7 @@
 ;   wall_* (rock, ADR 0053 amendment A3): the raised cell, each piece the 128 x 136 canvas with the
 ;          ground centre at (64, 104). wall_top <variant> is the plateau, wall_face se / sw / s the
 ;          front faces (the low edge neighbour (c + 1, r), (c, r + 1), or both), wall_rim ne / nw / n
-;          the ragged back edge where the back neighbour is lower, inner_n at the north vertex.
+;          a flat trim carrying the plateau outline raggedly past the back edge where the back neighbour is lower, inner_n at the north vertex.
 ;   road   <edge>_<edge>: the road leaves the cell through those two edges; it replaces the base.
 ; priority: highest first. A higher terrain's blend is drawn on the cells of a lower one.
 

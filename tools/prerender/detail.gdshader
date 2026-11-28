@@ -8,6 +8,7 @@ uniform float metal = 0.4;
 uniform float rough = 0.5;
 uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas, 6 ground
 uniform vec3 patch : source_color = vec3(1.0); // ground: the tint of the darker low-frequency patches
+uniform vec3 grain = vec3(0.75, 0.6, 0.4); // ground: weights of the soft, mid and fine grain
 uniform float wear_amount = 1.0;
 uniform float dirt_amount = 1.5;
 uniform sampler2D nz : repeat_enable, filter_linear_mipmap;
@@ -55,7 +56,7 @@ void fragment() {
 		float soft = tri(mp, mn, 1.0) - 0.5;
 		float mid = tri(mp, mn, 2.0) - 0.5;
 		float fine = tri(mp, mn, 4.0) - 0.5;
-		ALBEDO = base * (1.0 + amp * (0.75 * soft + 0.6 * mid + 0.4 * fine));
+		ALBEDO = base * (1.0 + amp * (grain.x * soft + grain.y * mid + grain.z * fine));
 		ALBEDO *= mix(vec3(1.0), patch, smoothstep(0.4, 0.58, soft + 0.5));
 		METALLIC = metal;
 		ROUGHNESS = rough;

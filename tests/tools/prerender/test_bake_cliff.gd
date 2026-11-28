@@ -65,28 +65,25 @@ func test_the_carving_is_inward_only() -> void:
 		assert_float(v.x).is_less_equal(FOOT_A.x + 0.0001)
 
 
-func test_a_ridge_is_pinned_at_its_ends_closed_and_stays_in_its_height() -> void:
-	var m: BakeMesh = BakeMesh.new(&"ridge_fixture")
+func test_a_trim_is_flat_pinned_at_its_ends_and_within_its_span() -> void:
+	var m: BakeMesh = BakeMesh.new(&"trim_fixture")
 	var a: Vector3 = Vector3(-0.5, -0.5, HEIGHT)
 	var b: Vector3 = Vector3(0.5, -0.5, HEIGHT)
-	BakeShapes.ridge(m, MAT, a, b, 0.1, 0.1, 0.5, 0.5, 3)
-	var top: float = 0.0
-	var at_a: float = 0.0
-	var at_b: float = 0.0
-	var caps: int = 0
-	var batch: BakeMesh.Batch = m.batches[MAT]
-	for v: Vector3 in batch.vertices:
-		top = maxf(top, v.y)
-		if absf(v.z + 0.5) < 0.0001 and absf(v.x + 0.5) < 0.0001:
-			at_a = maxf(at_a, v.y)
-		if absf(v.z + 0.5) < 0.0001 and absf(v.x - 0.5) < 0.0001:
-			at_b = maxf(at_b, v.y)
-	for n: Vector3 in batch.normals:
-		caps += 1 if absf(n.x) > 0.99 else 0
-	assert_float(top).is_between(HEIGHT, HEIGHT + 0.1)
-	assert_float(at_a).is_equal_approx(HEIGHT + 0.05, 0.0001)
-	assert_float(at_b).is_equal_approx(at_a, 0.0001)
-	assert_int(caps).is_equal(2 * 6 * 3)  # both ends capped: 6 triangles, 3 vertices each
+	BakeShapes.trim(m, MAT, a, b, 0.1, 0.5, 0.5, 3)
+	var reach_a: float = 0.0
+	var reach_b: float = 0.0
+	var farthest: float = 0.0
+	for v: Vector3 in m.batches[MAT].vertices:  # Godot frame: x, height, grid y
+		assert_float(v.y).is_equal_approx(HEIGHT, 0.0001)  # flat, at the top's height
+		var out: float = -0.5 - v.z  # past the back edge
+		farthest = maxf(farthest, out)
+		if absf(v.x + 0.5) < 0.0001:
+			reach_a = maxf(reach_a, out)
+		if absf(v.x - 0.5) < 0.0001:
+			reach_b = maxf(reach_b, out)
+	assert_float(reach_a).is_equal_approx(0.05, 0.0001)
+	assert_float(reach_b).is_equal_approx(reach_a, 0.0001)
+	assert_float(farthest).is_between(0.05, 0.1001)
 
 
 func test_the_crest_lies_on_the_foot_line_and_the_cap_under_the_lip_is_flush() -> void:
@@ -140,3 +137,27 @@ func test_the_tongue_lies_on_the_faces_lip_line_in_screen_texels() -> void:
 			. is_less(0.05)
 		)
 	assert_float(deepest).is_between(0.03, BakeShapes.CREST_MAX + 0.0001)
+
+
+## Nothing of a wall piece's rim or tongue rises above the top plane: the plateau runs flat out to
+## where the face starts (Michael, 2026-11-28: no kerb on the top). Only the plan shape of the edge
+## is ragged. The boulder of `wall_top_3` is a stone on the plateau, not part of its edge.
+func test_no_rim_or_tongue_rises_above_the_top_plane() -> void:
+	var model: DetailModel = load("res://assets/art/models/terrain/rock_detail.tres") as DetailModel
+	var top: float = float(TerrainKitDef.RISE_MAX) / ArtRender.Z_PX
+	var checked: int = 0
+	for piece: DetailPart in model.parts:
+		if not (String(piece.part).begins_with("wall_rim") or piece.shape == &"tongue"):
+			continue
+		var m: BakeMesh = BakeMesh.new(&"flat_fixture")
+		piece.emit(m, false)
+		for v: Vector3 in m.batches[piece.material].vertices:  # Godot frame: x, height, grid y
+			(
+				assert_float(v.y)
+				. override_failure_message(
+					"%s rises to %.4f over the top plane %.4f" % [piece.part, v.y, top]
+				)
+				. is_less_equal(top + 0.0001)
+			)
+		checked += 1
+	assert_int(checked).is_equal(8 + 6 + 0)  # 6 rim parts (ne, nw, n x2, inner_n x2) and 8 tongues
