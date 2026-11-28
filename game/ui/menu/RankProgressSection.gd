@@ -11,7 +11,7 @@ const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
 const LOCK_DP: float = 16.0
 ## Every level column is this wide (and the head over it), so the rows line up; the map name
 ## takes the rest of the line.
-const CELL_DP: float = 88.0
+const CELL_DP: float = 60.0
 const GAP_DP: float = 6.0
 const SECONDS_PER_HOUR: int = 3600
 const SECONDS_PER_MINUTE: int = 60

@@ -23,7 +23,7 @@ const ENGLISH: Dictionary[StringName, String] = {
 	PROGRESS: "PROGRESS",
 	WINS_GRID: "WINS BY MAP AND LEVEL",
 	MAP_HEAD: "MAP",
-	CELL_LOCKED: "RANK %d",
+	CELL_LOCKED: "RANK\n%d",  # Two lines: the cell is narrow.
 	LESSONS: "Lessons done",
 	MATCHES: "Matches played",
 	WINS: "Wins",

@@ -78,9 +78,9 @@ func test_the_grid_cells_equal_the_career_and_a_locked_cell_shows_the_lock_and_i
 	section.refresh(_progression, _maps, PackedStringArray())
 	await await_idle_frame()
 	assert_str(_value(section, "Cell_kestrel_flats_easy")).is_equal("3")
-	assert_str(_value(section, "Cell_kestrel_flats_hard")).is_equal("RANK 3")
-	assert_str(_value(section, "Cell_map_2_easy")).is_equal("RANK 2")
-	assert_str(_value(section, "Cell_map_2_hard")).is_equal("RANK 3")
+	assert_str(_value(section, "Cell_kestrel_flats_hard")).is_equal("RANK\n3")
+	assert_str(_value(section, "Cell_map_2_easy")).is_equal("RANK\n2")
+	assert_str(_value(section, "Cell_map_2_hard")).is_equal("RANK\n3")
 	var cell: Control = section.find_child("Cell_map_2_easy", true, false) as Control
 	assert_object(cell.find_child("Lock", true, false)).is_not_null()
 	assert_str(String(cell.theme_type_variation)).is_equal("MenuMapCardLocked")

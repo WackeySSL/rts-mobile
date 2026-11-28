@@ -11,7 +11,7 @@ extends MenuScreen
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const XP_BAR_DP: float = 12.0
 ## The narrowest a paired section may be: the wins grid's four columns and the stat lines.
-const SECTION_DP: float = 400.0
+const SECTION_DP: float = 340.0
 
 ## Tests inject these before the screen is pushed; null means the autoload and the data file.
 var progression: ProgressionScript = null
