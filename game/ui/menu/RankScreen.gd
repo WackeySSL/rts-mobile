@@ -9,6 +9,8 @@ extends MenuScreen
 ## Open it with `stack.push(RankScreen.new())`; `progression` and `catalog` are for tests.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
+## Frames a relayout needs before the held scroll is put back.
+const HOLD_FRAMES: int = 2
 const XP_BAR_DP: float = 12.0
 ## The narrowest a paired section may be: the wins grid's four columns and the stat lines.
 const SECTION_DP: float = 340.0
@@ -24,11 +26,14 @@ var _xp_bar: ProgressBar
 var _unlock_label: Label
 var _progression: ProgressionScript
 var _progress: RankProgressSection
+## The scroll position held across a relayout; -1 when none is pending.
+var _held_scroll: int = -1
 ## The sections that share a row where the width fits two (`_apply`), else stack.
 var _pair: BoxContainer
 
 
 func _ready() -> void:
+	top_left = true  # The page starts at the top margin, short or long (no vertical centring).
 	super()
 	MainMenuText.register()
 	MapSelectText.register()
@@ -37,8 +42,10 @@ func _ready() -> void:
 	_heading(MainMenuText.CARD, &"CapsTitle")
 	_build_rank_block()
 	_unlock_label = _add_section(MainMenuText.NEXT).get_child(0) as Label
+	# The compact summary first, the long trophy list second; side by side where the width fits.
 	_progress = RankProgressSection.new()
-	_add_section(RankText.PROGRESS, true, _progress)
+	_add_section(RankText.PROGRESS_HEAD, true, _progress)
+	RankTrophySection.new().attach(_add_section(RankText.TROPHIES, true), _progression)
 	use_footer()
 	_progression.xp_changed.connect(_refresh)
 	_refresh()
@@ -74,9 +81,13 @@ func _add_section(
 
 ## Two columns where the safe width holds two of `SECTION_DP` and the gap, one otherwise.
 func _apply() -> void:
+	var held: int = scroll.scroll_vertical if scroll != null else 0
 	super()
 	if _pair == null:
 		return
+	if _held_scroll < 0:
+		_held_scroll = held
+		_restore_scroll()
 	var gap: float = UiScale.dp(GAP_DP)
 	var room: float = column_room_px()
 	var two: bool = room >= 2.0 * UiScale.dp(SECTION_DP) + gap
@@ -84,6 +95,16 @@ func _apply() -> void:
 	_pair.add_theme_constant_override("separation", roundi(gap))
 	if two:
 		column.custom_minimum_size.x = room
+
+
+## A turn swaps the pair between a row and a stack while the wrapped lines settle, and the scroll
+## would be clamped by the shorter page in between. The place the page was at is put back once
+## the layout has settled (HOLD_FRAMES), as far as the new page reaches.
+func _restore_scroll() -> void:
+	for _frame: int in range(HOLD_FRAMES):
+		await get_tree().process_frame
+	scroll.scroll_vertical = _held_scroll
+	_held_scroll = -1
 
 
 func _heading(text_key: StringName, variation: StringName, into: Container = null) -> void:

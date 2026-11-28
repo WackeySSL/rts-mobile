@@ -28,8 +28,6 @@ const TOUCH_DP: float = 48.0
 const SETTLE_FRAMES: int = 2
 const MAIN: StringName = &"main"
 const RANK: StringName = &"rank"
-## The Rank screen with a career and a second paired section (P673e): the pair, a full grid.
-const RANK_PAIR: StringName = &"rank_pair"
 const MAP_SELECT: StringName = &"map_select"
 const SETTINGS: StringName = &"settings"
 const HOW_LIST: StringName = &"how_to_play_list"
@@ -115,8 +113,10 @@ func test_the_profiles_cover_the_six_sizes_and_their_portrait_twins() -> void:
 func test_the_main_menu_and_the_rank_screen_fit_at_every_size() -> void:
 	await _check_every_size(MAIN, false)
 	await _check_every_size(RANK, false)
-	# P673e: a full career and the second section beside the first (the pair, where it fits).
+	# P673d and P673e: both parts again with a full career, some trophies lit, some dim, the grid
+	# with big numbers, and the two side by side where the width fits.
 	_save.call("set_section", &"progress", {"xp": 5000, "next_award_id": 30})
+	var earned: Array[String] = ["first_sortie", "ground_won", "flats_fords_crags"]
 	(
 		_save
 		. call(
@@ -129,10 +129,11 @@ func test_the_main_menu_and_the_rank_screen_fit_at_every_size() -> void:
 				"play_ticks": 99 * 3600 * 15,
 				"best_win_ticks": 4 * 60 * 15,
 				"wins_grid": {"kestrel_flats": {"easy": 999, "normal": 12, "hard": 3}},
+				"earned": earned,
 			}
 		)
 	)
-	await _check_every_size(RANK_PAIR, false)
+	await _check_every_size(RANK, false)
 
 
 func test_the_map_select_fits_at_every_size() -> void:
@@ -297,15 +298,7 @@ func test_a_store_unavailable_at_open_collapses_the_rows_at_every_size() -> void
 
 func test_turning_the_device_keeps_the_stack_on_every_short_screen() -> void:
 	for kind: StringName in [
-		MAIN,
-		RANK,
-		RANK_PAIR,
-		MAP_SELECT,
-		SETTINGS,
-		HOW_LIST,
-		HOW_REAL_SECTION,
-		LICENCES_LIST,
-		TUTORIAL
+		MAIN, RANK, MAP_SELECT, SETTINGS, HOW_LIST, HOW_REAL_SECTION, LICENCES_LIST, TUTORIAL
 	]:
 		await _check_turns(kind, false)
 
@@ -669,10 +662,6 @@ func _open(kind: StringName, profile: UiMetrics) -> void:
 	_screen = _make_screen(kind)
 	_stack.push(_screen)
 	await _settle()
-	if kind == RANK_PAIR:  # The trophies section's stand-in until P673d is merged.
-		(_screen as RankScreen)._add_section(&"MAIN_NEXT", true)
-		(_screen as RankScreen)._apply()
-		await _settle()
 	if kind == HOW_REAL_SECTION or kind == HOW_LONG_SECTION:
 		_press_first_button()
 	elif kind == LICENCES_TEXT:
@@ -711,7 +700,7 @@ func _make_screen(kind: StringName) -> MenuScreen:
 
 ## The screens that need little set-up: Rank, Tutorial, and the build's own Licences.
 func _make_other(kind: StringName) -> MenuScreen:
-	if kind == RANK or kind == RANK_PAIR:
+	if kind == RANK:
 		var rank: RankScreen = RankScreen.new()
 		rank.progression = _progression
 		return rank

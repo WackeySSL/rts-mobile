@@ -1,12 +1,18 @@
 class_name RankText
 extends RefCounted
-## The English table of the Rank screen's sections (ADR 0054 section 8, plan P673). Same pattern
-## as `MainMenuText`. Headings and column heads are upper case because the theme's eyebrow has no
-## case property.
+## The English table of the Rank screen's trophy and progress parts (ADR 0054 section 8; same
+## pattern as `MainMenuText`). The trophy names and hints are data (`data/meta/trophies.tres`) and
+## go through `tr()` where they are shown. Headings and column heads are upper case because the
+## theme's eyebrow has no case property.
 
+# Trophies (P673d).
+const TROPHIES: StringName = &"RANK_TROPHIES"
+const TROPHIES_COUNT: StringName = &"RANK_TROPHIES_COUNT"
+const EARNED: StringName = &"RANK_EARNED"
 const PROGRESS: StringName = &"RANK_PROGRESS"
+# Progress (P673e).
+const PROGRESS_HEAD: StringName = &"RANK_PROGRESS_HEAD"
 const WINS_GRID: StringName = &"RANK_WINS_GRID"
-const MAP_HEAD: StringName = &"RANK_MAP_HEAD"
 const CELL_LOCKED: StringName = &"RANK_CELL_LOCKED"
 const LESSONS: StringName = &"RANK_LESSONS"
 const MATCHES: StringName = &"RANK_MATCHES"
@@ -20,9 +26,12 @@ const FASTEST: StringName = &"RANK_FASTEST"
 const NO_WIN: StringName = &"RANK_NO_WIN"
 
 const ENGLISH: Dictionary[StringName, String] = {
-	PROGRESS: "PROGRESS",
+	TROPHIES: "TROPHIES",
+	TROPHIES_COUNT: "TROPHIES  %d / %d",
+	EARNED: "EARNED",
+	PROGRESS: "%d/%d",
+	PROGRESS_HEAD: "PROGRESS",
 	WINS_GRID: "WINS BY MAP AND LEVEL",
-	MAP_HEAD: "MAP",
 	CELL_LOCKED: "RANK\n%d",  # Two lines: the cell is narrow.
 	LESSONS: "Lessons done",
 	MATCHES: "Matches played",

@@ -11,7 +11,7 @@ const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
 const LOCK_DP: float = 16.0
 ## Every level column is this wide (and the head over it), so the rows line up; the map name
 ## takes the rest of the line.
-const CELL_DP: float = 60.0
+const CELL_DP: float = 80.0
 const GAP_DP: float = 6.0
 const SECONDS_PER_HOUR: int = 3600
 const SECONDS_PER_MINUTE: int = 60
@@ -85,7 +85,9 @@ func _lessons_text() -> String:
 func _add_grid(career: Dictionary) -> void:
 	var wins: Dictionary = career.get("wins_grid", {}) as Dictionary
 	var head: HBoxContainer = _row()
-	var corner: Label = _eyebrow(RankText.MAP_HEAD)
+	var corner: Control = Control.new()  # Over the map names: nothing, they need no head.
+	corner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	corner.mouse_filter = Control.MOUSE_FILTER_PASS
 	head.add_child(corner)
 	for level: StringName in MapSelect.LEVELS:
 		var word: Label = _eyebrow(MapSelect.LEVEL_TEXT[level])

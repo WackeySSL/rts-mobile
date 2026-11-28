@@ -150,6 +150,14 @@ func test_the_sections_share_a_row_exactly_where_the_width_fits_at_the_six_sizes
 		assert_float(column.size.x).override_failure_message(label).is_less_equal(
 			maxf(room, _screen.column.custom_minimum_size.x) + TOLERANCE_PX
 		)
+		var top: Control = _screen.column.get_child(0) as Control
+		var want_y: float = _screen.scroll.get_global_rect().position.y + UiScale.dp(12.0)
+		(
+			assert_float(top.get_global_rect().position.y)
+			. override_failure_message("%s: the first heading is not at the top margin" % label)
+			. is_equal_approx(want_y, 2.0)
+		)
+		_assert_cells_align(label)
 		var seen: Array[Control] = []
 		_controls(_screen._progress, seen)
 		for control: Control in seen:
@@ -201,6 +209,28 @@ func test_the_pair_follows_the_window_as_it_turns_between_the_sizes() -> void:
 	assert_int(seen[false]).is_greater(0)
 
 
+## Every cell of a level column has one x and one width, locked or not.
+func _assert_cells_align(label: String) -> void:
+	for level: StringName in [&"easy", &"normal", &"hard"]:
+		var xs: Array[float] = []
+		var widths: Array[float] = []
+		for map_id: StringName in _maps.map_ids():
+			var cell: Control = _screen.find_child("Cell_%s_%s" % [map_id, level], true, false)
+			xs.append(cell.get_global_rect().position.x)
+			widths.append(cell.get_global_rect().size.x)
+		for index: int in xs.size():
+			(
+				assert_float(xs[index])
+				. override_failure_message("%s: %s cells differ in x" % [label, level])
+				. is_equal_approx(xs[0], TOLERANCE_PX)
+			)
+			(
+				assert_float(widths[index])
+				. override_failure_message("%s: %s cells differ in width" % [label, level])
+				. is_equal_approx(widths[0], TOLERANCE_PX)
+			)
+
+
 ## True where the safe width holds two sections and the gap (the screen's own rule).
 func _fits() -> bool:
 	return (
@@ -250,10 +280,6 @@ func _open(profile: UiMetrics) -> void:
 	_screen = RankScreen.new()
 	_screen.progression = _progression
 	_stack.push(_screen)
-	await await_idle_frame()
-	# The trophies section (P673d) is the other half of the pair; a stand-in until it is merged.
-	_screen._add_section(&"MAIN_NEXT", true)
-	_screen._apply()
 	for _frame: int in range(3):
 		await await_idle_frame()
 
