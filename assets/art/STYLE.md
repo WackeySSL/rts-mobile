@@ -2237,11 +2237,14 @@ Type variations of `game/ui/theme.tres` for the menu screens. They are the pause
 | `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white, own face with 8 px tracking |
 | `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps with 3 px tracking (the row must fit the narrowest column; the AttackTitle face), the side's light |
 | `MenuSideCard` (PanelContainer), `MenuSideCardRenew`, `MenuSideCardFossil` | the side choice on Map select | plate with a 1 dp edge; the picked side's card has a 2 dp accent edge |
+| `MenuSideCardOn` (MenuSideCard) | the chosen side's card on Skirmish (P666) | the amber (`money`) edge, 2 dp, on a dark amber fill; the other card keeps its accent edge |
+| `MenuStepTitle`, `MenuStepChoice` (CapsTitle), `MenuOptionName` (CapsTitle), `MenuOptionNameLocked` (MenuOptionName, muted grey for a locked option), `MenuLockNote` (MenuEyebrow) | Skirmish's numbered step header (title white, the current choice amber), an option's word, and its lock's RANK n in muted grey | 20 / 20 / 18 / 14 sp |
+| `MenuCardTagRenew`, `MenuCardTagFossil` (MenuEyebrow) | the small caps tag on the card that is not chosen (ALTERNATIVE) | the side's light; the chosen card's tag is the amber `MenuEyebrow` |
 | `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #33434A (v3), the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
 | `MenuToggleRow` (PanelContainer) | a Settings row: label left, toggle right | plate, 1 dp edge, 8 dp corners |
 | `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
 | `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |
-| `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: 2 dp #C9D1D9 edge; locked: dim plate |
+| `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: the amber 2 dp edge on the dark amber fill (P666); locked: dim plate |
 | `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp edge and 22 dp text in `money` (v3 #F4B653) |
 | `MenuXpBar` (ProgressBar) | the XP bar | `border` track (v3 #33434A), `money` fill (v3 #F4B653), 4 dp corners |
 
