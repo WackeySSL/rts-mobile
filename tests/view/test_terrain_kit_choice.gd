@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## `TerrainKit`, the pure piece choice (plan P656d1, ADR 0053 section 7 and amendment A2): the cell
-## hash and the base variants, the edge piece by mask and priority (ore > scrub > sand > grass), the
+## hash, the edge piece by mask and priority (ore > scrub > sand > grass), the
 ## nearest piece where no piece fits, rock flat, and a kit with holes in it. The neighbours are
 ## ne = (x, y - 1), se = (x + 1, y), sw = (x, y + 1), nw = (x - 1, y) and the diagonals n, e, s, w.
 
@@ -35,72 +35,15 @@ func _edge(
 
 
 func test_the_hash_is_fixed_on_crafted_cells() -> void:
-	# [hash, grass variant, rock variant] on crafted cells; the origin is a boulder cell.
-	var expected: Dictionary[Vector2i, Array] = {
-		Vector2i(0, 0): [0, 2, 3],
-		Vector2i(1, 0): [2182377942, 1, 1],
-		Vector2i(0, 1): [3299714085, 1, 1],
-		Vector2i(5, 9): [2457582021, 1, 1],
-		Vector2i(63, 63): [4291322435, 3, 2],
+	var expected: Dictionary[Vector2i, int] = {
+		Vector2i(0, 0): 0,
+		Vector2i(1, 0): 2182377942,
+		Vector2i(0, 1): 3299714085,
+		Vector2i(5, 9): 2457582021,
+		Vector2i(63, 63): 4291322435,
 	}
 	for cell: Vector2i in expected:
-		var row: Array = expected[cell]
-		assert_int(TerrainKit.cell_hash(cell.x, cell.y)).is_equal(row[0])
-		assert_int(TerrainKit.base_variant(&"grass", cell.x, cell.y, 4, 8)).is_equal(row[1])
-		assert_int(TerrainKit.base_variant(&"rock", cell.x, cell.y, 4, 8)).is_equal(row[2])
-
-
-func test_the_kit_data_sets_how_rare_each_boulder_is() -> void:
-	var rates: Dictionary[StringName, int] = _kit().boulder_one_in
-	assert_int(rates[&"grass"]).is_equal(48)
-	assert_int(rates[&"rock"]).is_equal(16)
-	for terrain: StringName in [&"grass", &"rock"]:
-		var one_in: int = rates[terrain]
-		var boulder: int = TerrainKit.BOULDERS[terrain]
-		var counts: Array[int] = [0, 0, 0, 0]
-		for y: int in 64:
-			for x: int in 64:
-				counts[TerrainKit.base_variant(terrain, x, y, 4, one_in)] += 1
-		var cells: int = 64 * 64
-		assert_int(counts[boulder]).is_between(cells / one_in * 7 / 10, cells / one_in * 13 / 10)
-		var rest: int = (cells - counts[boulder]) / 3
-		for variant: int in 4:
-			if variant != boulder:  # The other three share the rest about evenly.
-				assert_int(counts[variant]).is_between(rest - 80, rest + 80)
-	# Data off or 0: no boulder at all.
-	for y: int in 32:
-		for x: int in 32:
-			assert_int(TerrainKit.base_variant(&"grass", x, y, 4, 0)).is_not_equal(2)
-
-
-func test_a_terrain_without_a_boulder_uses_its_four_variants_evenly() -> void:
-	for terrain: StringName in [&"sand", &"scrub", &"water", &"ore"]:
-		var counts: Array[int] = [0, 0, 0, 0]
-		for y: int in 64:
-			for x: int in 64:
-				counts[TerrainKit.base_variant(terrain, x, y, 4)] += 1
-		for variant: int in 4:
-			assert_int(counts[variant]).is_between(1024 - 100, 1024 + 100)
-
-
-func test_the_variant_is_a_function_of_the_cell_alone() -> void:
-	for y: int in 12:
-		for x: int in 12:
-			var first: int = TerrainKit.base_variant(&"grass", x, y, 4, 48)
-			assert_int(TerrainKit.base_variant(&"grass", x, y, 4, 48)).is_equal(first)
-			assert_int(first).is_between(0, 3)
-			assert_str(TerrainKit.base_key(_kit(), &"grass", x, y)).is_equal(
-				StringName("grass/base/%d" % first)
-			)
-
-
-func test_a_variant_the_kit_lacks_falls_back_to_variant_zero_then_to_no_piece() -> void:
-	var kit: TerrainKitDef = TerrainKitDef.new()
-	kit.variants = 4
-	kit.pieces = {&"sand/base/0": "sand_base_0.png"}
-	for x: int in 16:
-		assert_str(TerrainKit.base_key(kit, &"sand", x, 3)).is_equal(&"sand/base/0")
-		assert_str(TerrainKit.base_key(kit, &"rock", x, 3)).is_equal(NONE)
+		assert_int(TerrainKit.cell_hash(cell.x, cell.y)).is_equal(expected[cell])
 
 
 func test_the_choice_uses_no_random_call_and_no_node() -> void:

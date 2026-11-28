@@ -20,11 +20,21 @@
 [resource]
 script = ExtResource("1_kit")
 terrains = PackedStringArray("grass", "sand", "scrub", "rock", "water", "ore")
-variants = 4
-boulder_one_in = Dictionary[StringName, int]({
-&"grass": 48,
-&"rock": 16
+variant_counts = Dictionary[StringName, int]({
+&"grass/base": 4,
+&"rock/wall_top": 4
 })
+stone_variants = Dictionary[StringName, PackedInt32Array]({
+&"grass/base": PackedInt32Array(2),
+&"rock/base": PackedInt32Array(3),
+&"rock/wall_top": PackedInt32Array(3)
+})
+stone_permille = Dictionary[StringName, int]({
+&"grass/base": 60,
+&"rock/base": 200,
+&"rock/wall_top": 200
+})
+stone_cluster_cells = 10
 priority = PackedStringArray("ore", "scrub", "sand", "grass")
 masks = Dictionary[StringName, PackedStringArray]({
 &"base": PackedStringArray("0", "1", "2", "3"),

@@ -26,8 +26,8 @@ const KIT_PAGE_WIDTH_PX: int = 4096  ## The kit page is at most this wide and 51
 
 var tile_set: TileSet = TileSet.new()  ## One atlas source, id 0, a tile for each ground and stage.
 ## The kit page (P656d1): the pre-rendered 128 x 64 pieces, a page of its own, one atlas source (id
-## 0) in `kit_tile_set`. Empty when no kit piece loaded. A piece taller than its diamond keeps the
-## diamond at its foot (the rows above go: the ground layers stay flat, ADR 0053 A2).
+## 0) in `kit_tile_set`. Empty when no kit piece loaded. Every piece is its 128 x 64 diamond (the
+## ground layers stay flat, ADR 0053 A2); a piece of another size is left out.
 var kit_tile_set: TileSet = TileSet.new()
 var _atlas: RuntimeAtlas = RuntimeAtlas.new()
 var _kit_page: RuntimeAtlas = RuntimeAtlas.new()
@@ -150,8 +150,9 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 				var image: Image = _kit_image(kit.path_of(id, kind, mask))
 				if image != null and kit.pieces.has(key):
 					images[key] = image
-		var whole: bool = kit.variants > 0
-		for variant: int in kit.variants:
+		var listed: PackedInt32Array = kit.variants_of(id, TerrainKit.BASE)
+		var whole: bool = not listed.is_empty()
+		for variant: int in listed:
 			whole = (
 				whole
 				and images.has(TerrainKitDef.key(id, TerrainKit.BASE, StringName(str(variant))))
@@ -165,18 +166,12 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 	_fill_tile_set(kit_tile_set, _kit_page, KIT_TILE_PX, images.keys(), cell, _kit_tiles)
 
 
-## A piece's image cropped to its diamond at the foot, null when it is missing or not 128 wide.
+## A piece's image, null when it is missing or not exactly 128 x 64 (every ground piece is flat).
 static func _kit_image(path: String) -> Image:
 	var texture: Texture2D = load(path) as Texture2D if ResourceLoader.exists(path) else null
-	if (
-		texture == null
-		or texture.get_width() != KIT_TILE_PX.x
-		or texture.get_height() < KIT_TILE_PX.y
-	):
+	if texture == null or Vector2i(texture.get_size()) != KIT_TILE_PX:
 		return null
-	var image: Image = texture.get_image()
-	var rise: int = image.get_height() - KIT_TILE_PX.y
-	return image.get_region(Rect2i(0, rise, KIT_TILE_PX.x, KIT_TILE_PX.y)) if rise > 0 else image
+	return texture.get_image()
 
 
 ## `set_def` with one atlas source of `page`, a tile of `size` at each key's region (the page is a

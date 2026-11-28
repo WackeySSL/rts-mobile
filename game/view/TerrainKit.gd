@@ -15,8 +15,6 @@ const DIAGONALS: Array[StringName] = [&"n", &"e", &"s", &"w"]
 const BASE: StringName = &"base"
 const BLEND: StringName = &"blend"
 const SHORE: StringName = &"shore"
-## The base variant that carries a boulder; how rare it is lives in the kit's `boulder_one_in`.
-const BOULDERS: Dictionary[StringName, int] = {&"grass": 2, &"rock": 3}
 ## The cell offset of each edge and each diagonal neighbour, in the order above.
 const EDGE_STEPS: Array[Vector2i] = [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)
@@ -37,29 +35,65 @@ static func cell_hash(x: int, y: int) -> int:
 	return h ^ (h >> 16)
 
 
-## The base variant of `terrain` on cell (`x`, `y`): the boulder variant on one cell in eight where
-## the terrain has one, else one of the other variants.
-static func base_variant(
-	terrain: StringName, x: int, y: int, variants: int, one_in: int = 0
+## The variant of `kind` (a base, a wall top) of `terrain` on cell (`x`, `y`): -1 when the kit has
+## none. The kit's variants are plain or stone (`stone_variants` of `terrain/kind`). A cell is a
+## stone variant when its hash slice is under `stone_permille` scaled by `cluster_noise`, so stones
+## come in patches with bare stretches between; another hash slice then picks which stone, or which
+## plain variant. One function serves the flat ground and the raised walls (one hash rule), so a
+## rock cell shows the same variant number either way when the two kinds list the same variants.
+static func variant(
+	kit: TerrainKitDef, terrain: StringName, kind: StringName, x: int, y: int
 ) -> int:
+	var all: PackedInt32Array = kit.variants_of(terrain, kind)
+	if all.is_empty():
+		return -1
+	var rule: StringName = StringName("%s/%s" % [terrain, kind])
+	var marked: PackedInt32Array = kit.stone_variants.get(rule, PackedInt32Array())
+	var stones: PackedInt32Array = PackedInt32Array()
+	var plain: PackedInt32Array = PackedInt32Array()
+	for number: int in all:
+		if marked.has(number):
+			stones.append(number)
+		else:
+			plain.append(number)
 	var h: int = cell_hash(x, y)
-	var boulder: int = BOULDERS.get(terrain, -1)
-	if boulder >= 0 and boulder < variants:
-		if one_in > 0 and (h >> 8) % one_in == 0:
-			return boulder
-		var plain: int = (h >> 12) % (variants - 1)
-		return plain if plain < boulder else plain + 1
-	return (h >> 12) % variants
+	if not stones.is_empty():
+		var chance: int = stone_chance(
+			kit.stone_permille.get(rule, 0), kit.stone_cluster_cells, x, y
+		)
+		if plain.is_empty() or (h >> 8) % 1000 < chance:
+			return stones[(h >> 16) % stones.size()]
+	return plain[(h >> 12) % plain.size()]
 
 
-## The key of the base piece of `terrain` on (`x`, `y`): its hashed variant, else variant 0, else
-## "" (the caller draws the SVG diamond).
+## The chance, per mille, of a stone variant on (`x`, `y`): `permille` scaled by the cluster noise.
+static func stone_chance(permille: int, cells: int, x: int, y: int) -> int:
+	return permille * cluster_noise(x, y, cells) / 1000
+
+
+## A low-frequency value noise of (`x`, `y`), 0 to 1000: a hashed value on every `cells`-th lattice
+## point, linearly interpolated between them (integers only). `cells` 0 or less: 1000, no clusters.
+@warning_ignore("integer_division")
+static func cluster_noise(x: int, y: int, cells: int) -> int:
+	if cells <= 0:
+		return 1000
+	var fx: int = posmod(x, cells) * 256 / cells
+	var fy: int = posmod(y, cells) * 256 / cells
+	var gx: int = (x - posmod(x, cells)) / cells
+	var gy: int = (y - posmod(y, cells)) / cells
+	var top: int = _lattice(gx, gy) * (256 - fx) + _lattice(gx + 1, gy) * fx
+	var bottom: int = _lattice(gx, gy + 1) * (256 - fx) + _lattice(gx + 1, gy + 1) * fx
+	return (top * (256 - fy) + bottom * fy) >> 16
+
+
+static func _lattice(gx: int, gy: int) -> int:
+	return cell_hash(gx + 4099, gy + 7919) % 1001
+
+
+## The key of the base piece of `terrain` on (`x`, `y`), "" when the kit has no base piece.
 static func base_key(kit: TerrainKitDef, terrain: StringName, x: int, y: int) -> StringName:
-	var variant: int = base_variant(terrain, x, y, kit.variants, kit.boulder_one_in.get(terrain, 0))
-	for pick: int in [variant, 0]:
-		if kit.has_piece(terrain, BASE, StringName(str(pick))):
-			return TerrainKitDef.key(terrain, BASE, StringName(str(pick)))
-	return &""
+	var number: int = variant(kit, terrain, BASE, x, y)
+	return TerrainKitDef.key(terrain, BASE, StringName(str(number))) if number >= 0 else &""
 
 
 ## The key of the edge piece of a cell of `own` with the neighbours `edges` (ne, se, sw, nw) and

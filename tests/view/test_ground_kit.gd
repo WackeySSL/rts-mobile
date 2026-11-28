@@ -142,22 +142,34 @@ func test_the_kit_page_is_at_most_512_rows_of_4096_and_every_piece_is_its_whole_
 	assert_that(art.kit_coords(&"rock/lip/side_ne")).is_equal(Vector2i(-1, -1))
 
 
-func test_a_piece_taller_than_its_diamond_keeps_the_diamond_at_its_foot() -> void:
+func test_every_ground_piece_on_the_page_is_its_png_exactly() -> void:
 	var art: GroundAtlas = _ground.atlas()
-	var path: String = "res://assets/art/terrain/water_shore_outer_n.png"
-	var source: Image = (load(path) as Texture2D).get_image()
-	source.convert(Image.FORMAT_RGBA8)
-	assert_int(source.get_height()).is_greater(64)  # The kit's one piece with rows above its diamond.
-	var rise: int = source.get_height() - 64
-	var cut: Image = source.get_region(Rect2i(0, rise, 128, 64))
-	var on_page: Image = art.kit_image().get_region(art.kit_region(&"water/shore/outer_n"))
-	assert_bool(on_page.get_data() == cut.get_data()).is_true()
+	var kit: TerrainKitDef = load(KIT) as TerrainKitDef
+	var checked: int = 0
+	for key: StringName in kit.pieces:
+		if art.kit_coords(key) == Vector2i(-1, -1):
+			continue
+		var parts: PackedStringArray = String(key).split("/")
+		var source: Image = (
+			(load(kit.path_of(parts[0], parts[1], parts[2])) as Texture2D).get_image()
+		)
+		source.convert(Image.FORMAT_RGBA8)
+		assert_that(source.get_size()).override_failure_message(str(key)).is_equal(TILE)  # No crop.
+		var on_page: Image = art.kit_image().get_region(art.kit_region(key))
+		(
+			assert_bool(on_page.get_data() == source.get_data())
+			. override_failure_message(str(key))
+			. is_true()
+		)
+		checked += 1
+	assert_int(checked).is_greater(50)
 
 
 func test_a_terrain_the_kit_lacks_keeps_its_svg_diamonds_and_the_map_stays_covered() -> void:
 	var kit: TerrainKitDef = (load(KIT) as TerrainKitDef).duplicate()
 	kit.pieces = kit.pieces.duplicate()
-	kit.pieces.erase(&"water/base/2")
+	for number: int in 4:
+		kit.pieces.erase(StringName("water/base/%d" % number))
 	var runner: MatchRunner = auto_free(Rig.runner(Rig.scenario()))
 	var ground: GroundLayer = _add_ground(runner, kit)
 	assert_bool(ground.atlas().kit_covers(&"water")).is_false()
