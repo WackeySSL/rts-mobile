@@ -93,7 +93,7 @@ func _row(def: TrophyDef, career: CareerStats) -> HBoxContainer:
 		texts.add_child(_label(&"Status", tr(RankText.EARNED), &"MenuTag"))
 		return row
 	var progress: Vector2i = progress_of(def, career)
-	if progress.y > 0:
+	if progress.y > 1:  # A target of 1 adds nothing: the hint already says it.
 		var words: String = tr(RankText.PROGRESS) % [progress.x, progress.y]
 		texts.add_child(_label(&"Status", words, &"MenuFooterHint"))
 	return row

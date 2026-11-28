@@ -65,6 +65,9 @@ func test_lit_rows_read_earned_and_dim_rows_read_their_hint_and_progress() -> vo
 	assert_str(_text(&"long_haul", &"Hint")).is_equal("Finish 25 skirmishes")
 	assert_str(_text(&"long_haul", &"Status")).is_equal("7/25")
 	assert_str(_text(&"seasoned", &"Status")).is_equal("3/10")
+	# A target of 1 shows no progress line.
+	assert_object(_row(&"ironward_honours").get_child(1).get_node_or_null("Status")).is_null()
+	assert_object(_row(&"iron_nerve").get_child(1).get_node_or_null("Status")).is_null()
 	assert_bool((_row(&"first_sortie").get_child(0) as TrophyBadge).lit).is_true()
 	assert_bool((_row(&"long_haul").get_child(0) as TrophyBadge).lit).is_false()
 
