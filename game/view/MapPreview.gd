@@ -7,6 +7,8 @@ extends RefCounted
 ## `game/sim` state. Marks differ in shape as well as colour (touch-ui-rules: never colour alone):
 ## player 1 is a square, every other player a plus, both with a one-cell ink outline.
 ## One picture is built per scenario file and kept (`texture_for`), so switching maps is instant.
+## It lives in game/view beside `MinimapImage`: it draws a picture of the map, whose colours are
+## the map's and the teams' (not the menu theme's), so `game/ui`'s theme-only rule does not apply.
 
 const PX_PER_CELL: int = 4  ## Texels per map cell.
 const MARK_RADIUS: int = 3  ## Cells from the start cell to the edge of a mark.
