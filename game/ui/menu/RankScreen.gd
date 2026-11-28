@@ -107,8 +107,14 @@ func _apply() -> void:
 ## would be clamped by the shorter page in between. The place the page was at is put back once
 ## the layout has settled (HOLD_FRAMES), as far as the new page reaches.
 func _restore_scroll() -> void:
+	if not is_inside_tree():
+		_held_scroll = -1
+		return
 	for _frame: int in range(HOLD_FRAMES):
 		await get_tree().process_frame
+		if not is_inside_tree() or not is_instance_valid(scroll):
+			_held_scroll = -1  # Popped and freed meanwhile: nothing to put back.
+			return
 	scroll.scroll_vertical = _held_scroll
 	_held_scroll = -1
 
