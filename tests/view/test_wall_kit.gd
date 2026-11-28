@@ -50,30 +50,51 @@ func test_every_mask_of_a_lone_cell_and_its_pieces_in_draw_order() -> void:
 	assert_str(String(inside[2])).is_equal("")
 
 
-func test_the_top_hash_is_fixed_and_one_cell_in_eight_is_the_boulder() -> void:
-	assert_int(WallKit.cell_hash(3, 7)).is_equal(WallKit.cell_hash(3, 7))
-	assert_int(WallKit.cell_hash(3, 7)).is_not_equal(WallKit.cell_hash(7, 3))
-	var boulders: int = 0
-	for row: int in 64:
-		for col: int in 64:
-			var variant: int = WallKit.top_variant(col, row, 8)
-			assert_int(variant).is_between(0, WallKit.TOP_VARIANTS - 1)
-			boulders += int(variant == WallKit.BOULDER)
-	# 4096 / 8 = 512, give or take what a hash of this size spreads.
-	assert_int(boulders).is_between(430, 600)
-	# No rate, no boulder; the other three variants are all drawn.
-	assert_int(WallKit.top_variant(0, 0)).is_less(WallKit.BOULDER)
+func test_the_top_is_the_variant_the_flat_ground_rule_picks() -> void:
+	var kit: TerrainKitDef = _kit()
+	for row: int in 32:
+		for col: int in 32:
+			var number: int = TerrainKit.variant(kit, &"rock", &"wall_top", col, row)
+			assert_str(String(WallKit.top_key(col, row, kit))).is_equal("rock/wall_top/%d" % number)
+			# One hash rule: the flat rock cell shows the same variant number as the raised one.
+			assert_int(TerrainKit.variant(kit, &"rock", &"base", col, row)).is_equal(number)
 
 
-func test_every_key_the_choice_can_return_is_in_all_keys() -> void:
-	var keys: Array[StringName] = WallKit.all_keys()
-	assert_int(keys.size()).is_equal(11)  # 3 faces, 4 tops, 4 rims.
+func test_all_keys_follow_the_kits_wall_top_list_whatever_its_count() -> void:
+	var kit: TerrainKitDef = _kit()
+	var keys: Array[StringName] = WallKit.all_keys(kit)
+	assert_int(keys.size()).is_equal(3 + kit.variants_of(&"rock", &"wall_top").size() + 4)
 	for mask: int in 4:
 		assert_bool(mask == 0 or keys.has(WallKit.face_key(mask))).is_true()
 	for mask: int in 8:
 		assert_bool(mask == 0 or keys.has(WallKit.rim_key(mask))).is_true()
 	for cell: int in 100:
-		assert_bool(keys.has(WallKit.top_key(cell % 10, cell / 10))).is_true()
+		assert_bool(keys.has(WallKit.top_key(cell % 10, cell / 10, kit))).is_true()
+	# A kit with six wall tops (and one with none) is followed exactly.
+	var six: TerrainKitDef = kit.duplicate()
+	six.pieces = six.pieces.duplicate()
+	six.variant_counts = {&"rock/wall_top": 6}
+	for number: int in range(4, 6):
+		six.pieces[TerrainKitDef.key(&"rock", &"wall_top", StringName(str(number)))] = "x.png"
+	six.masks = six.masks.duplicate()
+	var wanted: Array[StringName] = []
+	for number: int in 6:
+		wanted.append(TerrainKitDef.key(&"rock", &"wall_top", StringName(str(number))))
+	var tops: Array[StringName] = []
+	for key: StringName in WallKit.all_keys(six):
+		if String(key).begins_with("rock/wall_top/"):
+			tops.append(key)
+	assert_array(tops).is_equal(wanted)
+	var none: TerrainKitDef = kit.duplicate()
+	none.pieces = none.pieces.duplicate()
+	for number: int in 4:
+		none.pieces.erase(TerrainKitDef.key(&"rock", &"wall_top", StringName(str(number))))
+	assert_int(WallKit.all_keys(none).size()).is_equal(3 + 4)
+	assert_str(String(WallKit.top_key(1, 1, none))).is_equal("")
+
+
+func _kit() -> TerrainKitDef:
+	return load("res://assets/art/terrain/kit.tres") as TerrainKitDef
 
 
 func _grid(lines: Array[String]) -> PackedByteArray:

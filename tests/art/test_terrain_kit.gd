@@ -45,9 +45,8 @@ func test_every_sim_terrain_has_all_its_base_variants() -> void:
 	var kit: TerrainKitDef = _kit()
 	for terrain: TerrainDef in _sim().terrains:
 		assert_bool(kit.terrains.has(String(terrain.id))).is_true()
-		for variant: int in kit.variants:
+		for variant: int in kit.variants_of(terrain.id, &"base"):
 			assert_str(kit.path_of(terrain.id, &"base", StringName(str(variant)))).is_not_empty()
-	assert_int(kit.variants).is_equal(4)
 
 
 func test_every_mask_of_the_table_has_a_piece_that_exists() -> void:

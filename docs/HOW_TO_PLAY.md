@@ -112,7 +112,7 @@ and never changed; when a row is deleted, add its id to `RETIRED` in
 ## Terrain
 | Id | Action | Result | Teach |
 |---|---|---|---|
-| terrain-basics | Look at the ground | Every tile is a diamond of grass, sand, scrub, rock, water or dark oil-stained earth, drawn in two slightly different arrangements so that a stretch of one kind does not look stamped; outside the map's edge the screen is dark grey | |
+| terrain-basics | Look at the ground | Every tile is a diamond of grass, sand, scrub, rock, water or dark oil-stained earth, drawn in four slightly different arrangements (an odd boulder on one tile in eight) so that a stretch of one kind does not look stamped; where two kinds meet the one blends into the other, and water has a shore; rock is flat ground-level art for now; outside the map's edge the screen is dark grey | |
 | terrain-blocked | Send units across rock, water or scrub | Rock and water block all units, and scrub (the patterned ground) blocks vehicles but not infantry, which walks across it; a unit that cannot cross drives around to the point you tapped | yes |
 
 ## Economy

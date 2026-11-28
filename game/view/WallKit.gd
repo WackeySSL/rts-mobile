@@ -14,8 +14,7 @@ const TOP: StringName = &"wall_top"
 const FACE: StringName = &"wall_face"
 const RIM: StringName = &"wall_rim"
 const KINDS: Array[StringName] = [FACE, TOP, RIM]  ## The draw order of a cell's pieces.
-const TOP_VARIANTS: int = 4
-const BOULDER: int = 3  ## The top variant of one cell in eight.
+const KIT_PATH: String = "res://assets/art/terrain/kit.tres"  ## When a caller passes no kit.
 ## Front mask (0 to 3) -> the face's mask name, "" for none (both neighbours are raised).
 const FACE_OF: PackedStringArray = ["", "se", "sw", "s"]
 ## Back mask (0 to 7) -> the rim's mask name, "" for none. With neither edge neighbour open only the
@@ -48,33 +47,18 @@ static func back_mask(raised: PackedByteArray, cols: int, col: int, row: int) ->
 	)
 
 
-## A fixed 32-bit mix of a cell's coordinates. The same hash and rule as P656d1's
-## `TerrainKit.cell_hash` and `base_variant`, so a rock cell shows the same variant number flat or
-## raised. TODO(P656d1 merged): call `TerrainKit.base_variant(&"rock", ...)` and drop these two.
-static func cell_hash(col: int, row: int) -> int:
-	var h: int = (col * 374761393 + row * 668265263) & 0xFFFFFFFF
-	h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
-	return h ^ (h >> 16)
-
-
-## The top variant of a cell: the boulder on one cell in `one_in` (the kit's `boulder_one_in` of
-## rock; 0 for none), else one of the other three.
-static func top_variant(col: int, row: int, one_in: int = 0) -> int:
-	var h: int = cell_hash(col, row)
-	if one_in > 0 and (h >> 8) % one_in == 0:
-		return BOULDER
-	var plain: int = (h >> 12) % (TOP_VARIANTS - 1)
-	return plain if plain < BOULDER else plain + 1
-
-
 ## The kit key of the face for front mask `mask`, `&""` for none.
 static func face_key(mask: int) -> StringName:
 	return TerrainKitDef.key(TERRAIN, FACE, StringName(FACE_OF[mask])) if mask != 0 else &""
 
 
-## The kit key of the top of cell (`col`, `row`).
-static func top_key(col: int, row: int, one_in: int = 0) -> StringName:
-	return TerrainKitDef.key(TERRAIN, TOP, StringName(str(top_variant(col, row, one_in))))
+## The kit key of the top of cell (`col`, `row`): `TerrainKit.variant`, the one hash and stone rule
+## of the flat ground, over the kit's `rock/wall_top` variants (`&""` when it has none). No kit: the
+## standard one.
+static func top_key(col: int, row: int, kit: TerrainKitDef = null) -> StringName:
+	var def: TerrainKitDef = kit if kit != null else load(KIT_PATH)
+	var number: int = TerrainKit.variant(def, TERRAIN, TOP, col, row)
+	return TerrainKitDef.key(TERRAIN, TOP, StringName(str(number))) if number >= 0 else &""
 
 
 ## The kit key of the rim for back mask `mask`, `&""` for none.
@@ -86,22 +70,23 @@ static func rim_key(mask: int) -> StringName:
 ## The keys of the pieces of raised cell (`col`, `row`) in draw order (face, top, rim), a slot
 ## `&""` when that piece is not drawn: always three entries, so a layer indexes by kind.
 static func pieces(
-	raised: PackedByteArray, cols: int, col: int, row: int, one_in: int = 0
+	raised: PackedByteArray, cols: int, col: int, row: int, kit: TerrainKitDef = null
 ) -> Array[StringName]:
 	return [
 		face_key(front_mask(raised, cols, col, row)),
-		top_key(col, row, one_in),
+		top_key(col, row, kit),
 		rim_key(back_mask(raised, cols, col, row)),
 	]
 
 
-## Every key the choice can return, for the atlas to pack: 3 faces, 4 tops, 4 rims.
-static func all_keys() -> Array[StringName]:
+## Every key the choice can return, for the atlas to pack: 3 faces, the kit's wall tops, 4 rims.
+static func all_keys(kit: TerrainKitDef = null) -> Array[StringName]:
+	var def: TerrainKitDef = kit if kit != null else load(KIT_PATH)
 	var keys: Array[StringName] = []
 	for mask: String in FACE_OF:
 		if mask != "":
 			keys.append(TerrainKitDef.key(TERRAIN, FACE, StringName(mask)))
-	for variant: int in TOP_VARIANTS:
+	for variant: int in def.variants_of(TERRAIN, TOP):
 		keys.append(TerrainKitDef.key(TERRAIN, TOP, StringName(str(variant))))
 	for mask: String in ["ne", "nw", "n", "inner_n"]:
 		keys.append(TerrainKitDef.key(TERRAIN, RIM, StringName(mask)))
