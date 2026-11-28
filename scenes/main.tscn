@@ -189,7 +189,7 @@ aim = NodePath("../StrikeAim")
 
 [node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "building_layer")]
 y_sort_enabled = true
-z_index = 5
+z_index = 12
 z_as_relative = false
 script = ExtResource("32_ghosts")
 runner = NodePath("../MatchRunner")

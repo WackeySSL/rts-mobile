@@ -37,6 +37,11 @@ var _version: int = -1
 var _cols: int = 0
 var _raised: PackedByteArray = PackedByteArray()  ## A byte per cell, 1 for a wall.
 var _cover: int = 0  ## Counts the near-wall sets made: a rig reads its cell again when it moves.
+var _mask: PackedByteArray = PackedByteArray()  ## The silhouette shader's mask, a byte per cell.
+var _mask_size: Vector2i = Vector2i.ONE
+var _mask_tex: ImageTexture = null
+var _mask_dirty: bool = false
+var _uploads: int = 0  ## Mask texture writes since the last build.
 var _near: PackedByteArray = PackedByteArray()  ## A byte per cell, 1 near a wall.
 var _state: PackedByteArray = PackedByteArray()  ## The State each wall cell shows.
 var _first: PackedInt32Array = PackedInt32Array()  ## Cell -> its first sprite in `_sprites`.
@@ -175,16 +180,42 @@ func _sync(snap: MatchSnapshot) -> void:
 func _publish_cover(map_rows: int) -> void:
 	_cover += 1
 	_near = WallCover.near_bytes(_raised, _cols)
-	var size: Vector2i = Vector2i(_cols, map_rows) if not _raised.is_empty() else Vector2i.ONE
-	var bytes: PackedByteArray = PackedByteArray([0])
+	_mask_size = Vector2i(_cols, map_rows) if not _raised.is_empty() else Vector2i.ONE
+	_mask = PackedByteArray([0])
 	if not _raised.is_empty():
-		bytes = _raised.duplicate()
-		for at: int in bytes.size():
-			bytes[at] = 255 if bytes[at] != 0 else 0
-	var image: Image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_R8, bytes)
+		_mask = _raised.duplicate()
+		for at: int in _mask.size():
+			_mask[at] = 255 if _mask[at] != 0 else 0
+	_mask_tex = ImageTexture.create_from_image(
+		Image.create_from_data(_mask_size.x, _mask_size.y, false, Image.FORMAT_R8, _mask)
+	)
 	var material: ShaderMaterial = world_sort.silhouette_material()
-	material.set_shader_parameter("wall_mask", ImageTexture.create_from_image(image))
-	material.set_shader_parameter("grid_size", size)
+	material.set_shader_parameter("wall_mask", _mask_tex)
+	material.set_shader_parameter("grid_size", _mask_size)
+	_mask_dirty = false
+	_uploads = 0
+
+
+## How often the mask texture was written since the last build: once per batch with a change.
+func mask_uploads() -> int:
+	return _uploads
+
+
+## The cover mask byte of cell `cell`: 255 for a wall that shows (lit or dim), 0 for open ground and
+## for a wall the local player has never explored, which draws nothing and so hides nothing.
+func cover_byte(cell: int) -> int:
+	return _mask[cell] if cell >= 0 and cell < _mask.size() and _raised.size() > 0 else 0
+
+
+## Writes the mask to its texture once, when a state change touched it: once per batch of painted
+## cells, never per frame.
+func _flush_mask() -> void:
+	if _mask_dirty:
+		_mask_dirty = false
+		_uploads += 1
+		_mask_tex.update(
+			Image.create_from_data(_mask_size.x, _mask_size.y, false, Image.FORMAT_R8, _mask)
+		)
 
 
 func _clear() -> void:
@@ -213,6 +244,7 @@ func _build(map_rows: int) -> void:
 		if _raised[cell] != 0:
 			_state[cell] = 255  # Unset, so the first write happens.
 			_set_state(cell, _fog_state(cell))
+	_flush_mask()
 	_writes = 0
 
 
@@ -255,6 +287,8 @@ func _set_state(cell: int, state: int) -> void:
 	if _state[cell] == state:
 		return
 	_state[cell] = state
+	_mask[cell] = 0 if state == State.HIDDEN else 255
+	_mask_dirty = true
 	for at: int in range(_first[cell], _first[cell] + _count[cell]):
 		var sprite: Sprite2D = _sprites[at]
 		sprite.visible = state != State.HIDDEN
@@ -269,3 +303,4 @@ func _on_painted(cells: PackedInt32Array) -> void:
 	for cell: int in cells:
 		if cell < _raised.size() and _raised[cell] != 0:
 			_set_state(cell, _fog_state(cell))
+	_flush_mask()

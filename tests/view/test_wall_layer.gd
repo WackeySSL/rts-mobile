@@ -161,6 +161,25 @@ func test_a_map_version_with_the_same_rock_keeps_the_nodes_and_new_rock_rebuilds
 	assert_object(_layer.row_node(0)).is_not_null()
 
 
+func test_the_cover_mask_follows_the_fog_so_a_hidden_wall_casts_no_silhouette() -> void:
+	_runner.snapshot = Rig.snapshot(false, 2)
+	_make(true)  # Nothing seen: every wall is hidden.
+	assert_object(_sort.silhouette_material().get_shader_parameter("wall_mask")).is_not_null()
+	for cell: int in BLOCK:
+		assert_int(_layer.cover_byte(cell)).is_equal(0)
+	var one: Array[Vector2i] = [Vector2i(2, 2)]
+	var uploads: int = _layer.mask_uploads()
+	FogRig.flip(_runner.snapshot, 1, one, true)
+	_runner.ticked.emit(_runner.snapshot.tick)
+	assert_int(_layer.cover_byte(18)).is_equal(255)
+	assert_int(_layer.cover_byte(17)).is_equal(0)  # (1, 2) is still unseen.
+	assert_int(_layer.mask_uploads()).is_equal(uploads + 1)  # One write for the batch.
+	FogRig.flip(_runner.snapshot, 1, one, false)  # Explored and not seen: a dim wall still covers.
+	_runner.ticked.emit(_runner.snapshot.tick)
+	assert_int(_layer.cover_byte(18)).is_equal(255)
+	assert_int(_layer.cover_byte(0)).is_equal(0)  # Open ground.
+
+
 func test_the_ghost_layer_draws_over_the_sorted_world() -> void:
 	assert_int(GhostMemoryLayer.Z_GHOSTS).is_greater(WorldSort.Z_SORT)
 

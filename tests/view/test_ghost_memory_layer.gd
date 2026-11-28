@@ -447,7 +447,7 @@ func test_both_scenes_hold_the_layer_wired_to_the_runner_and_the_sort_and_only_t
 			. override_failure_message(note)
 			. is_same(GhostMemoryLayer)
 		)
-		assert_int(_scene_value(state, "GhostMemoryLayer", &"z_index", 0)).is_equal(5)
+		assert_int(_scene_value(state, "GhostMemoryLayer", &"z_index", 0)).is_equal(12)
 		assert_bool(_scene_value(state, "GhostMemoryLayer", &"z_as_relative", true)).is_false()
 		assert_bool(_scene_value(state, "GhostMemoryLayer", &"y_sort_enabled", false)).is_true()
 		assert_that(_scene_value(state, "GhostMemoryLayer", &"runner", null)).is_equal(

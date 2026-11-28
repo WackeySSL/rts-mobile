@@ -5,6 +5,7 @@
 [ext_resource type="Script" path="res://game/core/MatchRunner.gd" id="3_runner"]
 [ext_resource type="Script" path="res://game/view/MapView.gd" id="4_map"]
 [ext_resource type="Script" path="res://game/view/GroundLayer.gd" id="20_ground"]
+[ext_resource type="Script" path="res://game/view/WallLayer.gd" id="96_walls"]
 [ext_resource type="Script" path="res://game/view/UnitLayer.gd" id="5_units"]
 [ext_resource type="Script" path="res://game/view/audio/BattleSounds.gd" id="96_battle_sounds"]
 [ext_resource type="Script" path="res://game/view/AirLayer.gd" id="93_air"]
@@ -73,11 +74,12 @@ z_as_relative = false
 script = ExtResource("19_sort")
 runner = NodePath("../MatchRunner")
 
-[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort")]
+[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort", "walls")]
 script = ExtResource("5_units")
 runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
+walls = NodePath("../WallLayer")
 reveal_enemies = true
 
 [node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort", "decals")]
@@ -121,12 +123,20 @@ runner = NodePath("../MatchRunner")
 
 [node name="GhostMemoryLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort")]
 y_sort_enabled = true
-z_index = 5
+z_index = 12
 z_as_relative = false
 script = ExtResource("32_ghosts")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 reveal_enemies = true
+
+; The raised rock walls and the unit silhouettes, as in main.tscn, so the card measures them.
+[node name="WallLayer" type="Node" parent="." node_paths=PackedStringArray("runner", "world_sort", "fog")]
+script = ExtResource("96_walls")
+runner = NodePath("../MatchRunner")
+world_sort = NodePath("../WorldSort")
+fog = NodePath("../FogLayer")
+walls_enabled = true
 
 [node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
 z_index = 20
