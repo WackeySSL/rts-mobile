@@ -198,8 +198,8 @@ func _key_of(sprite: Sprite2D) -> String:
 	return ""
 
 
-func test_the_flag_is_off_in_the_main_scene_until_the_silhouettes_land() -> void:
+func test_the_flag_is_on_in_the_main_scene_with_the_silhouettes() -> void:
 	var main: Node = auto_free((load("res://scenes/main.tscn") as PackedScene).instantiate())
 	var layer: WallLayer = main.get_node("WallLayer") as WallLayer
 	assert_object(layer).is_not_null()
-	assert_bool(layer.walls_enabled).is_false()  # P656d3 turns it on, with the silhouettes.
+	assert_bool(layer.walls_enabled).is_true()  # P656d3 turned it on, with the silhouettes.
