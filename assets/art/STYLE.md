@@ -2244,11 +2244,14 @@ Type variations of `game/ui/theme.tres` for the menu screens. They are the pause
 | `MenuTitle` (CapsBigTitle) | the game name on the main menu | 48 dp, white, own face with 8 px tracking |
 | `SideNameRenew`, `SideNameFossil` (CapsTitle) | a side's name beside its emblem | 16 dp caps with 3 px tracking (the row must fit the narrowest column; the AttackTitle face), the side's light |
 | `MenuSideCard` (PanelContainer), `MenuSideCardRenew`, `MenuSideCardFossil` | the side choice on Map select | plate with a 1 dp edge; the picked side's card has a 2 dp accent edge |
+| `MenuSideCardOn` (MenuSideCard) | the chosen side's card on Skirmish (P666) | the amber (`money`) edge, 2 dp, on a dark amber fill; the other card keeps its accent edge |
+| `MenuStepTitle`, `MenuStepChoice` (CapsTitle), `MenuOptionName` (CapsTitle), `MenuOptionNameLocked` (MenuOptionName, muted grey for a locked option), `MenuLockNote` (MenuEyebrow) | Skirmish's numbered step header (title white, the current choice amber), an option's word, and its lock's RANK n in muted grey | 20 / 20 / 18 / 14 sp |
+| `MenuCardTagRenew`, `MenuCardTagFossil` (MenuEyebrow) | the small caps tag on the card that is not chosen (ALTERNATIVE) | the side's light; the chosen card's tag is the amber `MenuEyebrow` |
 | `MenuSlider`, `MenuSliderFossil` (HSlider) | Sound and Music steps | 8 dp track #33434A (v3), the accent fill, a round thumb in the light, 40 base px (a texture: the dp step does not scale it; listed in `base_px`), dimmed to 40 % when disabled; the row is 48 dp tall (`DpMinSize`) |
 | `MenuToggleRow` (PanelContainer) | a Settings row: label left, toggle right | plate, 1 dp edge, 8 dp corners |
 | `MenuToggle`, `MenuToggleFossil`, `MenuToggleOff` (CapsButton) | a switch chip (Vibration, Reduced effects); ON in the light with a 2 dp accent edge, OFF muted #9AA5B1 on a dim plate | 18 dp caps, 48 dp tall |
 | `MenuTab`, `MenuTabOn` (CapsButton) | the tab chips (How to play sections, level) | muted on a dim plate; the open tab white with a 2 dp #C9D1D9 edge |
-| `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: 2 dp #C9D1D9 edge; locked: dim plate |
+| `MenuMapCard` (PanelContainer), `MenuMapCardOn`, `MenuMapCardLocked` | a map on Map select | plate; picked: the amber 2 dp edge on the dark amber fill (P666); locked: dim plate |
 | `MenuRankBadge` (PanelContainer), `MenuRankLabel` (CapsTitle) | the rank on the main menu | plate with a 1 dp edge and 22 dp text in `money` (v3 #F4B653) |
 | `MenuXpBar` (ProgressBar) | the XP bar | `border` track (v3 #33434A), `money` fill (v3 #F4B653), 4 dp corners |
 
@@ -3246,6 +3249,103 @@ against unexplored ground), and it is neutral (saturation under 0.30), so no sid
 is near it. P116 sets it as the clear colour; the gallery's Terrain page draws it behind everything,
 `OFF_MAP_COLOR` in `game/view/art_gallery_ground.gd`, which `tests/art` pins to this text.
 
+## Terrain kit (ADR 0053)
+Plan row P656c. The pre-rendered ground that P656d will draw in place of the twelve SVG diamonds
+above (nothing draws it yet, so no map looks different). Same sun as the sprites ("Light"), the
+sorted world's density: a piece is 128 texels wide, one ground diamond is 128 x 64 texels, and the
+ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
+- **Source and output.** Models `assets/art/models/terrain/<id>_detail.tres` (a `DetailModel` each:
+  grass, sand, scrub, rock, water, ore and road; the data, written by a small script kept outside
+  the repository, is the source), baked by `bash scripts/prerender.sh --kit` (README of
+  `tools/prerender`) into `assets/art/terrain/<id>_<part>.png`, 84 pieces, listed in
+  `assets/art/prerender/manifest.tres`; `assets/art/terrain/kit.tres` (`TerrainKitDef`) maps
+  terrain, kind and mask to the file and holds the blend priority. Art only: no balance number.
+- **Pieces.**
+
+| Kind | On the cell of | Masks | Pieces | Size |
+| --- | --- | --- | --- | --- |
+| `base` | every terrain | variant 0 to 3 (the cell hash picks one; they differ in where details sit, not in hue) | 24 | 128 x 64 |
+| `blend` | a lower terrain, in the look of the higher one (sand, scrub, ore) | `side_ne/se/sw/nw`, `corner_n/e/s/w` | 24 | 128 x 64 |
+| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 91 |
+| `shore` | water | the same twelve | 12 | 128 x 64 to 66 |
+| `road` | grass or sand, replaces the base | `nw_se`, `ne_sw`, `nw_ne`, `ne_se`, `se_sw`, `sw_nw` | 12 | 128 x 64 |
+
+- **Masks** name the neighbours that differ. Edge neighbours are `ne` (grid y - 1), `se` (x + 1),
+  `sw` (y + 1) and `nw` (x - 1); diagonal ones `n` (x - 1, y - 1), `e` (x + 1, y - 1), `s` (x + 1,
+  y + 1) and `w` (x - 1, y + 1), after the screen corner they lie at. `side_<edge>`: that edge
+  neighbour differs; `outer_<diag>`: the two edge neighbours at that corner differ (the cell's
+  corner sticks out); `inner_<diag>`: only the diagonal neighbour differs. A blend's `corner_<diag>`
+  is its inner corner. A cell with three open edges, or two opposite ones, takes the nearest piece
+  (P656d decides); a road piece names the two edges the road leaves through.
+- **Priority** (highest first): ore, scrub, sand, grass. A higher terrain's blend is drawn on the
+  edge layer of a lower neighbour cell: ore onto scrub, sand and grass, scrub onto sand and grass,
+  sand onto grass. Rock and water blend into nothing and nothing blends onto them: they take a lip
+  or a shore on their own cell towards any other terrain.
+- **Lip rule.** A flat piece (base, blend, road) is exactly 64 texels tall. Only a rock lip or a
+  water shore rises above its diamond's top corner, by at most 36 texels (the bake refuses a piece
+  that reaches the canvas top, 36 above the corner; `tests/art/test_terrain_kit.gd` pins 64 to 100).
+  Shipped: lips rise 0 to 27 texels, shores 0 to 2. Rock and water are the cells that cost 0 for
+  all three move classes, so no unit stands behind a rising part. Nothing under 2 art px across is
+  modelled.
+- **Seamless.** The ground reaches 0.02 tile (about 1 texel) past each edge, never past a corner,
+  so two tiles overlap and no hairline shows; its mottling repeats a whole number of times per tile
+  and so runs on across the seam. A lip's or a stone's shadow is baked (the bake's sun, along +gx,
+  at the shadow band's alpha where the geometry leaves the ground bare).
+- **Look** (reworked after Michael's no on 2026-11-27 to the first kit: stones everywhere, colours too
+  dark; his reference is the P653 prototype's terrain, `docs/proto/p653/terrain_z1.png`). A base piece
+  is a flat sheet in the terrain's colour with a soft grain (three scales, whole periods per tile,
+  amplitude about 5 % of the value): no stones, bushes, flecks or rings. Only one of the four grass
+  variants (`base_2`) and one of the four rock variants (`base_3`) carry one boulder: three
+  overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide) on a soft contact patch. **P656d's cell hash
+  should give the boulder variant one cell in eight** (the other three variants share the rest),
+  as the proof sheets do; no other base piece has a stone, fleck or ring. Scrub is the grass tone a step
+  darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, with
+  cliff walls built as one noise-displaced solid per edge (`BakeShapes.cliff`, after P653's):
+  grooves run top to bottom (noise fast along the wall, slow up it), the top edge is ragged and
+  wanders, the lip overhangs a little, the face has darker streaks that are never black (front
+  walls up to 47 texels tall, back walls up to 31). Both ends of a wall are pinned (no
+  displacement, one height, whatever the seed), so neighbouring pieces join. Water is a calm blue sheet; a shore is a wet bank on the water cell's open side with a thin
+  light foam line, and every shore and blend piece has a curved, seeded edge inside its tile (zero
+  offset at the tile edges, so a run of pieces meets and reads as one coast). The scrub blend is
+  the widest and softest (a mid tone between scrub and grass at its rim). Roads are asphalt with a worn dashed line and a gravel
+  shoulder. Hues follow P653's (grass olive-khaki, hue 62), not today's diamonds'. Grass carries low-frequency
+  darker green patches (the ground material's `patch` tint, whole periods per tile): P653's grass has
+  median hue 61, darker patches at 67 and greener ones above; the kit's is median 62, 25th to 75th
+  percentile 57 to 67.
+- **Palette** (mean over the four base pieces of a terrain, rendered sRGB; P653's terrain areas
+  measured the same way in brackets, `-` where P653 has no such area):
+
+| Terrain | Mean | Hue | Saturation | Value |
+| --- | --- | --- | --- | --- |
+| grass | #969871 | 62 (61 to 63) | 0.26 (0.22 to 0.28) | 0.59 (0.58 to 0.60) |
+| sand | #C7B58F | 41 (-) | 0.28 (-) | 0.78 (-) |
+| scrub | #7D8561 | 73 (-) | 0.27 (-) | 0.52 (-) |
+| rock | #756C62 | 32 (33) | 0.16 (0.18) | 0.46 (0.44) |
+| water | #3E6479 | 201 (202) | 0.49 (0.49) | 0.48 (0.48) |
+| ore | #605044 | 26 (-) | 0.29 (-) | 0.38 (-) |
+
+  Rock cliff walls (the 12 lips) measure saturation 0.10, value 0.48 (P653's cliff 0.10 and 0.45 to
+  0.48) and 18 edges per 100 px2 at the baked texels (P653's 12 to 29). The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
+  key band (hue 300 +- 20 degrees, saturation 0.30 or more).
+- **Water is over the ground ceiling.** Water's mean saturation is 0.49, as P653's, so it is above
+  ADR 0053 section 8's 0.30 and in the route triad's blue hue band (100 % of it at saturation 0.35
+  or more); P653's own water does the same. The ceiling holds for the grass, sand, scrub, rock and
+  ore of a scene; whether it is judged on a mix or per terrain is for P656e and Michael.
+- **Measured now, not yet a gate** (P656e sets the bands; zoom 1, tiles box-filtered to 64 x 32, the
+  four base pieces of a terrain, the Skirmish roster's eight units over a 3 x 3 patch):
+
+| Terrain | Mean saturation | In a route triad's hue band | Edges per 100 px2 (P653's) | Lowest 32 px greyscale spread (at least 80) |
+| --- | --- | --- | --- | --- |
+| grass | 0.254 | 0.00 % | 2.1 (3.4 to 7.4) | 118.5 |
+| sand | 0.281 | 0.00 % | 12.1 (-) | 135.8 |
+| scrub | 0.270 | 0.00 % | 7.9 (-) | 115.1 |
+| rock | 0.162 | 0.00 % | 0.7 (18.6 on P653's grainier plateau) | 114.0 |
+| water | 0.486 | 100 % | 0.0 (0.0) | 113.6 |
+| ore | 0.289 | 0.00 % | 4.5 (-) | 114.3 |
+
+- **Budgets.** The 84 files total 0.47 MB (the ADR's budget is 5 MB; the largest piece is 13.5 KB);
+  packed with a 2 px gutter into rows of 4096 px they take 225 rows (the budget is 512).
+
 ## Map looks (P551 and P553, plan answer 5)
 A map may carry its own ground look: `MapDef.ground_look`, a folder name under
 `assets/art/svg/ground_looks/<look>/` (view only, like `field_kinds`: `WorldLoad` never reads it, so no
@@ -3818,4 +3918,5 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-27 | v1.58 (P652, art-director, ADR 0050 amendment A1 to A9, Michael's answer of 2026-11-26 "A: Holdfarve på pladerne"): team colour on the large panels. On the 18 detail-2 models every `faction` primitive is now `team` (179 lines, the material word only: no geometry, primitive, detail level, decal or pose changed); 624 frames and 18 item cards regenerated, hex strings only (`scripts/art-hex-only.sh` exits 0 over 642 files), so the panels wear each player's triad and the bodies stay steel and iron (Ironward) or white and graphite (Facet); the cards' panel edges now take the key's own tones. No model paints `faction` (a test over every model); FACTION_SHARE is retired and replaced by the 32 px shape check (the seven pairs under 0.85 in d06 and d10); TEAM_SHARE at detail 2 and up is 30 to 65 % of the default view and 25 to 75 % in every direction in the key band (`test_artgen_readability.gd`, `test_unit_models.gd`, `test_medic_art.gd`, `test_carrier_art.gd`, `test_minelayer_art.gd`, `test_aircraft_art.gd`, with one shared helper in `building_picture_support.gd`), the roof-plate rule applies below detail 2 only, the mirror row of the same-scene check is 30 to 80 %; the default team colours are each side's own (Signal, Kobolt) and Sne and Karmin as defaults are struck (A6, the lead's proposal); the two mirror page pins move from 2615 and 2536 to 2697 and 2596; "Shares", "The sentinel key triad", "The fixed faction colours", "Triads" and "Same-scene saturation" rewritten. The Ironward name in new text is Ironward (Michael, 2026-11-27) |
 | 2026-11-27 | v1.59 (P658, art-director, no rule change; Michael 2026-11-27: SVG units take the P655 probe's palette and silhouette): the gunmetal family (`gunmetal` #2B2E32, `gunsteel` #5C6066, `gunbody` #4A4D52) replaces iron, steel and olive on the 11 Ironward and graphite and titanium on the 7 Facet detail-2 models, new materials so that the buildings and older models are unchanged ("Gunmetal bodies (P658)"); barrels 0.1 tile longer on the Flarejack and the Swift (the Bullhead's and the Torque's stay, see "Gunmetal bodies (P658)"); the Drillhead widened so that no direction reads under 25 % team (the P652 exception is gone); the Linemen's reel hub widened to 0.19;  the two mirror pages and the cross page re-pinned (page 1 +1, 0 and +2 on the cross and the two mirror pages, page 2 unchanged) |
 | 2026-11-27 | v1.60 (P643, art-director, ADR 0050 amendment A1 to A9, no rule change): the Facet Linecar, Seeder, Glint and Sunfall at detail 2 with the team colour on their large panels (33 to 42 % of the default view, 28 to 52 % in every direction; no model paints `faction`) over graphite, titanium and white bodies; their silhouettes, the Seeder's hull canvas (152 x 118) and the Linecar's shadow canvas (214 x 110) are updated above. The four ids' 128 frames and 4 cards are regenerated; atlas page 1 moves +8, 0 and +11 and page 2 +2, 0 and 0 (the aircraft add 0). The 32 px mirror matrix over the four ids against the 22 detail-2 models has a maximum of 0.76 (0.77 before); no pair rose by 0.03 or more. |
-| 2026-11-27 | v1.61 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |
+| 2026-11-27 | v1.61 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain, against P653's terrain, and the look reworked after Michael's no to the first kit (calm grain, no stones, P653 colours, tall cliff columns); the twelve SVG diamonds and every other ground rule stay as they were |
+| 2026-11-28 | v1.62 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |

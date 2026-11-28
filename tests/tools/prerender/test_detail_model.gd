@@ -60,3 +60,47 @@ func test_problems_name_an_unknown_shape_a_missing_material_and_a_zero_count() -
 	assert_str(found).contains("part 0: unknown shape sphere")
 	assert_str(found).contains("part 1: unknown material gold")
 	assert_str(found).contains("part 2: count under 1")
+
+
+func _quad_model() -> DetailModel:
+	var model: DetailModel = DetailModel.new()
+	model.art_id = &"quad_fixture"
+	var steel: DetailMaterial = DetailMaterial.new()
+	steel.id = &"steel"
+	model.materials = [steel]
+	var ground: DetailPart = DetailPart.new()
+	ground.part = &"flat"
+	ground.shape = &"quad"
+	ground.material = &"steel"
+	ground.size = Vector3(1.0, 1.0, 0.0)
+	var post: DetailPart = DetailPart.new()
+	post.part = &"flat"
+	post.shape = &"cylinder"
+	post.material = &"steel"
+	post.b = Vector3(0.0, 0.0, 0.2)
+	post.radius = 0.05
+	post.segs = 6
+	model.parts = [ground, post]
+	return model
+
+
+func test_a_quad_is_one_flat_face_with_no_sides_and_reaches_no_height() -> void:
+	var model: DetailModel = _quad_model()
+	assert_array(model.problems()).is_empty()
+	var only_ground: BakeMesh = BakeMesh.new(&"quad_fixture")
+	model.parts[0].emit(only_ground, false)
+	assert_int(only_ground.triangles).is_equal(2)
+	for normal: Vector3 in only_ground.batches[&"steel"].normals:
+		assert_vector(normal).is_equal(Vector3.UP)
+	assert_float(model.parts[0].top()).is_equal(0.0)
+	assert_float(model.parts[1].top()).is_equal_approx(0.2, 0.0001)
+
+
+func test_a_minimum_top_leaves_out_what_lies_on_the_ground() -> void:
+	var model: DetailModel = _quad_model()
+	var all: BakeMesh = BakeMesh.new(&"quad_fixture")
+	model.build(&"flat", all)
+	var tall: BakeMesh = BakeMesh.new(&"quad_fixture")
+	model.build(&"flat", tall, 0.02)
+	assert_int(all.triangles).is_greater(tall.triangles)
+	assert_int(tall.triangles).is_equal(all.triangles - 2)

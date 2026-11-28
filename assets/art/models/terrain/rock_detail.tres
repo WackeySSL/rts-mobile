@@ -1,0 +1,460 @@
+[gd_resource type="Resource" script_class="DetailModel" format=3]
+
+[ext_resource type="Script" path="res://tools/prerender/DetailMaterial.gd" id="1_mat"]
+[ext_resource type="Script" path="res://tools/prerender/DetailPart.gd" id="2_part"]
+[ext_resource type="Script" path="res://tools/prerender/DetailModel.gd" id="3_model"]
+
+[sub_resource type="Resource" id="m_ground"]
+script = ExtResource("1_mat")
+id = &"ground"
+base = Color(0.484, 0.4391, 0.3835, 1)
+roughness = 0.92
+kind = 6
+
+[sub_resource type="Resource" id="m_r_dark"]
+script = ExtResource("1_mat")
+id = &"r_dark"
+base = Color(0.455, 0.4127, 0.3605, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_light"]
+script = ExtResource("1_mat")
+id = &"r_light"
+base = Color(0.5131, 0.4654, 0.4066, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_face"]
+script = ExtResource("1_mat")
+id = &"r_face"
+base = Color(0.7744, 0.7025, 0.6137, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_face2"]
+script = ExtResource("1_mat")
+id = &"r_face2"
+base = Color(0.6776, 0.6014, 0.4807, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_face3"]
+script = ExtResource("1_mat")
+id = &"r_face3"
+base = Color(0.5808, 0.5269, 0.4603, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_top"]
+script = ExtResource("1_mat")
+id = &"r_top"
+base = Color(0.7018, 0.6367, 0.5561, 1)
+roughness = 0.88
+kind = 6
+
+[sub_resource type="Resource" id="m_g_boulder"]
+script = ExtResource("1_mat")
+id = &"g_boulder"
+base = Color(0.3775, 0.3425, 0.2992, 1)
+roughness = 0.85
+kind = 6
+
+[sub_resource type="Resource" id="m_g_shade"]
+script = ExtResource("1_mat")
+id = &"g_shade"
+base = Color(0.4356, 0.3952, 0.3452, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_r_cliff"]
+script = ExtResource("1_mat")
+id = &"r_cliff"
+base = Color(0.8954, 0.8123, 0.7096, 1)
+roughness = 0.9
+kind = 7
+
+[sub_resource type="Resource" id="p0"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p1"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p2"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p3"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p4"]
+script = ExtResource("2_part")
+part = &"base_0"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p5"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p6"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p7"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p8"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p9"]
+script = ExtResource("2_part")
+part = &"base_1"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p10"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p11"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p12"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p13"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p14"]
+script = ExtResource("2_part")
+part = &"base_2"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p15"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p16"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p17"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p18"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p19"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p20"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"cylinder"
+material = &"g_shade"
+a = Vector3(-0.2657, 0.0142, 0.002)
+b = Vector3(-0.2657, 0.0142, 0.005)
+radius = 0.1439
+bevel = 0.0012
+segs = 14
+
+[sub_resource type="Resource" id="p21"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(-0.2777, 0.0022, 0)
+b = Vector3(0, 0, 1)
+radius = 0.1439
+segs = 12
+
+[sub_resource type="Resource" id="p22"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(-0.2931, 0.0725, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0743
+segs = 10
+
+[sub_resource type="Resource" id="p23"]
+script = ExtResource("2_part")
+part = &"base_3"
+shape = &"dome"
+material = &"g_boulder"
+a = Vector3(-0.2086, 0.0222, 0)
+b = Vector3(0, 0, 1)
+radius = 0.0726
+segs = 10
+
+[sub_resource type="Resource" id="p24"]
+script = ExtResource("2_part")
+part = &"lip_side_ne"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.5, -0.455, 0)
+b = Vector3(0.5, -0.455, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 458692
+
+[sub_resource type="Resource" id="p25"]
+script = ExtResource("2_part")
+part = &"lip_side_se"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(0.455, -0.5, 0)
+b = Vector3(0.455, 0.5, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 386661
+
+[sub_resource type="Resource" id="p26"]
+script = ExtResource("2_part")
+part = &"lip_side_sw"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.5, 0.455, 0)
+b = Vector3(0.5, 0.455, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 313055
+
+[sub_resource type="Resource" id="p27"]
+script = ExtResource("2_part")
+part = &"lip_side_nw"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.455, -0.5, 0)
+b = Vector3(-0.455, 0.5, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 662897
+
+[sub_resource type="Resource" id="p28"]
+script = ExtResource("2_part")
+part = &"lip_outer_n"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.455, -0.5, 0)
+b = Vector3(-0.455, 0.3, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 566219
+
+[sub_resource type="Resource" id="p29"]
+script = ExtResource("2_part")
+part = &"lip_outer_n"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.3, -0.455, 0)
+b = Vector3(0.5, -0.455, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 415580
+
+[sub_resource type="Resource" id="p30"]
+script = ExtResource("2_part")
+part = &"lip_outer_e"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.5, -0.455, 0)
+b = Vector3(0.3, -0.455, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 863525
+
+[sub_resource type="Resource" id="p31"]
+script = ExtResource("2_part")
+part = &"lip_outer_e"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(0.455, -0.3, 0)
+b = Vector3(0.455, 0.5, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 24735
+
+[sub_resource type="Resource" id="p32"]
+script = ExtResource("2_part")
+part = &"lip_outer_s"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(0.455, -0.5, 0)
+b = Vector3(0.455, 0.3, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 795840
+
+[sub_resource type="Resource" id="p33"]
+script = ExtResource("2_part")
+part = &"lip_outer_s"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.3, 0.455, 0)
+b = Vector3(0.5, 0.455, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 724646
+
+[sub_resource type="Resource" id="p34"]
+script = ExtResource("2_part")
+part = &"lip_outer_w"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.5, 0.455, 0)
+b = Vector3(0.3, 0.455, 0)
+size = Vector3(0, 0.15, 0.6)
+radius = 0.06
+radius2 = 65276
+
+[sub_resource type="Resource" id="p35"]
+script = ExtResource("2_part")
+part = &"lip_outer_w"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.455, -0.3, 0)
+b = Vector3(-0.455, 0.5, 0)
+size = Vector3(0, 0.15, 0.4)
+radius = 0.06
+radius2 = 121505
+
+[sub_resource type="Resource" id="p36"]
+script = ExtResource("2_part")
+part = &"lip_inner_n"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.48, -0.24, 0)
+b = Vector3(-0.24, -0.48, 0)
+size = Vector3(0, 0.12, 0.4)
+radius = 0.03
+radius2 = 48516
+
+[sub_resource type="Resource" id="p37"]
+script = ExtResource("2_part")
+part = &"lip_inner_e"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(0.24, -0.48, 0)
+b = Vector3(0.48, -0.24, 0)
+size = Vector3(0, 0.12, 0.5)
+radius = 0.03
+radius2 = 472682
+
+[sub_resource type="Resource" id="p38"]
+script = ExtResource("2_part")
+part = &"lip_inner_s"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(0.48, 0.24, 0)
+b = Vector3(0.24, 0.48, 0)
+size = Vector3(0, 0.12, 0.5)
+radius = 0.03
+radius2 = 141877
+
+[sub_resource type="Resource" id="p39"]
+script = ExtResource("2_part")
+part = &"lip_inner_w"
+shape = &"cliff"
+material = &"r_cliff"
+a = Vector3(-0.24, 0.48, 0)
+b = Vector3(-0.48, 0.24, 0)
+size = Vector3(0, 0.12, 0.5)
+radius = 0.03
+radius2 = 780955
+
+[resource]
+script = ExtResource("3_model")
+art_id = &"rock"
+faction = &"terrain"
+variation_seed = 656
+materials = Array[ExtResource("1_mat")]([SubResource("m_ground"), SubResource("m_r_dark"), SubResource("m_r_light"), SubResource("m_r_face"), SubResource("m_r_face2"), SubResource("m_r_face3"), SubResource("m_r_top"), SubResource("m_g_boulder"), SubResource("m_g_shade"), SubResource("m_r_cliff")])
+parts = Array[ExtResource("2_part")]([SubResource("p0"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7"), SubResource("p8"), SubResource("p9"), SubResource("p10"), SubResource("p11"), SubResource("p12"), SubResource("p13"), SubResource("p14"), SubResource("p15"), SubResource("p16"), SubResource("p17"), SubResource("p18"), SubResource("p19"), SubResource("p20"), SubResource("p21"), SubResource("p22"), SubResource("p23"), SubResource("p24"), SubResource("p25"), SubResource("p26"), SubResource("p27"), SubResource("p28"), SubResource("p29"), SubResource("p30"), SubResource("p31"), SubResource("p32"), SubResource("p33"), SubResource("p34"), SubResource("p35"), SubResource("p36"), SubResource("p37"), SubResource("p38"), SubResource("p39")])
