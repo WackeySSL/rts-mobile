@@ -78,6 +78,9 @@ const IDLE_MARGIN_PX: float = IsoProjection.HALF_W * 2.0
 ## The sorted world the rigs stand in and the atlas they draw from. A scene shares one with the
 ## other layers; without one the layer makes its own, as a child.
 @export var world_sort: WorldSort
+## The raised rock walls (ADR 0053 A7, plan P656d3). With its flag on, each rig also holds the
+## silhouettes of its Hull and Turret (`RigSilhouette`). Unset or off, a rig has none.
+@export var walls: WallLayer
 ## Shows every enemy rig whatever the fog says: the perf arena, and tests whose subject is not fog.
 @export var reveal_enemies: bool = false
 ## The numbers of the unit life (recoil, rock); `data/life_settings.tres` when unset.
@@ -165,6 +168,7 @@ class Rig:
 	var pose: RigLife.Pose = RigLife.Pose.new()  ## What a squad's Hull shows (P142).
 	var damage: VehicleDamage.Parts = null  ## The Scar and Loose of a vehicle's Hull (P161).
 	var cargo: TankerCargo = null  ## A tanker's cargo bar (P84b).
+	var silhouette: RigSilhouette = null  ## Made with the rig when the walls are on (A7).
 
 
 func _ready() -> void:
@@ -569,6 +573,8 @@ func _new_rig(
 		)
 		_queue_damage(rig)
 	TankerCargo.clear(rig.cargo)
+	if rig.silhouette != null:
+		rig.silhouette.reset()  # Out of the pool: its cell is read again, the sprites hide.
 	rig.turret_kick = Vector2.ZERO  # A rig out of the pool may have been kicked, shaken or turned.
 	rig.hull_kick = Vector2.ZERO
 	rig.idle.reset()
@@ -636,6 +642,10 @@ func _make_rig(kind: int) -> Rig:
 		rig.marker = Marker.new()
 		rig.marker.name = "Marker"
 		rig.add_child(rig.marker)
+	if walls != null and walls.walls_enabled:
+		rig.silhouette = RigSilhouette.make(
+			rig, rig.sprites[HULL], rig.sprites[TURRET], world_sort.silhouette_material()
+		)
 	return rig
 
 
@@ -734,6 +744,8 @@ func _update_rigs(snap: MatchSnapshot, delta: float) -> void:
 					_follow_writes += placed
 					_rig_life.writes += placed
 				_queue_damage(rigs[row] as Rig)  # A stage that changed meanwhile.
+		if walls != null and (rigs[row] as Rig).silhouette != null:
+			(rigs[row] as Rig).silhouette.step(snap, row, walls, shown)
 		# A unit that stood still last tick keeps its heading. So does one that moved under half a
 		# full step: the step onto its goal is an integer remainder and can point anywhere.
 		var moved_x: int = cur_x[row] - prev_x[row]

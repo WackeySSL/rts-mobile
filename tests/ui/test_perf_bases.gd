@@ -191,8 +191,8 @@ func test_the_report_carries_the_atlas_bake_and_the_card_the_draw_call_forecast(
 	assert_bool(JSON.parse_string(JSON.stringify(hud.summary())).has("atlas_bake_ms")).is_true()
 	var lines: PackedStringArray = hud.card_lines()
 	var forecast: String = (
-		"draw calls p95 0 | forecast 17, 18 while a strike is aimed or in flight, about 23 at "
-		+ "worst, plus the HUD (no verdict)"
+		"draw calls p95 0 | forecast 17, 18 while a strike is aimed or in flight, about 25 at "
+		+ "worst (one is the silhouettes, while a unit stands behind a wall), plus the HUD (no verdict)"
 	)
 	assert_array(Array(lines)).contains([forecast])
 	assert_array(Array(lines)).contains(

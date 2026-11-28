@@ -23,13 +23,15 @@ const AIR_FIELDS: String = " (air_golden_ticks, air_golden_hex)"
 ## `AirFx`, note of 2026-11-02, P132) and `MineLayer` (P293: 17), about 23 in the worst moment, and
 ## one more while a strike is aimed or in the air (`StrikeMarkerLayer`, note of 2026-10-30; the
 ## 2026-10-31 note adds the ghost, outside this arena).
+## ADR 0053 A10 (P656d3): the silhouettes are one draw call more while a unit stands behind a rock
+## wall, so the worst moment is 25.
 ## Printed beside the measured p95 with no verdict; the gate's ceiling is `draw_calls_max`.
 const CALLS_FORECAST: int = 17
 const CALLS_STRIKE: int = 18
-const CALLS_WORST: int = 23
+const CALLS_WORST: int = 25
 const CALLS_LINE: String = (
-	"draw calls p95 %d | forecast %d, %d while a strike is aimed or in flight, about %d at worst, "
-	+ "plus the HUD (no verdict)"
+	"draw calls p95 %d | forecast %d, %d while a strike is aimed or in flight, about %d at worst "
+	+ "(one is the silhouettes, while a unit stands behind a wall), plus the HUD (no verdict)"
 )
 
 ## The card's AI line (plan P185, ADR 0030 section 4), report-only: the p95 and the dearest think

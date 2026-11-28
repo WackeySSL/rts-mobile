@@ -61,6 +61,8 @@ signal rally_ordered(tab: int, x: int, y: int)
 @export var strike_aim: StrikeAim  ## Without one there is no strike to aim.
 @export var placement: PlacementController  ## Without one there is no placement mode.
 @export var carry_aim: CarryAim  ## Without one there are no Board and Unload aims.
+## The raised rock walls: a ground tap on a wall's top or face means the wall's cell (ADR 0053 A8).
+@export var walls: WallLayer
 
 var selection: SelectionModel = SelectionModel.new()
 ## Taps refused so far: an enemy none of the selected units can hit (P244). For the tests.
@@ -100,7 +102,7 @@ func _ready() -> void:
 func handle_gesture(e: GestureEvent) -> void:
 	if strike_aim != null and strike_aim.active:
 		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
-			strike_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(e.position)))
+			strike_aim.place(_ground_at(camera.screen_to_world(e.position)))
 		return
 	if carry_aim != null and carry_aim.is_active():
 		if e.kind == GestureEvent.Kind.TAP or e.kind == GestureEvent.Kind.DOUBLE_TAP:
@@ -247,11 +249,17 @@ func _tap(pos: Vector2) -> void:
 			_building_ground_tap(pos)
 
 
+## The ground point a tap at world px `world` means: a wall's cell where it is on a wall's top or
+## face (`WallLayer.ground_at`), else the flat inverse projection. Placement keeps the flat one.
+func _ground_at(world: Vector2) -> Vector2i:
+	return walls.ground_at(world) if walls != null else IsoProjection.px_to_ground(world)
+
+
 ## A tap on the ground with own units selected (P87): tankers alone, on or near a field that has
 ## ore the sim would take, HARVEST there; everything else moves.
 func _ground_tap(pos: Vector2) -> void:
 	var world: Vector2 = camera.screen_to_world(pos)
-	var ground: Vector2i = IsoProjection.px_to_ground(world)
+	var ground: Vector2i = _ground_at(world)
 	var snap: MatchSnapshot = runner.snapshot
 	var reach: float = UiScale.dp(settings.hit_radius_dp) / camera.zoom.x
 	if (
@@ -274,7 +282,7 @@ func _building_ground_tap(pos: Vector2) -> void:
 	if building == 0:
 		selection.clear()
 		return
-	var ground: Vector2i = IsoProjection.px_to_ground(camera.screen_to_world(pos))
+	var ground: Vector2i = _ground_at(camera.screen_to_world(pos))
 	command_sink.call(Command.rally(_local_player(), building, ground.x, ground.y))
 	rally_ordered.emit(OrderRules.rally_tab(runner.snapshot, building), ground.x, ground.y)
 	_buzz()
@@ -423,7 +431,7 @@ func _carry_tap(pos: Vector2) -> void:
 	if own:
 		carry_aim.refuse()
 	else:
-		carry_aim.place(IsoProjection.px_to_ground(camera.screen_to_world(pos)))
+		carry_aim.place(_ground_at(camera.screen_to_world(pos)))
 
 
 ## Move to a point in milli-tiles, with the chevrons. The units stop attacking and drive there in

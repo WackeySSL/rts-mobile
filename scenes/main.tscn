@@ -107,11 +107,12 @@ z_as_relative = false
 script = ExtResource("22_sort")
 runner = NodePath("../MatchRunner")
 
-[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort")]
+[node name="UnitLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort", "walls")]
 script = ExtResource("9_units")
 runner = NodePath("../MatchRunner")
 camera = NodePath("../Camera")
 world_sort = NodePath("../WorldSort")
+walls = NodePath("../WallLayer")
 
 [node name="BuildingLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "camera", "world_sort", "decals")]
 script = ExtResource("31_buildings")
@@ -214,7 +215,7 @@ script = ExtResource("97_ui_sounds")
 script = ExtResource("2_cam")
 settings = ExtResource("6_settings")
 
-[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement", "carry_aim")]
+[node name="PlayerController" type="Node" parent="." node_paths=PackedStringArray("runner", "unit_layer", "building_layer", "air_layer", "camera", "marker_layer", "box_overlay", "group_column", "strike_aim", "placement", "carry_aim", "walls")]
 script = ExtResource("10_player")
 runner = NodePath("../MatchRunner")
 unit_layer = NodePath("../UnitLayer")
@@ -228,6 +229,7 @@ group_column = NodePath("../Hud/GroupColumn")
 strike_aim = NodePath("../StrikeAim")
 placement = NodePath("../PlacementController")
 carry_aim = NodePath("../CarryAim")
+walls = NodePath("../WallLayer")
 
 [node name="CarryAim" type="Node" parent="." node_paths=PackedStringArray("runner", "controller", "placement", "strike_aim")]
 script = ExtResource("93_carry_aim")

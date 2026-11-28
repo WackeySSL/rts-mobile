@@ -35,6 +35,14 @@ static func px_to_ground(p: Vector2) -> Vector2i:
 	return Vector2i(roundi((sum + diff) * _MILLI * 0.5), roundi((sum - diff) * _MILLI * 0.5))
 
 
+## The ground point under the world px `p` in tiles, not rounded: x is the column and y the row
+## direction, so the cell under `p` is (floor x, floor y). The wall cover test reads it.
+static func px_to_tiles(p: Vector2) -> Vector2:
+	var sum: float = p.y / HALF_H
+	var diff: float = p.x / HALF_W
+	return Vector2((sum + diff) * 0.5, (sum - diff) * 0.5)
+
+
 ## The centre of the diamond of cell (`col`, `row`), world px.
 static func cell_centre_px(col: int, row: int) -> Vector2:
 	return Vector2(float((col - row) * HALF_W), float((col + row + 1) * HALF_H))

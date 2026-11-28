@@ -26,6 +26,10 @@ extends Node2D
 const Z_SORT: int = 10  ## Unit rigs and buildings.
 const Z_SHADOW: int = 2  ## A rig's Shadow, under the rings (3) and the fog (4).
 const Z_RING: int = 3
+## A unit's silhouette behind a raised rock wall (ADR 0053 A7): over the sorted world and the
+## walls in it, under the aircraft (20) and the bars.
+const Z_SILHOUETTE: int = 11
+const SILHOUETTE_SHADER: String = "res://game/view/silhouette.gdshader"
 ## The health bars' z (`HealthBarLayer` in the scenes), after the sorted world. What is untextured
 ## and rides a rig, as the cargo bar, draws here too, so the sorted world stays one atlas batch.
 const Z_BARS: int = 30
@@ -61,6 +65,7 @@ var extra_sheets: Array[IsoSheetDef] = []
 var wall_loader: Callable = Callable()
 var wall_shade: int = 140
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
+var _silhouette: ShaderMaterial = null  ## The one material of every silhouette, made on demand.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
 var _muzzles: PackedFloat32Array = PackedFloat32Array()  ## Per weapon index of the match, px.
 var _neutral: IsoSheetDef  ## The neutral sheet of this bake, null when there is none.
@@ -74,6 +79,17 @@ func _init() -> void:
 	y_sort_enabled = true
 	z_index = Z_SORT
 	z_as_relative = false
+
+
+## The material every silhouette sprite shares, so they are one draw call (A7): the shader of
+## `silhouette.gdshader` with the projection's 32 and 16. `WallLayer` gives it the wall mask.
+func silhouette_material() -> ShaderMaterial:
+	if _silhouette == null:
+		_silhouette = ShaderMaterial.new()
+		_silhouette.shader = load(SILHOUETTE_SHADER) as Shader
+		_silhouette.set_shader_parameter("half_w", float(IsoProjection.HALF_W))
+		_silhouette.set_shader_parameter("half_h", float(IsoProjection.HALF_H))
+	return _silhouette
 
 
 ## Whether type `type` of `snap` has a footprint: a building, which no unit rig stands for.

@@ -36,6 +36,8 @@ var _serial: int = -1
 var _version: int = -1
 var _cols: int = 0
 var _raised: PackedByteArray = PackedByteArray()  ## A byte per cell, 1 for a wall.
+var _cover: int = 0  ## Counts the near-wall sets made: a rig reads its cell again when it moves.
+var _near: PackedByteArray = PackedByteArray()  ## A byte per cell, 1 near a wall.
 var _state: PackedByteArray = PackedByteArray()  ## The State each wall cell shows.
 var _first: PackedInt32Array = PackedInt32Array()  ## Cell -> its first sprite in `_sprites`.
 var _count: PackedByteArray = PackedByteArray()  ## Cell -> how many sprites it has.
@@ -122,6 +124,22 @@ func sprites_of(cell: int) -> Array[Sprite2D]:
 	return found
 
 
+## Which near-wall set `is_near` answers from: it changes when the walls are rebuilt.
+func cover_version() -> int:
+	return _cover
+
+
+## Whether a unit standing in cell `cell` may be hidden by a wall: the near-wall byte (A7).
+func is_near(cell: int) -> bool:
+	return cell >= 0 and cell < _near.size() and _near[cell] != 0
+
+
+## The ground point, in milli-tiles, that a tap at the world px `p` means (A8): a wall's cell
+## centre where `p` is on a wall's top or face, else the flat ground (`WallCover.ground_at`).
+func ground_at(p: Vector2) -> Vector2i:
+	return WallCover.ground_at(_raised, _cols, p)
+
+
 ## Whether cell `cell` is a wall.
 func is_wall(cell: int) -> bool:
 	return cell >= 0 and cell < _raised.size() and _raised[cell] != 0
@@ -146,9 +164,27 @@ func _sync(snap: MatchSnapshot) -> void:
 	_one_in = kit_for(map.ground_look if map != null else &"").boulder_one_in.get(ROCK, 0)
 	_cols = snap.map_cols
 	_raised = raised
+	_publish_cover(snap.map_rows)
 	if raised.is_empty():
 		return
 	_build(snap.map_rows)
+
+
+## Makes the near-wall bytes and gives the silhouettes' material the wall mask: one byte per cell,
+## 255 for a wall (a 1 x 1 empty mask when there is none, so the shader covers nothing).
+func _publish_cover(map_rows: int) -> void:
+	_cover += 1
+	_near = WallCover.near_bytes(_raised, _cols)
+	var size: Vector2i = Vector2i(_cols, map_rows) if not _raised.is_empty() else Vector2i.ONE
+	var bytes: PackedByteArray = PackedByteArray([0])
+	if not _raised.is_empty():
+		bytes = _raised.duplicate()
+		for at: int in bytes.size():
+			bytes[at] = 255 if bytes[at] != 0 else 0
+	var image: Image = Image.create_from_data(size.x, size.y, false, Image.FORMAT_R8, bytes)
+	var material: ShaderMaterial = world_sort.silhouette_material()
+	material.set_shader_parameter("wall_mask", ImageTexture.create_from_image(image))
+	material.set_shader_parameter("grid_size", size)
 
 
 func _clear() -> void:
