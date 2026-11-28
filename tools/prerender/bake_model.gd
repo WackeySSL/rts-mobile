@@ -17,12 +17,16 @@ func _initialize() -> void:
 	_run.call_deferred()
 
 
-func _run() -> void:
+func _read_args() -> void:
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	for i: int in args.size():
 		if args[i].begins_with("--"):
 			var flag: bool = i + 1 >= args.size() or args[i + 1].begins_with("--")
 			_opts[args[i].trim_prefix("--")] = "" if flag else args[i + 1]
+
+
+func _run() -> void:
+	_read_args()
 	if not (_opts.has("model") and _opts.has("sheet") and _opts.has("out")):
 		printerr("bake_model: --model, --sheet and --out are required")
 		quit(2)
@@ -89,16 +93,19 @@ func _bake(model: DetailModel, sheet: IsoSheetDef) -> int:
 ## `bake_info.json`, what the post needs: the bake scale and the shadow band's alpha, read from the
 ## frozen same-scene bands (never typed here), and the renderer stamp.
 func _write_info() -> void:
-	var bands: SameSceneBands = load("res://tools/artgen/same_scene.tres") as SameSceneBands
 	var info: Dictionary = {
-		"scale": int(_opts.scale),
-		"shadow_alpha": snappedf((bands.shadow_alpha.x + bands.shadow_alpha.y) * 0.5, 0.001),
-		"renderer": stamp()
+		"scale": int(_opts.scale), "shadow_alpha": _shadow_alpha(), "renderer": stamp()
 	}
 	var file: FileAccess = FileAccess.open(
 		String(_opts.out).path_join("bake_info.json"), FileAccess.WRITE
 	)
 	file.store_string(JSON.stringify(info, "\t", true) + "\n")
+
+
+## The midpoint of the frozen same-scene `shadow_alpha` band.
+func _shadow_alpha() -> float:
+	var bands: SameSceneBands = load("res://tools/artgen/same_scene.tres") as SameSceneBands
+	return snappedf((bands.shadow_alpha.x + bands.shadow_alpha.y) * 0.5, 0.001)
 
 
 ## The shadow frame (ADR 0053 section 5): the model's solid parts flattened along +gx by

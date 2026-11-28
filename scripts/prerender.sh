@@ -7,7 +7,12 @@
 #        bash scripts/prerender.sh --model RES --sheet RES [--out DIR] [--dirs all|6,7] [--scale 8]
 #                                  [--team #HEX] [--composite] [--no-ssao] [--exposure G]
 #                                  [--publish RES_DIR]
+#        bash scripts/prerender.sh --kit [--model RES] [--out DIR] [--exposure G] [--publish RES_DIR]
 #        bash scripts/prerender.sh --check
+#   --kit         the terrain kit (ADR 0053 section 7, tools/prerender/bake_kit.gd): bakes every
+#                 assets/art/models/terrain/*_detail.tres (or the one --model) into OUT/<id>/,
+#                 one PNG per piece, then posts and publishes as below; the sources of a piece
+#                 are its model file only. The other flags of a bake do not apply.
 #   --preflight   check the image and stop (exit 0 when it is the pinned one)
 #   otherwise     check the image, then bake; --out defaults to ${TMPDIR:-/tmp}/prerender. The
 #                 flags after the first one are bake_model.gd's (see its header), except
@@ -141,8 +146,20 @@ if [ "$1" = "--check" ]; then
   while IFS='|' read -r png _ _ _ sources exposure; do
     model="$(tr ';' '\n' <<<"$sources" | sed -n 's/=.*//; /_detail\.tres$/p')"
     sheet="$(tr ';' '\n' <<<"$sources" | sed -n 's/=.*//; /_sheet\.tres$/p')"
-    here="$tmp/$(basename "$model")"
-    PRERENDER_SKIP_IMPORT=1 bash "${BASH_SOURCE[0]}" --model "$model" --sheet "$sheet" --out "$here" --exposure "$exposure" >/dev/null || exit $?
+    if [ -z "$model" ]; then
+      echo "prerender: DIFFERS $png (no _detail.tres source listed)" >&2
+      differ=$((differ + 1))
+      continue
+    fi
+    # One bake per (model, sheet, exposure): kit pieces of one model share it, while unit
+    # entries re-published at another exposure or from another sheet get their own.
+    here="$tmp/$(printf '%s|%s|%s' "$model" "$sheet" "$exposure" | sha256sum | cut -c1-16)"
+    if [ ! -d "$here/post" ] && [ -z "$sheet" ]; then
+      PRERENDER_SKIP_IMPORT=1 bash "${BASH_SOURCE[0]}" --kit --model "$model" --out "$here" --exposure "$exposure" >/dev/null || exit $?
+      mv "$here/$(basename "$model" _detail.tres)/post" "$here/post"
+    elif [ ! -d "$here/post" ]; then
+      PRERENDER_SKIP_IMPORT=1 bash "${BASH_SOURCE[0]}" --model "$model" --sheet "$sheet" --out "$here" --exposure "$exposure" >/dev/null || exit $?
+    fi
     if ! cmp -s "$here/post/$(basename "$png")" "${png#res://}"; then
       echo "prerender: DIFFERS $png" >&2
       differ=$((differ + 1))
@@ -154,6 +171,8 @@ if [ "$1" = "--check" ]; then
   exit 0
 fi
 
+kit=0
+if [ "$1" = "--kit" ]; then kit=1; shift; fi
 args=()
 exposure=1.0
 publish=""
@@ -166,6 +185,8 @@ while [ "$#" -gt 0 ]; do
 done
 has_out=0
 out="${TMPDIR:-/tmp}/prerender"
+model=""
+sheet=""
 for i in "${!args[@]}"; do
   if [ "${args[$i]}" = "--out" ]; then has_out=1; out="${args[$((i + 1))]:-}"; fi
   if [ "${args[$i]}" = "--model" ]; then model="${args[$((i + 1))]:-}"; fi
@@ -173,27 +194,46 @@ for i in "${!args[@]}"; do
 done
 if [ "$has_out" -eq 0 ]; then args+=(--out "$out"); fi
 
-log="$(mktemp -t prerender.XXXXXX)"
-status=0
-run_godot "$ENTRY" -- "${args[@]}" >"$log" 2>&1 || status=$?
-cat "$log"
-if [ "$status" -ne 0 ] || grep -Eq "$PATTERN" "$log" || ! grep -q '^bake_model: .*frames in' "$log"; then
-  echo "prerender: FAILED (Godot exit $status)" >&2
+# Bakes the one model ARGS says, posts it and, with --publish, copies and lists it.
+bake_one() {
+  local entry="$1" log status=0
+  log="$(mktemp -t prerender.XXXXXX)"
+  run_godot "$entry" -- "${args[@]}" >"$log" 2>&1 || status=$?
+  cat "$log"
+  if [ "$status" -ne 0 ] || grep -Eq "$PATTERN" "$log" || ! grep -q '^bake_model: .*frames in' "$log"; then
+    echo "prerender: FAILED (Godot exit $status)" >&2
+    rm -f "$log"
+    exit 1
+  fi
   rm -f "$log"
-  exit 1
-fi
-rm -f "$log"
+  rm -rf "$out/post"
+  python3 -I tools/prerender/post.py "$out" --exposure "$exposure" || exit 6
+  if [ -n "$publish" ]; then
+    mkdir -p "${publish#res://}"
+    cp "$out"/post/*.png "${publish#res://}/"
+    local pngs="" f sources artmodel
+    for f in "$out"/post/*.png; do pngs="$pngs,${publish%/}/$(basename "$f")"; done
+    sources="$model"
+    if [ -n "$sheet" ]; then sources="$sources,$sheet"; fi
+    artmodel="$(echo "$model" | sed 's/_detail\.tres$/.tres/')"
+    if [ -f "${artmodel#res://}" ]; then sources="$sources,$artmodel"; fi
+    run_godot res://tools/prerender/write_manifest.gd -- --mesa "$mesa" --png "${pngs#,}" \
+      --sources "$sources" --exposure "$exposure"
+  fi
+}
 
-rm -rf "$out/post"
-python3 -I tools/prerender/post.py "$out" --exposure "$exposure" || exit 6
-if [ -n "$publish" ]; then
-  mkdir -p "${publish#res://}"
-  cp "$out"/post/*.png "${publish#res://}/"
-  pngs=""
-  for f in "$out"/post/*.png; do pngs="$pngs,${publish%/}/$(basename "$f")"; done
-  sources="$model,$sheet"
-  artmodel="$(echo "$model" | sed 's/_detail\.tres$/.tres/')"
-  if [ -f "${artmodel#res://}" ]; then sources="$sources,$artmodel"; fi
-  run_godot res://tools/prerender/write_manifest.gd -- --mesa "$mesa" --png "${pngs#,}" \
-    --sources "$sources" --exposure "$exposure"
+if [ "$kit" -eq 1 ]; then
+  base_out="$out"
+  models="$model"
+  if [ -z "$models" ]; then
+    models="$(ls assets/art/models/terrain/*_detail.tres | sed 's|^|res://|')"
+  fi
+  for model in $models; do
+    id="$(basename "$model" _detail.tres)"
+    out="$base_out/$id"
+    args=(--model "$model" --out "$out")
+    bake_one res://tools/prerender/bake_kit.gd
+  done
+  exit 0
 fi
+bake_one "$ENTRY"

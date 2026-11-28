@@ -20,6 +20,7 @@ static func for_model(model: DetailModel, team: Color) -> Dictionary:
 		m.set_shader_parameter("metal", def.metallic)
 		m.set_shader_parameter("rough", def.roughness)
 		m.set_shader_parameter("kind", int(def.kind))
+		m.set_shader_parameter("patch", def.patch)
 		m.set_shader_parameter("nz", noise())
 		found[def.id] = m
 	return found

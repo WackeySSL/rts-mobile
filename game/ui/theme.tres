@@ -48,7 +48,7 @@
 ; CapsTitle, CapsBigTitle, EconomyPill, EconomyPillLow, PillWord, AttackTitle, EconomyChipLoss,
 ; EconomyChipGain, EconomyConsumer, ResultScreen, Scrim, DeployBackdrop, and the pause menu's PauseHud, PauseCard,
 ; PauseBadge, PauseBadgeFossil, PauseCheck, PauseMuted, PauseButton, PausePrimary,
-; PausePrimaryFossil, PauseDanger, PauseStarting, PauseChip, PauseChipFossil, PauseChipOff, the ad banner band's AdCaption, and the menu screens' MenuTitle, SideNameRenew, SideNameFossil, MenuSideCard (Renew, Fossil), MenuSlider (Fossil), MenuToggleRow, MenuToggle (Fossil, Off), MenuTab, MenuTabOn, MenuMapCard (On, Locked), MenuRankBadge, MenuRankLabel and MenuXpBar; P519) are set by
+; PausePrimaryFossil, PauseDanger, PauseStarting, PauseChip, PauseChipFossil, PauseChipOff, the ad banner band's AdCaption, and the menu screens' MenuTitle, SideNameRenew, SideNameFossil, MenuSideCard (Renew, Fossil, On), MenuCardTagRenew, MenuCardTagFossil, MenuStepTitle, MenuStepChoice, MenuOptionName, MenuOptionNameLocked, MenuLockNote, MenuSlider (Fossil), MenuToggleRow, MenuToggle (Fossil, Off), MenuTab, MenuTabOn, MenuMapCard (On, Locked), MenuRankBadge, MenuRankLabel and MenuXpBar; P519) are set by
 ; theme_type_variation on the node, in main.tscn or at build in the script (the power bar's two
 ; pairs switch with the low-power state, the cost of an item tile with its money).
 ; The tabs of the build sidebar get their tints from the icon colours of SidebarTab; the glyphs of
@@ -714,6 +714,22 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(1, 0.43137255, 0.12156863, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 0
+corner_radius_bottom_right = 0
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_card_pick"]
+content_margin_left = 12.0
+content_margin_top = 12.0
+content_margin_right = 12.0
+content_margin_bottom = 12.0
+bg_color = Color(0.23921569, 0.20392157, 0.14117647, 0.96)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
 corner_radius_top_left = 0
 corner_radius_top_right = 0
 corner_radius_bottom_right = 0
@@ -1464,6 +1480,8 @@ MenuSideCardRenew/base_type = &"MenuSideCard"
 MenuSideCardRenew/styles/panel = SubResource("StyleBoxFlat_menu_card_renew")
 MenuSideCardFossil/base_type = &"MenuSideCard"
 MenuSideCardFossil/styles/panel = SubResource("StyleBoxFlat_menu_card_fossil")
+MenuSideCardOn/base_type = &"MenuSideCard"
+MenuSideCardOn/styles/panel = SubResource("StyleBoxFlat_menu_card_pick")
 MenuSlider/base_type = &"HSlider"
 MenuSlider/styles/grabber_area = SubResource("StyleBoxFlat_menu_fill_renew")
 MenuSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_menu_fill_renew")
@@ -1565,7 +1583,7 @@ MenuTabOn/styles/focus = SubResource("StyleBoxFlat_pause_focus")
 MenuMapCard/base_type = &"PanelContainer"
 MenuMapCard/styles/panel = SubResource("StyleBoxFlat_menu_card")
 MenuMapCardOn/base_type = &"MenuMapCard"
-MenuMapCardOn/styles/panel = SubResource("StyleBoxFlat_menu_card_on")
+MenuMapCardOn/styles/panel = SubResource("StyleBoxFlat_menu_card_pick")
 MenuMapCardLocked/base_type = &"MenuMapCard"
 MenuMapCardLocked/styles/panel = SubResource("StyleBoxFlat_menu_card_locked")
 MenuRankBadge/base_type = &"PanelContainer"
@@ -1678,6 +1696,21 @@ MenuEyebrow/base_type = &"Label"
 MenuEyebrow/colors/font_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
 MenuEyebrow/font_sizes/font_size = 14
 MenuEyebrow/fonts/font = SubResource("FontVariation_menu_eyebrow")
+MenuStepTitle/base_type = &"CapsTitle"
+MenuStepTitle/font_sizes/font_size = 20
+MenuStepChoice/base_type = &"CapsTitle"
+MenuStepChoice/colors/font_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
+MenuStepChoice/font_sizes/font_size = 20
+MenuOptionName/base_type = &"CapsTitle"
+MenuOptionName/font_sizes/font_size = 18
+MenuOptionNameLocked/base_type = &"MenuOptionName"
+MenuOptionNameLocked/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuLockNote/base_type = &"MenuEyebrow"
+MenuLockNote/colors/font_color = Color(0.60392157, 0.64705882, 0.69411765, 1)
+MenuCardTagFossil/base_type = &"MenuEyebrow"
+MenuCardTagFossil/colors/font_color = Color(1, 0.62745098, 0.41568627, 1)
+MenuCardTagRenew/base_type = &"MenuEyebrow"
+MenuCardTagRenew/colors/font_color = Color(0.54901961, 0.78431373, 1, 1)
 MenuScrim/base_type = &"Control"
 MenuScrim/icons/shade = SubResource("GradientTexture2D_menu_scrim")
 metadata/base_px = PackedStringArray("DevButton/font_sizes/font_size", "CapsButton/fonts/font", "CapsTitle/fonts/font", "CapsBigTitle/fonts/font", "PillWord/fonts/font", "AttackTitle/fonts/font", "MenuTitle/fonts/font", "SideNameRenew/fonts/font", "SideNameFossil/fonts/font", "MenuSlider/icons/grabber", "MenuSlider/icons/grabber_highlight", "MenuSlider/icons/grabber_disabled", "MenuSliderFossil/icons/grabber", "MenuSliderFossil/icons/grabber_highlight", "MenuSliderFossil/icons/grabber_disabled")
