@@ -455,6 +455,17 @@ notes above stand where ADR 0035 does not change them):
   moment (+ `MapEdge` + `WorldGrade` + the health bars' tick pass). Plan row P216 will set `PerfBases.CALLS_FORECAST`,
   `CALLS_STRIKE` and `CALLS_WORST` (16, 17, 22 on `main` today) and the card line's test.
 
+Status note (2026-11-28, P656d step 0; ADR 0053 §7's amendment "raised rock walls in the sorted
+world", Michael's option C; the text above stands where that amendment does not change it):
+- **The sorted world (z 10)** gains the raised rock walls: one node per diagonal row of raised
+  cells at the row's centre y, so a wall cell sorts as a 1 x 1 footprint (the centre key above).
+  Their pieces are frames of the sorted page with no material, so the sorted world stays one call.
+- **The z table** gains the units' silhouettes at **z 11** (one shared material, one call while
+  any is on screen) and the lifted aircraft shadows at **z 19** (only over a wall top);
+  `GhostMemoryLayer` moves from z 5 to **z 12**, over the walls. Rows P656d2, P656d3, P656d5.
+- **§3's ground taps** go through `WallCover.ground_at`, which resolves a tap on a wall to the
+  wall's cell; placement keeps `IsoProjection.px_to_ground` (row P656d3).
+
 ### 3. Picking, selection and placement
 - **Ground taps:** `IsoProjection.px_to_ground` of the camera's world point, rounded to milli.
 - **Units first** (ADR 0022 §3's order kept): with a selection enemy unit > own unit > enemy
