@@ -29,8 +29,9 @@ func _ready() -> void:
 		if arg.begins_with(OUT_ARG):
 			_out = arg.trim_prefix(OUT_ARG)
 	if _out.is_empty():
-		push_error("walls_capture: pass --out=<dir>")
-		get_tree().quit(2)
+		# Opened without --out (the scene scan instantiates every scene): it does nothing.
+		print("walls_capture: pass --out=<dir> after -- to save the shots")
+		set_process(false)
 		return
 	_main = (load(MAIN_SCENE) as PackedScene).instantiate()
 	var runner: MatchRunner = _main.get_node("MatchRunner") as MatchRunner
