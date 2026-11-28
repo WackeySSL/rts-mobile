@@ -55,6 +55,9 @@ save file); ADR 0027 §8 (the reduced switch is stored in section `settings`).
   `hud` (`HudPrefs`' keys, haptics among them), `progress` (ADR 0045), `tutorial` (ADR 0044),
   `match` (the resume pointer, §6), `ads` (Phase 6, opaque here). A section the code does not know
   is kept as read and written back unchanged.
+  Note (2026-11-27, ADR 0054 §4, accepted in row P673): a new section `career` (career counters
+  and the trophies earned), owned by `Progression`, with its own `format` key and no change of
+  `meta.version`.
 - API: `get_section(name: StringName) -> Dictionary` (a copy), `set_section(name, values)` (whole
   section, marks the file dirty), `flush() -> Error`, signal `saved`. Writes are coalesced to one
   flush per frame at most, plus the forced flushes of §5. Main thread only.

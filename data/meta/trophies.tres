@@ -1,0 +1,168 @@
+[gd_resource type="Resource" script_class="TrophyCatalog" format=3]
+
+[ext_resource type="Script" path="res://game/meta/TrophyCatalog.gd" id="1_cat"]
+[ext_resource type="Script" path="res://game/meta/TrophyDef.gd" id="2_def"]
+
+[sub_resource type="Resource" id="Trophy_briefed"]
+script = ExtResource("2_def")
+id = &"briefed"
+name = "Briefed"
+hint = "Finish the Basics lesson"
+glyph = &"tab_infantry"
+kind = 0
+lesson_ids = Array[StringName]([&"basics"])
+
+[sub_resource type="Resource" id="Trophy_fully_drilled"]
+script = ExtResource("2_def")
+id = &"fully_drilled"
+name = "Fully Drilled"
+hint = "Finish every tutorial lesson"
+glyph = &"glyph_check"
+kind = 0
+lesson_ids = Array[StringName]([&"basics", &"strikes", &"air", &"support"])
+
+[sub_resource type="Resource" id="Trophy_first_sortie"]
+script = ExtResource("2_def")
+id = &"first_sortie"
+name = "First Sortie"
+hint = "Finish a skirmish, win or lose"
+glyph = &"glyph_resume"
+kind = 1
+counter = &"finished"
+count = 1
+
+[sub_resource type="Resource" id="Trophy_ground_won"]
+script = ExtResource("2_def")
+id = &"ground_won"
+name = "Ground Won"
+hint = "Win a skirmish"
+glyph = &"glyph_victory"
+kind = 1
+counter = &"wins"
+count = 1
+
+[sub_resource type="Resource" id="Trophy_warm_up"]
+script = ExtResource("2_def")
+id = &"warm_up"
+name = "Warm-Up"
+hint = "Win a skirmish on Easy"
+glyph = &"glyph_victory"
+pips = 1
+kind = 2
+levels = Array[StringName]([&"easy"])
+
+[sub_resource type="Resource" id="Trophy_even_footing"]
+script = ExtResource("2_def")
+id = &"even_footing"
+name = "Even Footing"
+hint = "Win a skirmish on Normal"
+glyph = &"glyph_victory"
+pips = 2
+kind = 2
+levels = Array[StringName]([&"normal"])
+
+[sub_resource type="Resource" id="Trophy_iron_nerve"]
+script = ExtResource("2_def")
+id = &"iron_nerve"
+name = "Iron Nerve"
+hint = "Win a skirmish on Hard"
+glyph = &"glyph_victory"
+pips = 3
+kind = 2
+levels = Array[StringName]([&"hard"])
+
+[sub_resource type="Resource" id="Trophy_ironward_honours"]
+script = ExtResource("2_def")
+id = &"ironward_honours"
+name = "Ironward Honours"
+hint = "Win a skirmish as Ironward"
+glyph = &"emblem_fossil"
+kind = 1
+counter = &"wins_faction"
+key = &"fossil"
+count = 1
+
+[sub_resource type="Resource" id="Trophy_facet_honours"]
+script = ExtResource("2_def")
+id = &"facet_honours"
+name = "Facet Honours"
+hint = "Win a skirmish as Facet"
+glyph = &"emblem_renew"
+kind = 1
+counter = &"wins_faction"
+key = &"renew"
+count = 1
+
+[sub_resource type="Resource" id="Trophy_flats_fords_crags"]
+script = ExtResource("2_def")
+id = &"flats_fords_crags"
+name = "Flats, Fords, Crags"
+hint = "Win on Kestrel Flats, Heron Fords and Curlew Crags"
+glyph = &"glyph_map"
+kind = 2
+map_ids = Array[StringName]([&"kestrel_flats", &"map_2", &"map_3"])
+
+[sub_resource type="Resource" id="Trophy_no_easy_ground"]
+script = ExtResource("2_def")
+id = &"no_easy_ground"
+name = "No Easy Ground"
+hint = "Win on Hard on all three maps"
+glyph = &"glyph_map"
+pips = 3
+kind = 2
+map_ids = Array[StringName]([&"kestrel_flats", &"map_2", &"map_3"])
+levels = Array[StringName]([&"hard"])
+
+[sub_resource type="Resource" id="Trophy_short_work"]
+script = ExtResource("2_def")
+id = &"short_work"
+name = "Short Work"
+hint = "Win on Normal or Hard in under 10 minutes"
+glyph = &"glyph_time"
+kind = 3
+levels = Array[StringName]([&"normal", &"hard"])
+max_ticks = 9000
+
+[sub_resource type="Resource" id="Trophy_unbroken"]
+script = ExtResource("2_def")
+id = &"unbroken"
+name = "Unbroken"
+hint = "Win on Normal or Hard without losing your Headquarters"
+glyph = &"glyph_home"
+kind = 3
+levels = Array[StringName]([&"normal", &"hard"])
+hq_standing = true
+
+[sub_resource type="Resource" id="Trophy_clean_sheet"]
+script = ExtResource("2_def")
+id = &"clean_sheet"
+name = "Clean Sheet"
+hint = "Win without losing a single building"
+glyph = &"glyph_victory"
+kind = 3
+max_buildings_lost = 0
+
+[sub_resource type="Resource" id="Trophy_seasoned"]
+script = ExtResource("2_def")
+id = &"seasoned"
+name = "Seasoned"
+hint = "Win 10 skirmishes"
+glyph = &"glyph_victory"
+kind = 1
+counter = &"wins"
+count = 10
+
+[sub_resource type="Resource" id="Trophy_long_haul"]
+script = ExtResource("2_def")
+id = &"long_haul"
+name = "Long Haul"
+hint = "Finish 25 skirmishes"
+glyph = &"glyph_resume"
+kind = 1
+counter = &"finished"
+count = 25
+
+[resource]
+script = ExtResource("1_cat")
+trophies = Array[ExtResource("2_def")]([SubResource("Trophy_briefed"), SubResource("Trophy_fully_drilled"), SubResource("Trophy_first_sortie"), SubResource("Trophy_ground_won"), SubResource("Trophy_warm_up"), SubResource("Trophy_even_footing"), SubResource("Trophy_iron_nerve"), SubResource("Trophy_ironward_honours"), SubResource("Trophy_facet_honours"), SubResource("Trophy_flats_fords_crags"), SubResource("Trophy_no_easy_ground"), SubResource("Trophy_short_work"), SubResource("Trophy_unbroken"), SubResource("Trophy_clean_sheet"), SubResource("Trophy_seasoned"), SubResource("Trophy_long_haul")])
+hq_type_ids = Array[StringName]([&"headquarters", &"renew_hq"])

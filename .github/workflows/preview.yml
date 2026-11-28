@@ -2,6 +2,7 @@ name: Preview
 
 # Web build per same-repo PR, published to gh-pages under pr-<n>/ and linked in one sticky comment.
 # The deploy job is green only when the preview is live (pages-publish.sh comment exits 1 otherwise).
+# Its timeout (35 min) = build and export (up to ~15) + the 15 min live wait + slack.
 # One-time setup (repo admin): gh-pages branch with .nojekyll exists and Pages serves gh-pages:/ .
 on:
   pull_request:
@@ -35,11 +36,12 @@ jobs:
       github.event.pull_request.head.repo.full_name == github.repository &&
       github.actor != 'dependabot[bot]'
     runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    timeout-minutes: 35
     permissions:
       contents: write # push to gh-pages
       pull-requests: write # sticky comment
       pages: write # request a Pages build if the push did not start one
+      actions: read # see whether a Pages build is running before requesting one
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -69,7 +71,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/ci/pages-publish.sh publish
 
-      - name: Comment, wait until live, update comment (fails when not live after 8 min)
+      - name: Comment, wait until live, update comment (fails when not live after 15 min)
         env:
           GH_TOKEN: ${{ github.token }}
         run: bash scripts/ci/pages-publish.sh comment
@@ -84,6 +86,7 @@ jobs:
       contents: write # push to gh-pages
       pull-requests: write # sticky comment
       pages: write # request a Pages build so the removal goes live
+      actions: read # see whether a Pages build is running before requesting one
     steps:
       # The script comes from the default branch; the PR head is not checked out. GitHub starts no
       # pull_request run for a PR closed with a merge conflict, so preview-sweep.yml also removes

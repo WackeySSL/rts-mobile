@@ -1,0 +1,6 @@
+<!-- Menu arrow glyph: white only, drawn at the end of each main menu item (P664, ADR 0052 section 3). -->
+<!-- Shape: a short shaft and a square-ended head pointing right; the file's pattern is a number, a word and an arrow, and this arrow is our own. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64">
+  <polyline points="8,32 54,32" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="square"/>
+  <polyline points="36,14 54,32 36,50" fill="none" stroke="#FFFFFF" stroke-width="8" stroke-linecap="square" stroke-linejoin="miter"/>
+</svg>

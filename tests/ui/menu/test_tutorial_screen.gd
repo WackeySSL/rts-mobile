@@ -153,6 +153,60 @@ func test_the_main_menu_and_settings_open_it_through_the_default_route() -> void
 	made.free()
 
 
+func test_an_unpaid_lesson_shows_its_xp_tag_with_the_data_value_at_the_six_sizes() -> void:
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size))
+		var label: String = str(size)
+		var expected: String = "+%d XP" % Progression.lesson_xp()
+		assert_int(Progression.lesson_xp()).is_greater(0)
+		for index: int in range(_buttons().size()):
+			var button: Button = _buttons()[index]
+			var tag: Label = button.get_node("XpTag") as Label
+			assert_bool(tag.visible).override_failure_message(label).is_true()
+			assert_str(tag.text).override_failure_message(label).is_equal(expected)
+			(
+				assert_float(button.get_global_rect().size.y)
+				. override_failure_message(label)
+				. is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
+			)
+			var rect: Rect2 = button.get_global_rect()
+			# The tag is inside the row, at its right end, and clear of the title's room.
+			(
+				assert_bool(rect.grow(TOLERANCE_PX).encloses(tag.get_global_rect()))
+				. override_failure_message(label)
+				. is_true()
+			)
+			assert_float(tag.get_global_rect().end.x).override_failure_message(label).is_less_equal(
+				rect.end.x
+			)
+			var title_end: float = (
+				rect.position.x + rect.size.x - UiScale.dp(TutorialScreen.TAG_ROOM_DP)
+			)
+			(
+				assert_float(tag.get_global_rect().position.x)
+				. override_failure_message(label)
+				. is_greater_equal(title_end - TOLERANCE_PX)
+			)
+			(
+				assert_int(tag.get_theme_color(&"font_color").to_rgba32())
+				. override_failure_message(label)
+				. is_equal(tag.get_theme_color(&"money", &"HudTokens").to_rgba32())
+			)
+		_close()
+		UiScale.clear_override()
+
+
+func test_a_paid_lesson_loses_its_tag_and_keeps_done() -> void:
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]))
+	var summary: MatchSummary = MatchSummary.for_lesson(&"basics", &"", &"", 0, 0)
+	assert_object(Progression.award_match(summary)).is_not_null()
+	TutorialDirector.mark_done(&"basics")
+	_screen.refresh()
+	assert_str(_buttons()[0].text).is_equal("BASICS   DONE")
+	assert_bool((_buttons()[0].get_node("XpTag") as Label).visible).is_false()
+	assert_bool((_buttons()[1].get_node("XpTag") as Label).visible).is_true()
+
+
 func _open(profile: UiMetrics) -> void:
 	UiScale.set_override(profile)
 	get_window().size = profile.window_size

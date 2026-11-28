@@ -471,6 +471,16 @@ P656e sets the new bands from today's diamonds and the kit, and attaches the she
 fails a band from the frozen file, the row stops and brings its numbers to the architect. Michael
 judges the look in P659.
 
+**Amendment (Michael, 2026-11-28, "Ja til alle", at P656c's look gate): the two new ground bands
+are judged per scene.** The ground's mean saturation (at most 0.30) and the triad-band share (at
+most 5 %) are measured over a rendered scene, not per terrain: P653's water, the reference look
+Michael asked for, is about 0.49 saturation and lies wholly in the blue route band, and P653's
+light plateau is about 22 % in the orange band. Whether a unit still reads on such ground is
+decided by value and saturation contrast, not by hue distance alone: in P656c's team-risk shot a
+Kobolt unit in the shallows keeps a 32 px greyscale spread of 120 (hue gap to the water about 9
+degrees) and a Signal unit on the plateau 133 (hue gap 4 degrees), both over `spread_min` 80.
+P656e writes the scene bands into `same_scene_ground.tres` on that basis.
+
 ### 9. Tests (what is proven headless, and what is not)
 - **Headless (gdUnit4):**
   - The manifest and budgets (§5, §7).

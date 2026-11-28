@@ -15,6 +15,7 @@ const MapSelectScript: GDScript = preload("res://game/ui/menu/MapSelect.gd")
 const TutorialScript: GDScript = preload("res://game/ui/menu/TutorialScreen.gd")
 const SettingsScript: GDScript = preload("res://game/ui/menu/SettingsScreen.gd")
 const LicencesScript: GDScript = preload("res://game/ui/menu/LicencesScreen.gd")
+const RankScript: GDScript = preload("res://game/ui/menu/RankScreen.gd")
 const RestoreScript: GDScript = preload("res://game/ui/menu/RestoreScreen.gd")
 
 
@@ -24,5 +25,6 @@ static func register(routes: MenuRoutes) -> void:
 	routes.register(MenuRoutes.SKIRMISH, MapSelectScript.new)
 	routes.register(MenuRoutes.TUTORIAL, TutorialScript.new)
 	routes.register(MenuRoutes.SETTINGS, SettingsScript.new)
+	routes.register(MenuRoutes.RANK, RankScript.new)
 	routes.register(MenuRoutes.LICENCES, LicencesScript.new)
 	routes.register(MenuRoutes.CONTINUE, RestoreScript.new)

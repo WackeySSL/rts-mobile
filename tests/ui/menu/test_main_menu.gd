@@ -106,17 +106,14 @@ func test_everything_is_inside_the_safe_area_with_48_dp_targets_at_the_six_sizes
 				. is_true()
 			)
 		var shown: int = 0
-		for child: Node in _main.column.get_children():
-			var button: Button = child as Button
-			if button == null or not button.visible:
-				continue
+		for button: Button in _main.items():
 			shown += 1
 			(
 				assert_float(button.get_global_rect().size.y)
 				. override_failure_message(label)
 				. is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
 			)
-		assert_int(shown).override_failure_message(label).is_equal(5)
+		assert_int(shown).override_failure_message(label).is_equal(6)
 		_close()
 		UiScale.clear_override()
 	# Every upright size fits; at least one sideways size scrolls and is checked by scrolling.
@@ -135,7 +132,7 @@ func test_the_band_lines_up_on_the_start_page_and_the_slot_is_tall_at_the_six_si
 			band.reserved_px(), 1.0
 		)
 		assert_float(_main.slot.size.y).override_failure_message(label).is_greater(0.0)
-		AdBandAsserts.assert_lines_up(self, band, _ads, _main.scroll, band.gap_dp(), label)
+		AdBandAsserts.assert_lines_up(self, band, _ads, _main.footer, band.gap_dp(), label)
 		_close()
 		UiScale.clear_override()
 
@@ -147,21 +144,6 @@ func test_the_slot_is_0_tall_without_a_banner() -> void:
 	assert_float(_main.slot.get_global_rect().end.y).is_equal_approx(
 		UiScale.safe_rect_base().end.y, TOLERANCE_PX
 	)
-
-
-func test_the_xp_bar_and_rank_follow_xp_changed() -> void:
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	assert_float(_main._xp_bar.value).is_equal(0.0)
-	assert_str(_main._rank_label.text).contains("RANK 1")
-	var summary: MatchSummary = MatchSummary.new()
-	summary.outcome = &"win"
-	summary.level = &"normal"
-	summary.ticks = 5 * 900
-	var award: XpAward = _progression.call("award_match", summary) as XpAward
-	assert_int(award.base_xp).is_greater(0)
-	assert_float(_main._xp_bar.value).is_equal(float(_progression.call("xp")))
-	assert_str(_main._xp_label.text).contains(str(_progression.call("xp")))
-	assert_float(_main._xp_bar.max_value).is_equal(float(_progression.call("next_rank_xp")))
 
 
 func test_continue_shows_only_with_a_resume_file() -> void:
@@ -213,7 +195,7 @@ func test_the_title_the_sides_and_the_tagline_show() -> void:
 	var texts: Array[String] = []
 	_collect(_main.column, texts)
 	assert_array(texts).contains(
-		["TREADLINE", "Oil and gas against wind and sun. Choose your side."]
+		["TREADLINE", "OIL AND GAS AGAINST WIND AND SUN. CHOOSE YOUR SIDE."]
 	)
 	assert_array(texts).contains(["IRONWARD", "FACET"])
 
@@ -242,23 +224,6 @@ func test_the_version_line_shows_the_version_or_only_the_copyright() -> void:
 	_collect(_main.column, texts)
 	assert_array(texts).contains(["© AppCode ApS"])
 	assert_bool(texts.any(func(text: String) -> bool: return text.contains(" · "))).is_false()
-
-
-func test_the_xp_bar_at_the_top_rank_is_full() -> void:
-	_save.call("set_section", &"progress", {"xp": 5000})
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	var top: int = int(_progression.call("max_rank"))
-	assert_str(_main._rank_label.text).contains("RANK %d" % top)
-	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.max_value)
-	assert_str(_main._xp_label.text).is_equal("5000 XP")
-
-
-func test_the_xp_bar_exactly_at_a_rank_floor_is_empty() -> void:
-	_save.call("set_section", &"progress", {"xp": 250})
-	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
-	assert_str(_main._rank_label.text).contains("RANK 3")
-	assert_float(_main._xp_bar.value).is_equal(_main._xp_bar.min_value)
-	assert_float(_main._xp_bar.min_value).is_equal(250.0)
 
 
 func _open(profile: UiMetrics, consent: bool) -> void:
@@ -295,11 +260,7 @@ func _close() -> void:
 
 
 func _buttons() -> Array[Button]:
-	var found: Array[Button] = []
-	for child: Node in _main.column.get_children():
-		if child is Button and (child as Button).visible:
-			found.append(child as Button)
-	return found
+	return _main.items()
 
 
 func _collect(node: Node, into: Array[String]) -> void:
@@ -316,3 +277,81 @@ func _profile_with_window(size: Vector2i) -> UiMetrics:
 				return profiles[profile_name]
 	assert_bool(false).override_failure_message("no profile for %s" % size).is_true()
 	return null
+
+
+func test_the_rows_are_in_order_and_there_is_no_rank_block() -> void:
+	_resume[0] = true
+	_routes.register(MenuRoutes.RANK, MenuScreen.new)
+	await _open(_profile_with_window(ScreenSizes.LANDSCAPE[0]), false)
+	var words: Array[String] = []
+	var numbers: Array[String] = []
+	for item: Button in _main.items():
+		words.append(item.text)
+		numbers.append(_main._numbers[item].text)
+	assert_array(words).is_equal(
+		["CONTINUE", "SKIRMISH", "TUTORIAL", "RANK · RECRUIT", "HOW TO PLAY", "SETTINGS"]
+	)
+	assert_array(numbers).is_equal(["01", "02", "03", "04", "05", "06"])
+	assert_array(_all_of(_main.column, ProgressBar)).is_empty()  # No XP bar on the front page.
+	for text: String in _label_texts():
+		assert_bool(text.begins_with("RANK ") or text.ends_with(" XP")).is_false()
+	_resume[0] = false
+	_main._refresh()
+	assert_int(_main.items().size()).is_equal(5)
+	assert_str(_main._numbers[_main.items()[0]].text).is_equal("01")
+
+
+func test_the_rank_row_opens_the_rank_screen_through_the_routes() -> void:
+	_routes.register(MenuRoutes.RANK, RankScreen.new)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
+	for item: Button in _main.items():
+		if item.text.begins_with("RANK"):
+			item.pressed.emit()
+	assert_object(_stack.current()).is_instanceof(RankScreen)
+
+
+func _label_texts() -> Array[String]:
+	var texts: Array[String] = []
+	_collect(_main.column, texts)
+	return texts
+
+
+func _all_of(node: Node, type: Variant) -> Array[Node]:
+	var found: Array[Node] = []
+	for child: Node in node.get_children():
+		if is_instance_of(child, type):
+			found.append(child)
+		found.append_array(_all_of(child, type))
+	return found
+
+
+func test_the_items_stand_in_two_columns_only_where_the_measured_width_holds_them() -> void:
+	var two: int = 0
+	for size: Vector2i in ScreenSizes.ALL:
+		await _open(_profile_with_window(size), false)
+		var fits: bool = _main.column_room_px() >= UiScale.dp(MainMenu.TWO_COLUMNS_DP)
+		two += 1 if fits else 0
+		assert_int(_main._grid.columns).override_failure_message(str(size)).is_equal(
+			2 if fits else 1
+		)
+		var items: Array[Button] = _main.items()
+		var first_y: float = items[0].get_global_rect().position.y
+		var across: bool = is_equal_approx(items[1].get_global_rect().position.y, first_y)
+		assert_bool(across).override_failure_message(str(size)).is_equal(fits)
+		_close()
+		UiScale.clear_override()
+	assert_int(two).is_greater(0)
+	assert_int(two).is_less(ScreenSizes.ALL.size())
+
+
+func test_the_profile_line_shows_the_rank_and_xp_and_opens_the_rank_screen() -> void:
+	_save.call("set_section", &"progress", {"xp": 100})
+	_routes.register(MenuRoutes.RANK, RankScreen.new)
+	await _open(_profile_with_window(ScreenSizes.PORTRAIT[0]), false)
+	assert_str(_main._profile.text).is_equal("COMMANDER · RANK 2 · 100 / 250 XP")
+	var rect: Rect2 = _main._profile.get_global_rect()
+	assert_float(rect.size.y).is_greater_equal(UiScale.dp(48.0) - TOLERANCE_PX)
+	assert_float(rect.end.y).is_less_equal(_main.slot.get_global_rect().position.y + TOLERANCE_PX)
+	assert_str(_main._rank_item.text).is_equal("RANK · SCOUT")
+	_main._profile.pressed.emit()
+	assert_object(_stack.current()).is_instanceof(RankScreen)
