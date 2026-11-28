@@ -186,91 +186,110 @@ static func _cap(
 	)
 
 
-## A cliff face (P653's idea: a noise-displaced wall, grooves running top to bottom, a ragged top
-## and an overhanging lip). Its foot runs from `a` to `b` on the ground; the face looks away from
-## the tile centre, the wall is `thick` deep behind it and `height` tall. The grooves are noise
-## fast along the wall and slow up it, `amp` tiles deep at most. Both ends are pinned (no
-## displacement, one height) so that walls which meet match, whatever `seed_value` is.
+## A wall face (P653's cliff method, one prism side): its foot runs from `a` to `b` on the ground,
+## `height` tall, the face looking away from the tile centre. The surface is carved INWARD only, by
+## grooves that run top to bottom (noise fast along the wall, slow up it), a slow strata ripple and
+## a ragged flush cap just under the crest, so nothing leaves the prism. Both ends, the foot and the
+## crest are pinned (no carving), so faces that meet at a tile edge or a corner match, whatever
+## `seed_value` is, and the crest is exactly `height`. `amp` is the deepest groove, tiles.
 static func cliff(
-	m: BakeMesh,
-	mat: StringName,
-	a: Vector3,
-	b: Vector3,
-	thick: float,
-	height: float,
-	amp: float,
-	seed_value: int
+	m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, height: float, amp: float, seed_value: int
 ) -> void:
 	const NU: int = 64
-	const NV: int = 20
+	const NV: int = 48
 	var along: Vector3 = (b - a).normalized()
-	var out: Vector3 = Vector3(-along.y, along.x, 0.0)
-	var side: float = out.dot((a + b) * 0.5)
-	if side < 0.0 or (side == 0.0 and (out.x < 0.0 or (out.x == 0.0 and out.y < 0.0))):
-		out = -out
+	var out: Vector3 = _away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
 	var noise: FastNoiseLite = FastNoiseLite.new()
 	noise.seed = seed_value
 	noise.frequency = 1.0
 	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
 	var length: float = a.distance_to(b)
-	var tops: PackedFloat32Array = PackedFloat32Array()
 	var face: Array[PackedVector3Array] = []
 	for i: int in NU + 1:
 		var u: float = float(i) / NU
-		var pin: float = smoothstep(0.0, 0.12, minf(u, 1.0 - u))
-		tops.append(
-			(
-				height
-				* (
-					0.9
-					+ (
-						pin
-						* (
-							0.12 * noise.get_noise_2d(u * 5.0, 7.3)
-							+ 0.04 * noise.get_noise_2d(u * 21.0, 3.1)
-						)
-					)
-				)
-			)
-		)
+		var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u))
+		var cap: float = 0.9 + 0.05 * noise.get_noise_2d(u * 17.0, 2.2)
 		var column: PackedVector3Array = PackedVector3Array()
 		for j: int in NV + 1:
 			var v: float = float(j) / NV
-			var groove: float = (
-				0.6 * noise.get_noise_2d(u * length * 14.0, v * 1.6)
-				+ 0.4 * noise.get_noise_2d(u * length * 26.0, v * 0.7 + 9.0)
+			var flow: float = (
+				0.65 * noise.get_noise_2d(u * length * 9.0, v * 0.5)
+				+ 0.35 * noise.get_noise_2d(u * length * 21.0, v * 0.3 + 9.0)
 			)
-			var lip: float = smoothstep(0.8, 1.0, v) * (0.5 + noise.get_noise_2d(u * 9.0, 5.5))
+			var strata: float = 0.5 + 0.5 * sin(v * 24.0 + 4.0 * noise.get_noise_2d(u * 3.0, 5.5))
+			var groove: float = clampf(0.5 + 0.5 * flow + 0.1 * strata - 0.05, 0.0, 1.0)
+			var held: float = (
+				pin * smoothstep(0.0, 0.15, v) * (1.0 - smoothstep(cap - 0.03, cap, v))
+			)
 			column.append(
-				(
-					a.lerp(b, u)
-					+ out * (pin * amp * (groove + 0.6 * lip))
-					+ Vector3(0.0, 0.0, v * tops[i])
-				)
+				a.lerp(b, u) - out * (amp * groove * held) + Vector3(0.0, 0.0, v * height)
 			)
 		face.append(column)
-	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
-	var back: Vector3 = -out * thick
 	for i: int in NU:
 		for j: int in NV:
-			var q: Array[Vector3] = [face[i][j], face[i + 1][j], face[i + 1][j + 1], face[i][j + 1]]
-			var n: Vector3 = (q[1] - q[0]).cross(q[3] - q[0]).normalized()
-			n = n if n.dot(out) > 0.0 else -n
-			m.tri(mat, [q[0], q[1], q[2]], [n, n, n], flat)
-			m.tri(mat, [q[0], q[2], q[3]], [n, n, n], flat)
-		var p0: Vector3 = face[i][NV]
-		var p1: Vector3 = face[i + 1][NV]
-		var up: Array[Vector3] = [Vector3.BACK, Vector3.BACK, Vector3.BACK]
-		m.tri(mat, [p0, p1, p0 + back], up, flat)
-		m.tri(mat, [p1, p1 + back, p0 + back], up, flat)
-		var g0: Vector3 = a.lerp(b, float(i) / NU) + back
-		var g1: Vector3 = a.lerp(b, float(i + 1) / NU) + back
-		var o: Array[Vector3] = [-out, -out, -out]
-		# Its top row is the cap's rear edge, so that the wall and the cap close.
-		m.tri(mat, [g0, g1, p0 + back], o, flat)
-		m.tri(mat, [g1, p1 + back, p0 + back], o, flat)
-	for end: int in [0, NU]:
-		var s: Vector3 = along if end == NU else -along
-		var c: PackedVector3Array = face[end]
-		m.tri(mat, [c[0], c[NV], c[NV] + back], [s, s, s], flat)
-		m.tri(mat, [c[0], c[NV] + back, c[0] + back], [s, s, s], flat)
+			_tris(m, mat, [face[i][j], face[i + 1][j], face[i + 1][j + 1], face[i][j + 1]], out)
+
+
+## A ragged ridge on the back edge of a raised top: from `a` to `b` at the top's height, `depth`
+## tiles wide towards the tile centre, rising to `height` tiles at the edge. Its height along the
+## edge runs from `ha` to `hb` (shares of `height`) with a bump between, pinned at both ends, so
+## ridges of neighbouring cells meet flush at the tile edge.
+static func ridge(
+	m: BakeMesh,
+	mat: StringName,
+	a: Vector3,
+	b: Vector3,
+	depth: float,
+	height: float,
+	ha: float,
+	hb: float,
+	seed_value: int
+) -> void:
+	const NU: int = 64
+	const NT: int = 6
+	var along: Vector3 = (b - a).normalized()
+	var inward: Vector3 = -_away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
+	var noise: FastNoiseLite = FastNoiseLite.new()
+	noise.seed = seed_value
+	noise.frequency = 1.0
+	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
+	var rows: Array[PackedVector3Array] = []
+	for i: int in NU + 1:
+		var u: float = float(i) / NU
+		var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u)) if ha == hb else 0.0
+		var bump: float = (
+			0.3 * noise.get_noise_2d(u * 9.0, 1.7) + 0.12 * noise.get_noise_2d(u * 31.0, 4.1)
+		)
+		var top: float = height * clampf(lerpf(ha, hb, u) + pin * bump, 0.0, 1.0)
+		var column: PackedVector3Array = PackedVector3Array()
+		for k: int in NT + 1:
+			var t: float = float(k) / NT
+			column.append(
+				a.lerp(b, u) + inward * (depth * (1.0 - t)) + Vector3(0.0, 0.0, top * t * t)
+			)
+		rows.append(column)
+	for i: int in NU:
+		for k: int in NT:
+			_tris(
+				m,
+				mat,
+				[rows[i][k], rows[i + 1][k], rows[i + 1][k + 1], rows[i][k + 1]],
+				Vector3.BACK
+			)
+
+
+## The unit horizontal `dir` or its opposite, whichever points away from the tile centre at `mid`.
+static func _away(dir: Vector3, mid: Vector3) -> Vector3:
+	var side: float = dir.dot(mid)
+	if side < 0.0 or (side == 0.0 and (dir.x < 0.0 or (dir.x == 0.0 and dir.y < 0.0))):
+		return -dir
+	return dir
+
+
+## A quad as two flat triangles, its normal turned to the `toward` side.
+static func _tris(m: BakeMesh, mat: StringName, q: Array[Vector3], toward: Vector3) -> void:
+	var n: Vector3 = (q[1] - q[0]).cross(q[3] - q[0]).normalized()
+	n = n if n.dot(toward) > 0.0 else -n
+	var flat: PackedFloat32Array = PackedFloat32Array([0.0, 0.0, 0.0])
+	m.tri(mat, [q[0], q[1], q[2]], [n, n, n], flat)
+	m.tri(mat, [q[0], q[2], q[3]], [n, n, n], flat)

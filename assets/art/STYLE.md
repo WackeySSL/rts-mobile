@@ -3250,14 +3250,14 @@ is near it. P116 sets it as the clear colour; the gallery's Terrain page draws i
 `OFF_MAP_COLOR` in `game/view/art_gallery_ground.gd`, which `tests/art` pins to this text.
 
 ## Terrain kit (ADR 0053)
-Plan row P656c. The pre-rendered ground that P656d will draw in place of the twelve SVG diamonds
-above (nothing draws it yet, so no map looks different). Same sun as the sprites ("Light"), the
+Plan rows P656c and P656d4. The pre-rendered ground that P656d will draw in place of the twelve SVG
+diamonds above (nothing draws it yet, so no map looks different), and the rock wall pieces. Same sun as the sprites ("Light"), the
 sorted world's density: a piece is 128 texels wide, one ground diamond is 128 x 64 texels, and the
 ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 - **Source and output.** Models `assets/art/models/terrain/<id>_detail.tres` (a `DetailModel` each:
   grass, sand, scrub, rock, water, ore and road; the data, written by a small script kept outside
   the repository, is the source), baked by `bash scripts/prerender.sh --kit` (README of
-  `tools/prerender`) into `assets/art/terrain/<id>_<part>.png`, 84 pieces, listed in
+  `tools/prerender`) into `assets/art/terrain/<id>_<part>.png`, 83 pieces (72 ground, 11 wall), listed in
   `assets/art/prerender/manifest.tres`; `assets/art/terrain/kit.tres` (`TerrainKitDef`) maps
   terrain, kind and mask to the file and holds the blend priority. Art only: no balance number.
 - **Pieces.**
@@ -3266,9 +3266,11 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 | --- | --- | --- | --- | --- |
 | `base` | every terrain | variant 0 to 3 (the cell hash picks one; they differ in where details sit, not in hue) | 24 | 128 x 64 |
 | `blend` | a lower terrain, in the look of the higher one (sand, scrub, ore) | `side_ne/se/sw/nw`, `corner_n/e/s/w` | 24 | 128 x 64 |
-| `lip` | rock | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 to 91 |
-| `shore` | water | the same twelve | 12 | 128 x 64 to 66 |
+| `shore` | water | `side_*`, `outer_n/e/s/w`, `inner_n/e/s/w` | 12 | 128 x 64 |
 | `road` | grass or sand, replaces the base | `nw_se`, `ne_sw`, `nw_ne`, `ne_se`, `se_sw`, `sw_nw` | 12 | 128 x 64 |
+| `wall_top` | rock, raised | variant 0 to 3 (the rock base look, boulder on 3) | 4 | 128 x 136 |
+| `wall_face` | rock, raised | `se`, `sw`, `s` (both) | 3 | 128 x 136 |
+| `wall_rim` | rock, raised | `ne`, `nw`, `n` (both), `inner_n` | 4 | 128 x 136 |
 
 - **Masks** name the neighbours that differ. Edge neighbours are `ne` (grid y - 1), `se` (x + 1),
   `sw` (y + 1) and `nw` (x - 1); diagonal ones `n` (x - 1, y - 1), `e` (x + 1, y - 1), `s` (x + 1,
@@ -3279,17 +3281,31 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
   (P656d decides); a road piece names the two edges the road leaves through.
 - **Priority** (highest first): ore, scrub, sand, grass. A higher terrain's blend is drawn on the
   edge layer of a lower neighbour cell: ore onto scrub, sand and grass, scrub onto sand and grass,
-  sand onto grass. Rock and water blend into nothing and nothing blends onto them: they take a lip
-  or a shore on their own cell towards any other terrain.
-- **Lip rule.** A flat piece (base, blend, road) is exactly 64 texels tall. Only a rock lip or a
-  water shore rises above its diamond's top corner, by at most 36 texels (the bake refuses a piece
-  that reaches the canvas top, 36 above the corner; `tests/art/test_terrain_kit.gd` pins 64 to 100).
-  Shipped: lips rise 0 to 27 texels, shores 0 to 2. Rock and water are the cells that cost 0 for
-  all three move classes, so no unit stands behind a rising part. Nothing under 2 art px across is
-  modelled.
+  sand onto grass. Rock and water blend into nothing and nothing blends onto them: water takes a shore
+  on its own cell towards any other terrain, rock is a raised wall.
+- **Flat ground.** A base, blend, shore or road piece is exactly its 128 x 64 diamond; no ground
+  piece rises (ADR 0053 amendment A2). All height is in the walls below.
+- **Wall part** (amendment A1 and A3; Michael chose real occlusion on 2026-11-28). Every rock cell
+  rises `RISE_MAX` = 64 texels (32 world px, one diamond height; P653's own plateau is 48.6). Each
+  wall piece is one 128 x 136 canvas whose ground centre is at (64, 104): the raised prism fills rows
+  8 to 136 and at most `RIM_MAX` = 8 texels above it hold the ragged back edge (shipped: at most 6.8;
+  `tests/art/test_terrain_kit.gd` pins the hexagon plus 8). `wall_top` is the rock base look drawn
+  raised (light beige-grey, fine seamless grain, the boulder on variant 3). `wall_face` is a front
+  face of the prism, `se` (the cell at x + 1 is lower), `sw` (y + 1) or `s` (both, one piece). `wall_rim` is
+  the plateau's ragged back edge where a back neighbour is lower: `ne`, `nw`, `n` (both) and
+  `inner_n`, two short ridges at the north vertex. Drawn in the order face, top, rim (A4). Built with
+  P653's cliff method (`BakeShapes.cliff`, `ridge`): grooves run top to bottom (noise fast along the
+  wall, slow up it) with a slow strata ripple, carved inward only, so nothing leaves the prism and the
+  two faces of `s` end on the shared corner with no stub; the foot, the crest and both ends are pinned,
+  so pieces meet at the tile edge; a ragged flush cap sits just under the crest. The front crest is the
+  top piece's straight edge, the raggedness is in the rim ridge and the cap. A wall casts no baked
+  shadow. **Light order**: the `sw` face is the brightest (value 0.50), the top 0.46 and the `se` face
+  the darkest (0.34), so the left faces read a little brighter than the right (the same sun as the
+  sprites). Face saturation 0.09 to 0.13 (P653's cliff 0.10), mean face value 0.42 (P653's 0.33 to
+  0.39 in the shade, 0.45 to 0.48 lit).
 - **Seamless.** The ground reaches 0.02 tile (about 1 texel) past each edge, never past a corner,
   so two tiles overlap and no hairline shows; its mottling repeats a whole number of times per tile
-  and so runs on across the seam. A lip's or a stone's shadow is baked (the bake's sun, along +gx,
+  and so runs on across the seam. A stone's or a shore's shadow is baked (the bake's sun, along +gx,
   at the shadow band's alpha where the geometry leaves the ground bare).
 - **Look** (reworked after Michael's no on 2026-11-27 to the first kit: stones everywhere, colours too
   dark; his reference is the P653 prototype's terrain, `docs/proto/p653/terrain_z1.png`). A base piece
@@ -3299,12 +3315,7 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
   overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide) on a soft contact patch. **P656d's cell hash
   should give the boulder variant one cell in eight** (the other three variants share the rest),
   as the proof sheets do; no other base piece has a stone, fleck or ring. Scrub is the grass tone a step
-  darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, with
-  cliff walls built as one noise-displaced solid per edge (`BakeShapes.cliff`, after P653's):
-  grooves run top to bottom (noise fast along the wall, slow up it), the top edge is ragged and
-  wanders, the lip overhangs a little, the face has darker streaks that are never black (front
-  walls up to 47 texels tall, back walls up to 31). Both ends of a wall are pinned (no
-  displacement, one height, whatever the seed), so neighbouring pieces join. Water is a calm blue sheet; a shore is a wet bank on the water cell's open side with a thin
+  darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, its walls the part above. Water is a calm blue sheet; a shore is a wet bank on the water cell's open side with a thin
   light foam line, and every shore and blend piece has a curved, seeded edge inside its tile (zero
   offset at the tile edges, so a run of pieces meets and reads as one coast). The scrub blend is
   the widest and softest (a mid tone between scrub and grass at its rim). Roads are asphalt with a worn dashed line and a gravel
@@ -3324,8 +3335,7 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
 | water | #3E6479 | 201 (202) | 0.49 (0.49) | 0.48 (0.48) |
 | ore | #605044 | 26 (-) | 0.29 (-) | 0.38 (-) |
 
-  Rock cliff walls (the 12 lips) measure saturation 0.10, value 0.48 (P653's cliff 0.10 and 0.45 to
-  0.48) and 18 edges per 100 px2 at the baked texels (P653's 12 to 29). The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
+  The roads read saturation 0.20, value 0.57 with their line and shoulder. No pixel is in the
   key band (hue 300 +- 20 degrees, saturation 0.30 or more).
 - **Water is over the ground ceiling.** Water's mean saturation is 0.49, as P653's, so it is above
   ADR 0053 section 8's 0.30 and in the route triad's blue hue band (100 % of it at saturation 0.35
@@ -3920,3 +3930,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-27 | v1.60 (P643, art-director, ADR 0050 amendment A1 to A9, no rule change): the Facet Linecar, Seeder, Glint and Sunfall at detail 2 with the team colour on their large panels (33 to 42 % of the default view, 28 to 52 % in every direction; no model paints `faction`) over graphite, titanium and white bodies; their silhouettes, the Seeder's hull canvas (152 x 118) and the Linecar's shadow canvas (214 x 110) are updated above. The four ids' 128 frames and 4 cards are regenerated; atlas page 1 moves +8, 0 and +11 and page 2 +2, 0 and 0 (the aircraft add 0). The 32 px mirror matrix over the four ids against the 22 detail-2 models has a maximum of 0.76 (0.77 before); no pair rose by 0.03 or more. |
 | 2026-11-27 | v1.61 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain, against P653's terrain, and the look reworked after Michael's no to the first kit (calm grain, no stones, P653 colours, tall cliff columns); the twelve SVG diamonds and every other ground rule stay as they were |
 | 2026-11-28 | v1.62 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |
+| 2026-11-28 | v1.63 (P656d4, art-director, ADR 0053 amendment A1 to A4, no rule change; nothing draws the walls yet): the Terrain kit's wall part: the 12 rock lips are gone, 11 wall pieces (`wall_top` 0 to 3, `wall_face` se, sw, s, `wall_rim` ne, nw, n, inner_n) on the 128 x 136 canvas with origin (64, 104), a raised cell 64 texels, baked by the P653 cliff method; the two water shore pieces that rose 1 and 2 texels are cut to their diamond |

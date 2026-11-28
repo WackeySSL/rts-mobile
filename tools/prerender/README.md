@@ -48,10 +48,11 @@ bash scripts/prerender.sh --kit --out /tmp/prerender-kit --publish res://assets/
 `bake_kit.gd`, one PNG per part, named `<id>_<part>.png`. There is no sheet: a piece is framed on
 its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries a 0.02 tile
 bleed past each edge, never past a corner). The empty rows above the highest pixel are cut, so a
-flat piece is 64 rows and a lip or shore is taller by what it rises, at most 36 texels; a piece that
-reaches the canvas top is refused. A piece's shadow (what reaches 0.02 tile high, flattened along
+ground piece is its 64-row diamond, whatever rises above it is cut. A part named `wall_*` is the
+whole 128 x 136 canvas of a raised rock cell, origin (64, 104) (`TerrainKitDef.WALL_CANVAS`,
+`WALL_ORIGIN`), with no baked shadow; `cliff` (a face) and `ridge` (the back edge) are its shapes. A piece's shadow (what reaches 0.02 tile high, flattened along
 +gx by `ArtShadow.REACH` as `bake_model.gd` does) is laid under it at the shadow band's alpha, so a
-lip's shadow falls on the rock beside it; the lit render shades the pieces inside themselves. The
+shore's shadow falls beside it; the lit render shades the pieces inside themselves. The
 manifest line of a piece lists its model file only. `--check` re-bakes kit entries the same way.
 
 ## The pinned image

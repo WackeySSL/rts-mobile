@@ -7,7 +7,13 @@ extends Resource
 ## `variants - 1`), a `road` piece's terrain is the ground it lies on.
 
 const TILE: Vector2i = Vector2i(128, 64)  ## A ground diamond in texels (drawn at scale 0.5).
-const RISE_MAX: int = 36  ## The most a piece rises above its diamond's top corner, texels.
+## A raised rock cell's rise, texels: one diamond height (ADR 0053 section 7, amendment A1).
+const RISE_MAX: int = 64
+## A wall piece's canvas, texels, and where the cell's ground centre lies in it (amendment A3): the
+## prism fills rows 8 to 136, `RIM_MAX` rows above it may hold the ragged back edge.
+const WALL_CANVAS: Vector2i = Vector2i(128, 136)
+const WALL_ORIGIN: Vector2i = Vector2i(64, 104)
+const RIM_MAX: int = 8
 
 @export var dir: String = "res://assets/art/terrain"  ## Where the PNGs are.
 @export var terrains: PackedStringArray = PackedStringArray()  ## The sim terrains the kit draws.

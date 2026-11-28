@@ -1,17 +1,20 @@
 extends "res://tools/prerender/bake_model.gd"
 ## The terrain kit's bake entry (ADR 0053 sections 5 and 7, plan row P656c): renders every part of
 ## one `assets/art/models/terrain/<id>_detail.tres` as one piece, with the rig of `bake_model.gd`,
-## into `<out>/<id>_<part>.png`. A piece is framed on its 128 x 64 ground diamond; it is taller
-## only by the rise of its raised part (a lip or a shore), at most `RISE_MAX` texels above the
-## diamond's top corner. The empty rows above the highest pixel are cut.
+## into `<out>/<id>_<part>.png`. A ground piece is its 128 x 64 diamond, whatever rises above it is
+## cut. A wall piece (a part named `wall_*`, amendment A3) is the whole 128 x 136 canvas whose
+## ground centre, the model's origin, is at (64, 104): the cell's prism, a cell raised `RISE_MAX`
+## texels, and at most `RIM_MAX` rows over it. A wall casts no baked shadow.
 ##   --model res://assets/art/models/terrain/<id>_detail.tres  --out DIR  [--scale 8] [--no-ssao]
-## Exit 0 done, 1 a model or a piece failed (a piece over the rise limit is named), 2 usage.
+## Exit 0 done, 1 a model or a piece failed, 2 usage.
 
 const KitDef: GDScript = preload("res://game/view/TerrainKitDef.gd")
-## One ground tile and the rise limit, texels at 1x (ADR 0053 sections 3 and 7), read from the kit's
-## schema so the bake and the kit tests can't drift apart.
+## One ground tile and the wall canvas, texels at 1x (ADR 0053 sections 3 and 7), read from the
+## kit's schema so the bake and the kit tests can't drift apart.
 const DIAMOND: Vector2i = KitDef.TILE
-const RISE_MAX: int = KitDef.RISE_MAX
+## The ground canvas's headroom over the diamond: what P656c baked with, kept so that the ground
+## pieces stay byte-identical (the rows above the diamond are cut).
+const GROUND_HEADROOM: int = 36
 ## What reaches less than this (tiles) lies on the ground and casts no baked shadow.
 const SHADOW_MIN_TOP: float = 0.02
 
@@ -52,26 +55,27 @@ func _pieces(model: DetailModel) -> int:
 		if node == null:
 			push_error("bake_kit refuses " + mesh.cap_error())
 			return 0
-		var raw: Image = await _render(node)
+		var wall: bool = String(part).begins_with("wall_")
+		var raw: Image = await _render(node, wall)
 		node.free()
-		var shade: Image = await _shadow_of(model, part)
-		var piece: Image = _cut(_under(raw, shade))
-		if piece == null:
-			push_error("bake_kit: %s_%s rises over %d texels" % [model.art_id, part, RISE_MAX])
-			return 0
+		var piece: Image = raw
+		if not wall:
+			piece = _cut(_under(raw, await _shadow_of(model, part)))
 		var name: String = "%s_%s.png" % [model.art_id, part]
 		made += 1 if piece.save_png(String(_opts.out).path_join(name)) == OK else 0
 		print("bake_kit: %s %d triangles, %s" % [name, mesh.triangles, piece.get_size()])
 	return made
 
 
-## The canvas holds the diamond at the foot and RISE_MAX rows of headroom; its centre is the model's
-## origin.
-func _render(node: Node3D) -> Image:
+## The wall canvas, or the ground one: the diamond at the foot with `GROUND_HEADROOM` rows above it.
+## The canvas's point (ax, ay) is the model's origin.
+func _render(node: Node3D, wall: bool = false) -> Image:
 	_rig.set_node(node)
-	return await _rig.render(
-		DIAMOND.x, DIAMOND.y + RISE_MAX, DIAMOND.x / 2, DIAMOND.y / 2 + RISE_MAX, _scale()
-	)
+	if wall:
+		var o: Vector2i = KitDef.WALL_ORIGIN
+		return await _rig.render(KitDef.WALL_CANVAS.x, KitDef.WALL_CANVAS.y, o.x, o.y, _scale())
+	var h: int = GROUND_HEADROOM
+	return await _rig.render(DIAMOND.x, DIAMOND.y + h, DIAMOND.x / 2, DIAMOND.y / 2 + h, _scale())
 
 
 ## The part's solids flattened along +gx by `ArtShadow.REACH`, unlit black and opaque, as
@@ -110,15 +114,7 @@ func _under(piece: Image, shade: Image) -> Image:
 	return shade
 
 
-## The piece without the empty rows above its highest pixel and above the diamond's top corner;
-## null when it reaches the canvas's top, that is when it may rise over the limit.
+## The piece's diamond: the canvas without its headroom rows.
 func _cut(raw: Image) -> Image:
 	var scale: int = int(_scale())
-	var corner: int = RISE_MAX * scale
-	var top: int = corner if raw.is_invisible() else raw.get_used_rect().position.y
-	if top <= 0:  # drawn up to the canvas edge: it may rise further, so it is refused
-		return null
-	var rise: int = maxi(0, ceili(float(corner - top) / scale))
-	return raw.get_region(
-		Rect2i(0, corner - rise * scale, DIAMOND.x * scale, (DIAMOND.y + rise) * scale)
-	)
+	return raw.get_region(Rect2i(0, GROUND_HEADROOM * scale, DIAMOND.x * scale, DIAMOND.y * scale))

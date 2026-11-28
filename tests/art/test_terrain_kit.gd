@@ -1,15 +1,16 @@
 extends GdUnitTestSuite
 ## The terrain kit (plan row P656c, ADR 0053 sections 7 and 9), headless: completeness against
-## the sim's terrains and the mask table, the sizes and the lip rule, no key-band pixel, the byte
-## budget, the page budget and the manifest. The look is Michael's (P659), not tested.
+## the sim's terrains and the mask table, the sizes (ground 128 x 64, wall pieces the 128 x 136
+## canvas inside the raised prism plus its rim), the light order on the wall faces, no key-band
+## pixel, the byte budget, the page budget and the manifest. The look is Michael's (P659), not
+## tested.
 
 const KIT: String = "res://assets/art/terrain/kit.tres"
 const TERRAINS: String = "res://data/terrain/standard.tres"
 const PAGE_WIDTH: int = 4096  ## ADR 0053 section 7: the ground page is at most 512 rows of 4096 px.
 const PAGE_ROWS: int = 512
 const GUTTER: int = 2  ## What the atlas keeps between two pieces, px.
-## The kinds that may rise above their diamond: only over a cell that blocks every move class.
-const RISING: Array[StringName] = [&"lip", &"shore"]
+const WALL_KINDS: Array[StringName] = [&"wall_top", &"wall_face", &"wall_rim"]
 
 
 func _kit() -> TerrainKitDef:
@@ -27,6 +28,10 @@ func _image(path: String) -> Image:
 
 
 ## Every piece the kit lists as [terrain, kind, mask, path].
+func _is_wall(item: Array) -> bool:
+	return item[1] in WALL_KINDS
+
+
 func _all(kit: TerrainKitDef) -> Array[Array]:
 	var found: Array[Array] = []
 	for terrain: StringName in kit.terrains:
@@ -58,7 +63,13 @@ func test_every_mask_of_the_table_has_a_piece_that_exists() -> void:
 		)
 		count += 1
 	assert_int(kit.masks[&"blend"].size()).is_equal(8)
-	assert_int(kit.masks[&"lip"].size()).is_equal(12)
+	assert_bool(kit.masks.has(&"lip")).is_false()
+	assert_int(kit.masks[&"wall_top"].size()).is_equal(4)
+	assert_array(kit.masks[&"wall_face"]).is_equal(PackedStringArray(["se", "sw", "s"]))
+	assert_array(kit.masks[&"wall_rim"]).is_equal(PackedStringArray(["ne", "nw", "n", "inner_n"]))
+	assert_array(kit.kinds[&"rock"]).is_equal(
+		PackedStringArray(["base", "wall_top", "wall_face", "wall_rim"])
+	)
 	assert_int(kit.masks[&"shore"].size()).is_equal(12)
 	assert_int(count).is_equal(kit.pieces.size())
 
@@ -77,37 +88,88 @@ func test_no_png_in_the_kit_folder_is_unlisted() -> void:
 			)
 
 
-func test_every_piece_is_128_wide_and_64_to_100_tall_and_only_lips_and_shores_rise() -> void:
-	var kit: TerrainKitDef = _kit()
-	var cost_zero: Dictionary = {}
-	for terrain: TerrainDef in _sim().terrains:
-		cost_zero[terrain.id] = terrain.cost == PackedInt32Array([0, 0, 0])
-	for item: Array in _all(kit):
+func test_ground_pieces_are_128_x_64_and_wall_pieces_the_128_x_136_canvas() -> void:
+	for item: Array in _all(_kit()):
 		var size: Vector2i = _image(item[3]).get_size()
-		assert_int(size.x).is_equal(TerrainKitDef.TILE.x)
-		var rise: int = size.y - TerrainKitDef.TILE.y
+		var want: Vector2i = TerrainKitDef.WALL_CANVAS if _is_wall(item) else TerrainKitDef.TILE
 		(
-			assert_bool(rise >= 0 and rise <= TerrainKitDef.RISE_MAX)
-			. override_failure_message("%s is %s: a lip rises at most 36 texels" % [item[3], size])
-			. is_true()
+			assert_vector(Vector2(size))
+			. override_failure_message("%s is %s, not %s" % [item[3], size, want])
+			. is_equal(Vector2(want))
 		)
-		if rise > 0:
-			(
-				assert_bool(item[1] in RISING and cost_zero[item[0]])
-				. override_failure_message(
-					"%s rises %d over a cell a unit can enter" % [item[3], rise]
-				)
-				. is_true()
-			)
+		if _is_wall(item):
+			assert_str(String(item[0])).is_equal("rock")  # only rock rises: it blocks every move class
 
 
-func test_a_lip_stands_but_stays_under_the_rise_limit() -> void:
+func test_the_wall_canvas_is_the_diamond_the_rise_and_the_rim() -> void:
+	assert_int(TerrainKitDef.RISE_MAX).is_equal(64)
+	assert_int(TerrainKitDef.RIM_MAX).is_equal(8)
+	var canvas: Vector2i = TerrainKitDef.WALL_CANVAS
+	assert_int(canvas.x).is_equal(TerrainKitDef.TILE.x)
+	assert_int(canvas.y).is_equal(
+		TerrainKitDef.TILE.y + TerrainKitDef.RISE_MAX + TerrainKitDef.RIM_MAX
+	)
+	# The ground centre lies a half diamond above the canvas's foot.
+	assert_vector(Vector2(TerrainKitDef.WALL_ORIGIN)).is_equal(
+		Vector2(64, canvas.y - TerrainKitDef.TILE.y / 2)
+	)
+
+
+## How far texel (x, y) lies above the raised prism's silhouette, texels (0 or less: inside). The
+## prism's hexagon runs from the top diamond's apex (64, 8) to the ground diamond's foot (64, 136).
+func _over_prism(x: int, y: int) -> float:
+	var slant: float = absf(float(x) + 0.5 - 64.0) * 0.5
+	return (8.0 + slant) - (float(y) + 0.5)
+
+
+func test_a_wall_piece_stays_inside_the_prism_and_its_rim() -> void:
+	for item: Array in _all(_kit()):
+		if not _is_wall(item):
+			continue
+		var image: Image = _image(item[3])
+		var most: float = -999.0
+		for y: int in image.get_height():
+			for x: int in image.get_width():
+				if image.get_pixel(x, y).a > 0.0:
+					most = maxf(most, _over_prism(x, y))
+					var below: float = float(y) + 0.5 - (136.0 - absf(float(x) + 0.5 - 64.0) * 0.5)
+					(
+						assert_float(below)
+						. override_failure_message(
+							"%s: texel (%d, %d) is below the prism" % [item[3], x, y]
+						)
+						. is_less_equal(0.5)
+					)
+		(
+			assert_float(most)
+			. override_failure_message("%s lies %.1f texels over the prism" % [item[3], most])
+			. is_less_equal(float(TerrainKitDef.RIM_MAX) + 0.5)
+		)
+
+
+## The mean HSV value of the opaque texels.
+func _value(path: String) -> float:
+	var image: Image = _image(path)
+	var total: float = 0.0
+	var count: int = 0
+	for y: int in image.get_height():
+		for x: int in image.get_width():
+			var c: Color = image.get_pixel(x, y)
+			if c.a > 0.9:
+				total += c.v
+				count += 1
+	return total / maxi(count, 1)
+
+
+func test_the_faces_are_lit_from_the_left_and_darker_than_the_top_on_the_right() -> void:
 	var kit: TerrainKitDef = _kit()
-	var tallest: int = 0
-	for item: Array in _all(kit):
-		if item[1] == &"lip":
-			tallest = maxi(tallest, _image(item[3]).get_height() - TerrainKitDef.TILE.y)
-	assert_int(tallest).is_between(12, TerrainKitDef.RISE_MAX)
+	var top: float = _value(kit.path_of(&"rock", &"wall_top", &"0"))
+	var sw: float = _value(kit.path_of(&"rock", &"wall_face", &"sw"))
+	var se: float = _value(kit.path_of(&"rock", &"wall_face", &"se"))
+	assert_float(sw).is_greater(se + 0.08)
+	assert_float(se).is_less(top)
+	assert_float(sw).is_between(0.40, 0.52)  # P653's cliff face: about 0.45 to 0.48
+	assert_float(se).is_between(0.28, 0.42)
 
 
 func test_no_pixel_of_the_kit_is_in_the_key_band() -> void:
@@ -137,7 +199,8 @@ func test_the_kit_files_total_at_most_five_megabytes() -> void:
 func test_the_kit_packs_into_at_most_512_rows_of_4096_px() -> void:
 	var sizes: Array[Vector2i] = []
 	for item: Array in _all(_kit()):
-		sizes.append(_image(item[3]).get_size() + Vector2i(GUTTER, GUTTER))
+		if not _is_wall(item):  # the wall pieces are packed on the sorted page (P656d2)
+			sizes.append(_image(item[3]).get_size() + Vector2i(GUTTER, GUTTER))
 	sizes.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.y > b.y)
 	var rows: int = 0
 	var x: int = 0

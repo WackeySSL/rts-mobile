@@ -25,7 +25,7 @@ func test_the_defaults_are_the_standard_kit() -> void:
 	assert_str(def.dir).is_equal("res://assets/art/terrain")
 	assert_int(def.variants).is_equal(4)
 	assert_vector(Vector2(TerrainKitDef.TILE)).is_equal(Vector2(128, 64))
-	assert_int(TerrainKitDef.RISE_MAX).is_equal(36)
+	assert_int(TerrainKitDef.RISE_MAX).is_equal(64)
 
 
 func test_a_piece_is_found_by_terrain_kind_and_mask() -> void:
@@ -47,7 +47,9 @@ func test_a_piece_the_kit_lacks_has_no_path() -> void:
 
 
 func test_the_key_is_terrain_kind_mask() -> void:
-	assert_str(String(TerrainKitDef.key(&"rock", &"lip", &"outer_n"))).is_equal("rock/lip/outer_n")
+	assert_str(String(TerrainKitDef.key(&"rock", &"wall_face", &"se"))).is_equal(
+		"rock/wall_face/se"
+	)
 
 
 func test_the_committed_kit_loads_and_names_the_six_sim_terrains() -> void:
