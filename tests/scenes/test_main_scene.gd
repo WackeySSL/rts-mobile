@@ -96,10 +96,13 @@ func test_map_is_a_48_by_48_tile_diamond_from_the_scenario() -> void:
 	assert_int(_map.draw_count()).is_equal(0)
 	assert_that(_map.drawn_rect()).is_equal(Rect2())
 	assert_that(_map.drawn_transform()).is_equal(Transform2D.IDENTITY)
-	assert_int(ground.write_count()).is_equal(48 * 48)  # One tile for each cell, grass a or b.
-	assert_that(Rig.key_at(ground, ground.atlas(), 0, 0)).is_equal(&"grass_a")
-	assert_that(Rig.key_at(ground, ground.atlas(), 1, 0)).is_equal(&"grass_b")
-	assert_that(Rig.key_at(ground, ground.atlas(), 47, 47)).is_equal(&"grass_a")
+	assert_int(ground.write_count()).is_equal(48 * 48)  # One kit base piece for each cell.
+	assert_object(ground.kit).is_not_null()
+	for cell: Vector2i in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(47, 47)]:
+		var key: StringName = TerrainKit.base_key(ground.kit, &"grass", cell.x, cell.y)
+		assert_that(ground.base_layer().get_cell_atlas_coords(cell)).is_equal(
+			ground.atlas().kit_coords(key)
+		)
 	assert_that(_map.get_global_transform()).is_equal(Transform2D.IDENTITY)  # The node is at 0.
 
 

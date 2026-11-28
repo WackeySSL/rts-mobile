@@ -36,22 +36,11 @@ func _is_wall(item: Array) -> bool:
 	return item[1] in WALL_KINDS
 
 
-## The variant names of `terrain`'s `kind` (`base` or `wall_top`): the kit's `variant_counts` when
-## it has them (P656d1's schema), else the PNGs on disk, `<terrain>_<kind>_<n>.png` for n = 0, 1,
-## ...
+## The variant names of `terrain`'s `kind` (`base` or `wall_top`), from the kit's own lists.
 func _variant_names(kit: TerrainKitDef, terrain: StringName, kind: StringName) -> PackedStringArray:
 	var found: PackedStringArray = PackedStringArray()
-	var counts: Variant = kit.get("variant_counts")
-	var named: StringName = StringName("%s/%s" % [terrain, kind])
-	if counts is Dictionary and (counts as Dictionary).has(named):
-		for number: int in int((counts as Dictionary)[named]):
-			found.append(str(number))
-		return found
-	var stem: String = "%s_%s_" % [terrain, kind]
-	var number: int = 0
-	while FileAccess.file_exists(kit.dir.path_join("%s%d.png" % [stem, number])):
+	for number: int in kit.variants_of(terrain, kind):
 		found.append(str(number))
-		number += 1
 	return found
 
 

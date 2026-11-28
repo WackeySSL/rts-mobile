@@ -12,6 +12,7 @@ const LOOK_ROOT: String = "res://assets/art/svg/ground_looks"  ## The folders of
 const LOOK_PATH: String = "%s/%s/%s_%s.svg"  ## Root, look, terrain id and variant.
 const FIELD_PATH: String = "res://assets/art/svg/fields/%s.svg"
 const TILE_PX: Vector2i = Vector2i(64, 32)  ## One cell's diamond; the art is 128 x 64 at 2x.
+const KIT_TILE_PX: Vector2i = Vector2i(128, 64)  ## A kit piece: a diamond at 2x, drawn at 0.5.
 const KINDS: Array[StringName] = [&"oil", &"gas"]
 const STAGES: Array[StringName] = [&"full", &"half", &"dry"]
 const WELLHEAD: StringName = &"wellhead"
@@ -21,9 +22,18 @@ const ANCHORS: Dictionary[StringName, Vector2] = {
 	WELLHEAD: Vector2(28.0, 44.0), WELLHEAD_SHADOW: Vector2(28.0, 15.5)
 }
 
+const KIT_PAGE_WIDTH_PX: int = 4096  ## The kit page is at most this wide and 512 rows high.
+
 var tile_set: TileSet = TileSet.new()  ## One atlas source, id 0, a tile for each ground and stage.
+## The kit page (P656d1): the pre-rendered 128 x 64 pieces, a page of its own, one atlas source (id
+## 0) in `kit_tile_set`. Empty when no kit piece loaded. Every piece is its 128 x 64 diamond (the
+## ground layers stay flat, ADR 0053 A2); a piece of another size is left out.
+var kit_tile_set: TileSet = TileSet.new()
 var _atlas: RuntimeAtlas = RuntimeAtlas.new()
+var _kit_page: RuntimeAtlas = RuntimeAtlas.new()
 var _tiles: Dictionary[StringName, Vector2i] = {}  ## Key -> coordinates in the source.
+var _kit_tiles: Dictionary[StringName, Vector2i] = {}  ## Piece key -> coordinates in the kit page.
+var _kit_terrains: Array[StringName] = []  ## The terrains whose every base variant is on the page.
 
 
 ## The page for the terrain ids `terrain_ids`. An id with no art, or a picture that is not a
@@ -31,7 +41,10 @@ var _tiles: Dictionary[StringName, Vector2i] = {}  ## Key -> coordinates in the 
 ## folder of `ground_looks/`, STYLE.md "Map looks") a terrain that the look has both diamonds for
 ## uses those in the same keys and the same slots, so the page is no bigger than without one.
 static func build(
-	terrain_ids: Array[StringName], look: StringName = &"", root: String = LOOK_ROOT
+	terrain_ids: Array[StringName],
+	look: StringName = &"",
+	root: String = LOOK_ROOT,
+	kit: TerrainKitDef = null
 ) -> GroundAtlas:
 	var result: GroundAtlas = GroundAtlas.new()
 	var tiles: Dictionary[StringName, Texture2D] = {}
@@ -49,6 +62,8 @@ static func build(
 	var cell: Vector2i = RuntimeAtlas.cell_size(TILE_PX)
 	result._atlas = RuntimeAtlas.build(sources, cell.x * maxi(tiles.size(), 1))
 	result._make_tile_set(tiles.keys(), cell)
+	if kit != null:
+		result._build_kit(kit, terrain_ids)
 	return result
 
 
@@ -69,6 +84,26 @@ func coords(key: StringName) -> Vector2i:
 ## The region of `key` on the page in texels, gutter left out.
 func region(key: StringName) -> Rect2i:
 	return _atlas.region(key)
+
+
+## Whether the kit page holds every base variant of `id`, so its cells need no SVG diamond.
+func kit_covers(id: StringName) -> bool:
+	return _kit_terrains.has(id)
+
+
+## The coordinates of the kit piece `key` in `kit_tile_set`, (-1, -1) for none.
+func kit_coords(key: StringName) -> Vector2i:
+	return _kit_tiles.get(key, Vector2i(-1, -1))
+
+
+## The CPU kit page, for tests; empty when the atlas has no kit.
+func kit_image() -> Image:
+	return _kit_page.image()
+
+
+## The region of the kit piece `key` on the kit page in texels, gutter left out.
+func kit_region(key: StringName) -> Rect2i:
+	return _kit_page.region(key)
 
 
 ## The path of a diamond: the look's when the look has both variants of the terrain, else the
@@ -98,18 +133,69 @@ static func _add(into: Dictionary[StringName, Texture2D], key: StringName, path:
 
 
 func _make_tile_set(keys: Array, cell: Vector2i) -> void:
-	tile_set.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
-	tile_set.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
-	tile_set.tile_size = TILE_PX
+	_fill_tile_set(tile_set, _atlas, TILE_PX, keys, cell, _tiles)
+
+
+## The kit pieces of the terrains in `ids` (base variants, the blends of the terrains that have
+## them, the shores), as one page of 128 x 64 tiles. A piece that does not load or is not 128 wide
+## is left out, and a terrain missing a base variant is left to the SVG diamonds.
+func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
+	var images: Dictionary[StringName, Image] = {}
+	for id: StringName in ids:
+		for kind: StringName in kit.kinds.get(id, PackedStringArray()):
+			if kind != TerrainKit.BASE and kind != TerrainKit.BLEND and kind != TerrainKit.SHORE:
+				continue
+			for mask: StringName in kit.masks.get(kind, PackedStringArray()):
+				var key: StringName = TerrainKitDef.key(id, kind, mask)
+				var image: Image = _kit_image(kit.path_of(id, kind, mask))
+				if image != null and kit.pieces.has(key):
+					images[key] = image
+		var listed: PackedInt32Array = kit.variants_of(id, TerrainKit.BASE)
+		var whole: bool = not listed.is_empty()
+		for variant: int in listed:
+			whole = (
+				whole
+				and images.has(TerrainKitDef.key(id, TerrainKit.BASE, StringName(str(variant))))
+			)
+		if whole:
+			_kit_terrains.append(id)
+	if images.is_empty():
+		return
+	var cell: Vector2i = RuntimeAtlas.cell_size(KIT_TILE_PX)
+	_kit_page = RuntimeAtlas.build_images(images, KIT_PAGE_WIDTH_PX)
+	_fill_tile_set(kit_tile_set, _kit_page, KIT_TILE_PX, images.keys(), cell, _kit_tiles)
+
+
+## A piece's image, null when it is missing or not exactly 128 x 64 (every ground piece is flat).
+static func _kit_image(path: String) -> Image:
+	var texture: Texture2D = load(path) as Texture2D if ResourceLoader.exists(path) else null
+	if texture == null or Vector2i(texture.get_size()) != KIT_TILE_PX:
+		return null
+	return texture.get_image()
+
+
+## `set_def` with one atlas source of `page`, a tile of `size` at each key's region (the page is a
+## regular grid of `cell`, a gutter around each tile), the coordinates noted into `into`.
+static func _fill_tile_set(
+	set_def: TileSet,
+	page: RuntimeAtlas,
+	size: Vector2i,
+	keys: Array,
+	cell: Vector2i,
+	into: Dictionary[StringName, Vector2i]
+) -> void:
+	set_def.tile_shape = TileSet.TILE_SHAPE_ISOMETRIC
+	set_def.tile_layout = TileSet.TILE_LAYOUT_DIAMOND_DOWN
+	set_def.tile_size = size
 	var gutter: Vector2i = Vector2i(RuntimeAtlas.GUTTER_PX, RuntimeAtlas.GUTTER_PX)
 	var source: TileSetAtlasSource = TileSetAtlasSource.new()
 	source.use_texture_padding = false
-	source.texture = _atlas.texture()
-	source.texture_region_size = TILE_PX
+	source.texture = page.texture()
+	source.texture_region_size = size
 	source.margins = gutter
 	source.separation = gutter * 2
 	for key: StringName in keys:
-		var at: Vector2i = (region(key).position - gutter) / cell
-		_tiles[key] = at
+		var at: Vector2i = (page.region(key).position - gutter) / cell
+		into[key] = at
 		source.create_tile(at)
-	tile_set.add_source(source, 0)
+	set_def.add_source(source, 0)

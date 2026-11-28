@@ -2,16 +2,26 @@
 
 importer="texture"
 type="CompressedTexture2D"
+<<<<<<<< HEAD:assets/art/terrain/grass_base_4.png.import
 uid="uid://lag3nhb0446c"
 path="res://.godot/imported/grass_base_4.png-4e77b9ab7de49ddf530c7265f3af0534.ctex"
+========
+uid="uid://cyio2ssa5jjn2"
+path="res://.godot/imported/rock_wall_rim_n.png-59b7515419fafabf8ec1b708465c0d02.ctex"
+>>>>>>>> origin/claude/p656d1-ground-wiring:assets/art/terrain/rock_wall_rim_n.png.import
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
+<<<<<<<< HEAD:assets/art/terrain/grass_base_4.png.import
 source_file="res://assets/art/terrain/grass_base_4.png"
 dest_files=["res://.godot/imported/grass_base_4.png-4e77b9ab7de49ddf530c7265f3af0534.ctex"]
+========
+source_file="res://assets/art/terrain/rock_wall_rim_n.png"
+dest_files=["res://.godot/imported/rock_wall_rim_n.png-59b7515419fafabf8ec1b708465c0d02.ctex"]
+>>>>>>>> origin/claude/p656d1-ground-wiring:assets/art/terrain/rock_wall_rim_n.png.import
 
 [params]
 

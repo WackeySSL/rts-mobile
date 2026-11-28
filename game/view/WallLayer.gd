@@ -44,7 +44,7 @@ var _keys: Array[StringName] = []  ## Parallel to `_sprites`: the piece each sho
 var _rows: Dictionary[int, Node2D] = {}  ## Diagonal -> its row node.
 var _writes: int = 0
 var _atlas: IsoAtlas
-var _one_in: int = 0  ## The kit's `boulder_one_in` of rock, as P656d1 reads it.
+var _kit: TerrainKitDef = null  ## The kit the walls were built from (its stone rule).
 
 
 func _enter_tree() -> void:
@@ -72,7 +72,7 @@ func _process(_delta: float) -> void:
 func load_pieces(look: StringName) -> Dictionary[StringName, Image]:
 	var pieces: Dictionary[StringName, Image] = {}
 	var def: TerrainKitDef = kit_for(look)
-	for key: StringName in WallKit.all_keys():
+	for key: StringName in WallKit.all_keys(def):
 		var path: String = def.dir.path_join(def.pieces.get(key, "")) if def.pieces.has(key) else ""
 		var image: Image = null
 		if path != "" and ResourceLoader.exists(path):
@@ -143,7 +143,7 @@ func _sync(snap: MatchSnapshot) -> void:
 		return  # A building changed the map version, not the rock.
 	_clear()
 	var map: MapDef = runner.scenario.map if runner.scenario != null else null
-	_one_in = kit_for(map.ground_look if map != null else &"").boulder_one_in.get(ROCK, 0)
+	_kit = kit_for(map.ground_look if map != null else &"")
 	_cols = snap.map_cols
 	_raised = raised
 	if raised.is_empty():
@@ -189,7 +189,7 @@ func _add_cell(cell: int, col: int, row: int, d: int) -> void:
 		_rows[d] = node
 	var centre: Vector2 = IsoProjection.cell_centre_px(col, row) - _rows[d].position
 	_first[cell] = _sprites.size()
-	for key: StringName in WallKit.pieces(_raised, _cols, col, row, _one_in):
+	for key: StringName in WallKit.pieces(_raised, _cols, col, row, _kit):
 		if key == &"":
 			continue
 		var sprite: Sprite2D = Sprite2D.new()
