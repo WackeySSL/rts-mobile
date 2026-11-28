@@ -75,7 +75,7 @@ const DAMAGE_PARTS: Array[StringName] = [&"dmg1", &"dmg2"]
 ## The wall band (ADR 0053 A5, plan P656d2): the raised walls' pieces, lit and dim, packed on
 ## shelves of their own under every sheet's frames of `PAGE_SORTED`, after them, so no frame's
 ## region moves, and drawn with no material. At most `WALL_BAND_ROWS_MAX` rows.
-const WALL_BAND_ROWS_MAX: int = 224
+const WALL_BAND_ROWS_MAX: int = 288
 const WALL_LIT: String = "lit:"
 const WALL_DIM: String = "dim:"
 

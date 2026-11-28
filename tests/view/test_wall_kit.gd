@@ -87,7 +87,7 @@ func test_all_keys_follow_the_kits_wall_top_list_whatever_its_count() -> void:
 	assert_array(tops).is_equal(wanted)
 	var none: TerrainKitDef = kit.duplicate()
 	none.pieces = none.pieces.duplicate()
-	for number: int in 4:
+	for number: int in kit.variants_of(&"rock", &"wall_top"):
 		none.pieces.erase(TerrainKitDef.key(&"rock", &"wall_top", StringName(str(number))))
 	assert_int(WallKit.all_keys(none).size()).is_equal(3 + 4)
 	assert_str(String(WallKit.top_key(1, 1, none))).is_equal("")

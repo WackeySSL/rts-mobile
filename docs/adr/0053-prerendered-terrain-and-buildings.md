@@ -534,6 +534,9 @@ placed there). §4's "the sorted world keeps no material" holds as written. The 
   Budget: two states (A6) of about 11 pieces, at most 2 shelves, **at most 224 rows**; the
   cross-faction page goes from 2756 to at most 2980 of its 3584 rows (about +3.7 MB of texture at
   most). `test_iso_atlas_budget` pins it.
+  2026-11-28, P656d4b: the stone set (9 wall tops) takes the band to 280 rows (16 pieces, lit and
+  dim, which needs 2 shelves); the cap is 288 (`IsoAtlas.WALL_BAND_ROWS_MAX`); the cross-faction
+  page goes from 2756 to at most 3036 of its 3584 rows (3044 at the cap).
 - **A6. Fog on walls.** The fog (z 4) lies under the sorted world, so it cannot dim a wall. Each
   wall cell shows one of three states, from the local player's fog at that cell:
   - seen: the lit pieces;

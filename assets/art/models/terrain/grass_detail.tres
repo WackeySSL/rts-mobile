@@ -64,7 +64,7 @@ kind = 6
 [sub_resource type="Resource" id="m_stone_grey"]
 script = ExtResource("1_mat")
 id = &"stone_grey"
-base = Color(0.84, 0.82, 0.76, 1)
+base = Color(0.79, 0.77, 0.715, 1)
 roughness = 0.85
 kind = 6
 grain = Vector3(0.3, 0.35, 0.9)

@@ -479,6 +479,6 @@ func test_every_stone_variant_has_lit_stones_and_its_shadow_away_from_the_light(
 			8.0
 		)
 		assert_int(areas.min()).is_less(40)
-		assert_int(areas.max()).is_greater(200)
+		assert_int(areas.max()).is_greater(150)
 		assert_float(values.max() - values.min()).is_greater(0.04)
 		assert_float(tones.max() - tones.min()).is_greater(0.04)

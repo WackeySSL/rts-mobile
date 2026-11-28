@@ -1,13 +1,13 @@
 extends GdUnitTestSuite
 ## The wall band of the sorted page (ADR 0053 amendment A5 and A6, plan P656d2): the pieces packed
-## lit and dim under every sheet's frames, at most 224 rows, with the placeholder pieces of
+## lit and dim under every sheet's frames, within the row cap, with the placeholder pieces of
 ## `wall_rig.gd` (the real art is P656d4's).
 
 const Rig: GDScript = preload("res://tests/view/support/wall_rig.gd")
 const SHADE: int = 140
 
 
-func test_the_band_holds_every_piece_lit_and_dim_in_at_most_224_rows() -> void:
+func test_the_band_holds_every_piece_lit_and_dim_within_the_row_cap() -> void:
 	var atlas: IsoAtlas = IsoAtlas.build([], [], 1.0, true, Callable(), Rig.pieces(), SHADE)
 	assert_int(atlas.wall_band_rows()).is_between(1, IsoAtlas.WALL_BAND_ROWS_MAX)
 	assert_int(atlas.image().get_height()).is_equal(atlas.wall_band_rows())
@@ -57,13 +57,14 @@ func test_a_page_that_leaves_no_room_for_the_band_lowers_the_scale() -> void:
 	for at: int in 40:
 		canvases.append(Vector2i(400, 400))
 	var plain: float = IsoAtlas.fit_scale(canvases, 1.0)
-	var reserved: float = IsoAtlas.fit_scale(canvases, 1.0, [], [], 224)
+	var reserved: float = IsoAtlas.fit_scale(canvases, 1.0, [], [], IsoAtlas.WALL_BAND_ROWS_MAX)
 	assert_float(reserved).is_less_equal(plain)
 	var page: Vector2i = IsoAtlas.page_size(canvases, reserved)
-	assert_int(page.y + 224).is_less_equal(IsoAtlas.PAGE_MAX_PX)
+	assert_int(page.y + IsoAtlas.WALL_BAND_ROWS_MAX).is_less_equal(IsoAtlas.PAGE_MAX_PX)
 
 
 func test_the_cross_faction_page_and_the_band_stay_inside_the_budget() -> void:
 	var cross: int = 2756  # `test_iso_atlas_budget.gd`'s TODAY_CROSS.
 	assert_int(cross + IsoAtlas.WALL_BAND_ROWS_MAX).is_less_equal(3584)
-	assert_int(cross + IsoAtlas.WALL_BAND_ROWS_MAX).is_equal(2980)
+	# 2756 + the cap of 288 is 3044; the stone set's real band is 280 rows, so 3036.
+	assert_int(cross + IsoAtlas.WALL_BAND_ROWS_MAX).is_equal(3044)
