@@ -186,6 +186,24 @@ func test_a_terrain_the_kit_lacks_keeps_its_svg_diamonds_and_the_map_stays_cover
 	)
 
 
+func test_every_base_variant_the_kit_lists_reaches_the_page_beyond_the_base_masks() -> void:
+	var kit: TerrainKitDef = (load(KIT) as TerrainKitDef).duplicate()
+	kit.pieces = kit.pieces.duplicate()
+	kit.variant_counts = kit.variant_counts.duplicate()
+	kit.variant_counts[&"grass/base"] = 6  # Two more than the base kind's mask names.
+	for number: int in [4, 5]:  # Stand-in pieces: the file of variant 0.
+		kit.pieces[StringName("grass/base/%d" % number)] = kit.pieces[&"grass/base/0"]
+	var runner: MatchRunner = auto_free(Rig.runner(Rig.scenario()))
+	var ground: GroundLayer = _add_ground(runner, kit)
+	for number: int in 6:
+		(
+			assert_that(ground.atlas().kit_coords(StringName("grass/base/%d" % number)))
+			. override_failure_message("grass/base/%d" % number)
+			. is_not_equal(Vector2i(-1, -1))
+		)
+	assert_bool(ground.atlas().kit_covers(&"grass")).is_true()
+
+
 func test_without_a_kit_the_layers_are_empty_and_the_ground_is_the_svg_diamonds() -> void:
 	var runner: MatchRunner = auto_free(Rig.runner(Rig.scenario()))
 	var ground: GroundLayer = _add_ground(runner, null)
