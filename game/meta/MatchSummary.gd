@@ -18,6 +18,16 @@ var ticks: int = 0
 var local_side: int = 1
 ## The lesson id, or empty for a skirmish.
 var lesson_id: StringName = &""
+## The local player's faction id (`fossil`, `renew`), empty when unknown (ADR 0054 section 3).
+var faction: StringName = &""
+## The local side's end-of-match counts, copied from the snapshot's `stat_*` (0 when the side is out
+## of range). A sold building is no loss (the sim's own rule).
+var built: int = 0
+var lost_units: int = 0
+var lost_buildings: int = 0
+var harvested: int = 0
+## The distinct type ids of the local side's rows with hit points above 0 at the end.
+var standing_types: Array[StringName] = []
 
 
 ## The outcome from the snapshot's `winner` and `match_end_tick`; `surrendered` is the local
@@ -29,7 +39,8 @@ static func from_snapshot(
 	setup_map_id: StringName,
 	side: int,
 	surrendered: bool,
-	setup_lesson_id: StringName = &""
+	setup_lesson_id: StringName = &"",
+	setup_faction: StringName = &""
 ) -> MatchSummary:
 	var summary: MatchSummary = MatchSummary.new()
 	summary.level = setup_level
@@ -37,6 +48,8 @@ static func from_snapshot(
 	summary.ticks = snapshot.tick
 	summary.local_side = side
 	summary.lesson_id = setup_lesson_id
+	summary.faction = setup_faction
+	summary._copy_facts(snapshot)
 	# The sim decides first: no end is abandoned even after a Surrender command, and a win stays
 	# a win.
 	if snapshot.match_end_tick <= 0:
@@ -59,7 +72,9 @@ static func for_lesson(
 	setup_level: StringName,
 	setup_map_id: StringName,
 	side: int,
-	ticks_played: int
+	ticks_played: int,
+	setup_faction: StringName = &"",
+	snapshot: MatchSnapshot = null
 ) -> MatchSummary:
 	var summary: MatchSummary = MatchSummary.new()
 	summary.outcome = OUTCOME_WIN
@@ -68,4 +83,33 @@ static func for_lesson(
 	summary.ticks = ticks_played
 	summary.local_side = side
 	summary.lesson_id = setup_lesson_id
+	summary.faction = setup_faction
+	summary._copy_facts(snapshot)
 	return summary
+
+
+## Copies the local side's stats and standing types from `snapshot` (null leaves the defaults).
+## One pass over the rows, run once at the end of a match, never per tick.
+func _copy_facts(snapshot: MatchSnapshot) -> void:
+	if snapshot == null:
+		return
+	built = _stat(snapshot.stat_built)
+	lost_units = _stat(snapshot.stat_lost_units)
+	lost_buildings = _stat(snapshot.stat_lost_buildings)
+	harvested = _stat(snapshot.stat_harvested)
+	standing_types.clear()
+	for row: int in snapshot.owner.size():
+		if snapshot.owner[row] != local_side or snapshot.hp[row] <= 0:
+			continue
+		var type_index: int = snapshot.type_index[row]
+		if type_index < 0 or type_index >= snapshot.type_ids.size():
+			continue
+		var type_id: StringName = snapshot.type_ids[type_index]
+		if not standing_types.has(type_id):
+			standing_types.append(type_id)
+
+
+func _stat(column: PackedInt32Array) -> int:
+	if local_side < 0 or local_side >= column.size():
+		return 0
+	return column[local_side]

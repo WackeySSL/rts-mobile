@@ -933,6 +933,30 @@ border_width_right = 1
 border_width_bottom = 1
 border_color = Color(0.2, 0.2627451, 0.29019608, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_tagged"]
+content_margin_left = 8.0
+content_margin_top = 15.0
+content_margin_right = 72.0
+content_margin_bottom = 15.0
+bg_color = Color(0.03137255, 0.05490196, 0.07058824, 0.5)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_tagged_down"]
+content_margin_left = 8.0
+content_margin_top = 15.0
+content_margin_right = 72.0
+content_margin_bottom = 15.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_item_on"]
 content_margin_left = 8.0
 content_margin_top = 15.0
@@ -944,6 +968,56 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_numbered"]
+content_margin_left = 52.0
+content_margin_top = 15.0
+content_margin_right = 8.0
+content_margin_bottom = 15.0
+bg_color = Color(0.03137255, 0.05490196, 0.07058824, 0.5)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_numbered_down"]
+content_margin_left = 52.0
+content_margin_top = 15.0
+content_margin_right = 8.0
+content_margin_bottom = 15.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2, 0.2627451, 0.29019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_numbered_on"]
+content_margin_left = 52.0
+content_margin_top = 15.0
+content_margin_right = 8.0
+content_margin_bottom = 15.0
+bg_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.95686275, 0.71372549, 0.3254902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_profile"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0, 0, 0, 0)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_profile_down"]
+content_margin_left = 12.0
+content_margin_top = 10.0
+content_margin_right = 12.0
+content_margin_bottom = 10.0
+bg_color = Color(0.09411765, 0.14901961, 0.17647059, 1)
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_menu_primary"]
 content_margin_left = 8.0
@@ -1549,11 +1623,57 @@ MenuFooterLink/styles/pressed = SubResource("StyleBoxFlat_menu_footer_link_down"
 MenuFooterHint/base_type = &"Label"
 MenuFooterHint/colors/font_color = Color(0.45, 0.5, 0.55, 1)
 MenuFooterHint/font_sizes/font_size = 14
+; MenuItemTagged: a MenuItem with 72 dp kept free at its right end for a tag over the row (the
+; Tutorial list's "+40 XP", P674b); MenuTag: that tag, the eyebrow look in the money amber.
+MenuItemTagged/base_type = &"MenuItem"
+MenuItemTagged/styles/disabled = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/hover = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_tagged_down")
+MenuItemTagged/styles/normal = SubResource("StyleBoxFlat_menu_item_tagged")
+MenuItemTagged/styles/pressed = SubResource("StyleBoxFlat_menu_item_tagged_down")
+MenuTag/base_type = &"MenuEyebrow"
 MenuItemOn/base_type = &"MenuItem"
 MenuItemOn/styles/hover = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/normal = SubResource("StyleBoxFlat_menu_item_on")
 MenuItemOn/styles/pressed = SubResource("StyleBoxFlat_menu_item_on")
+; MenuNumber (P664): the item number of the main menu, text_mute.
+; MenuNumberOn: the number on the amber first item, ground_deep. MenuProfile: the main menu's profile line, a flat button with a top rule, small text_dim caps.
+MenuNumberOn/base_type = &"MenuNumber"
+MenuNumberOn/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuProfile/base_type = &"Button"
+MenuProfile/colors/font_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_focus_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_hover_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_hover_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_pressed_color = Color(0.58039216, 0.65098039, 0.67058824, 1)
+MenuProfile/colors/font_disabled_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
+MenuProfile/font_sizes/font_size = 14
+MenuProfile/styles/disabled = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/focus = SubResource("StyleBoxFlat_pause_focus")
+MenuProfile/styles/hover = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/hover_pressed = SubResource("StyleBoxFlat_menu_profile_down")
+MenuProfile/styles/normal = SubResource("StyleBoxFlat_menu_profile")
+MenuProfile/styles/pressed = SubResource("StyleBoxFlat_menu_profile_down")
+MenuNumber/base_type = &"Label"
+MenuNumber/colors/font_color = Color(0.36078431, 0.44705882, 0.48235294, 1)
+; MenuRow and MenuRowOn (P664): MenuItem and MenuItemOn with a 52 dp left margin, which the number of a main menu item stands in.
+MenuRow/base_type = &"MenuItem"
+MenuRow/styles/disabled = SubResource("StyleBoxFlat_menu_numbered")
+MenuRow/styles/hover = SubResource("StyleBoxFlat_menu_numbered")
+MenuRow/styles/hover_pressed = SubResource("StyleBoxFlat_menu_numbered_down")
+MenuRow/styles/normal = SubResource("StyleBoxFlat_menu_numbered")
+MenuRow/styles/pressed = SubResource("StyleBoxFlat_menu_numbered_down")
+MenuRowOn/base_type = &"MenuRow"
+MenuRowOn/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_focus_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_hover_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_hover_pressed_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/colors/font_pressed_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
+MenuRowOn/styles/hover = SubResource("StyleBoxFlat_menu_numbered_on")
+MenuRowOn/styles/hover_pressed = SubResource("StyleBoxFlat_menu_numbered_on")
+MenuRowOn/styles/normal = SubResource("StyleBoxFlat_menu_numbered_on")
+MenuRowOn/styles/pressed = SubResource("StyleBoxFlat_menu_numbered_on")
 MenuPrimary/base_type = &"CapsButton"
 MenuPrimary/colors/font_color = Color(0.01960784, 0.03529412, 0.04705882, 1)
 MenuPrimary/colors/font_focus_color = Color(0.01960784, 0.03529412, 0.04705882, 1)

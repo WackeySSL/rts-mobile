@@ -1,6 +1,6 @@
 extends GdUnitTestSuite
 ## The icon and flag art of plan row P92 (Phase 3), as STYLE.md ("Icons and glyphs", "Rally flags")
-## describes it: the three tab icons, the eleven item icons and the forty-one glyphs, 128 px
+## describes it: the three tab icons, the eleven item icons and the forty-three glyphs, 128 px
 ## canvases at import scale 1.0, tab and glyph files in greys only, item icons in palette colours,
 ## nothing on the outer pixel, and icons that read apart at 32 px in greyscale over the HUD
 ## backdrop; the twelve glyphs of the map on a dark seat that keeps them apart from grass, sand and
@@ -67,6 +67,8 @@ const HUD_GLYPHS: Array[String] = [
 	"glyph_home",
 	"glyph_mine",
 	"glyph_hold",
+	"glyph_map",
+	"glyph_time",
 ]
 ## A glyph for each `Placement.Reason` but OK, by the reason's name in lower case, and the two
 ## glyphs of the map that are no reason.
@@ -173,7 +175,7 @@ func test_the_icon_folder_holds_exactly_the_files_the_style_guide_lists() -> voi
 		found.append(path.get_file().get_basename())
 	expected.sort()
 	assert_array(found).is_equal(expected)
-	assert_int(found.size()).is_equal(62)
+	assert_int(found.size()).is_equal(64)
 
 
 func test_every_icon_is_a_128_px_canvas_imported_at_scale_one_and_every_flag_layer_at_half(
@@ -232,7 +234,7 @@ func test_every_new_svg_names_its_shape_in_one_line_and_item_icons_and_flags_use
 			if not PALETTE.has(found.get_string().to_upper()):
 				problems.append("%s uses %s" % [path, found.get_string()])
 	assert_array(problems).is_empty()
-	assert_int(paths.size()).is_equal(64)
+	assert_int(paths.size()).is_equal(66)
 
 
 ## The outer 2 px of the 128 px canvas (1 px of a 64 px raster) hold no ink, so an icon never

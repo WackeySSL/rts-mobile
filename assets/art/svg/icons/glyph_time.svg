@@ -1,0 +1,13 @@
+<!-- Time glyph: white and grey only, tinted at run time (the speed trophy of the Rank screen). -->
+<!-- Shape: an upright hourglass, a flat cap bar at the top and the foot, two glass cones meeting at a narrow neck, grey sand heaped in the lower cone. -->
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <!-- glass -->
+  <polygon points="30,18 98,18 98,28 70,62 70,66 98,100 98,110 30,110 30,100 58,66 58,62 30,28" fill="#FFFFFF" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- sand in the lower cone, and a thread through the neck -->
+  <polygon points="40,102 88,102 70,76 58,76" fill="#BFBFBF"/>
+  <rect x="62" y="62" width="4" height="14" fill="#BFBFBF"/>
+  <polygon points="30,18 98,18 98,28 70,62 70,66 98,100 98,110 30,110 30,100 58,66 58,62 30,28" fill="none" stroke="#4D4D4D" stroke-width="4" stroke-linejoin="round"/>
+  <!-- cap bars -->
+  <rect x="20" y="10" width="88" height="14" rx="4" fill="#4D4D4D"/>
+  <rect x="20" y="104" width="88" height="14" rx="4" fill="#4D4D4D"/>
+</svg>

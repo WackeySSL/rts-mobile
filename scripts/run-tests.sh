@@ -11,6 +11,11 @@
 #        that scripts/ci/shard-tests.py assigns by a stable rule; every file is in exactly one shard.
 # Env:   GODOT=<binary> (default: godot)
 #        RUN_TESTS_SKIP_IMPORT=1 skips the import step when the caller just ran it.
+#        RUN_TESTS_VERBOSE_EXIT=1 (set by the CI test shards only) runs Godot with --verbose, so that its exit
+#        check names what it finds: "Resource still in use: <path> (<Type>)", "Leaked instance: ...", "Orphan ...".
+#        The verbose-only noise (every "Loading resource:" / "Completed load for:" line, the "Orphan StringName:"
+#        list) is dropped from the console and the log; the unfiltered output stays in reports/gdunit-verbose.log.
+#        The lines named above are always kept, and nothing is hidden from verify.sh's error scan. Unset: as before.
 # Exit:  0 only if at least one test ran and none failed, errored or leaked orphans.
 #        1 no tests ran or results.xml is missing
 #        3 Godot, the gdUnit4 addon or the native library is missing (this script does not build)
@@ -118,11 +123,31 @@ while [ "$i" -lt "${#ARGS[@]}" ]; do
   fi
 done
 
+# Godot's --verbose is for the CI shards (RUN_TESTS_VERBOSE_EXIT=1); the filter keeps the output readable.
+# It applies to this run only: the variable is dropped from the environment Godot inherits, so a test
+# that starts run-tests.sh itself (tests/project/test_run_tests_order.gd) sees the plain command line.
+VERBOSE_EXIT="${RUN_TESTS_VERBOSE_EXIT:-0}"
+unset RUN_TESTS_VERBOSE_EXIT
+VERBOSE_RAW="reports/gdunit-verbose.log"
+GODOT_FLAGS=()
+FILTER=(cat)
+if [ "$VERBOSE_EXIT" = "1" ]; then
+  GODOT_FLAGS=(--verbose)
+  # Order matters: the StringName list goes first, then the lines to keep, then the verbose-only noise.
+  FILTER=(sed -E
+    -e '/^Orphan StringName: /d'
+    -e '/still in use|Leaked instance|ObjectDB instances were leaked|Orphan/b'
+    -e '/^(Loading resource: |Completed load for: )/d')
+  : >"$VERBOSE_RAW"
+fi
+
 set +e
-"$GODOT" --headless --path . \
+"$GODOT" --headless ${GODOT_FLAGS[@]+"${GODOT_FLAGS[@]}"} --path . \
   -s res://addons/gdUnit4/bin/GdUnitCmdTool.gd \
   --ignoreHeadlessMode -c -rd "$REPORT_DIR" -rc 1 ${GD_ARGS[@]+"${GD_ARGS[@]}"} 2>&1 |
   sed -e $'s/\x1b\\[2J//g' -e $'s/\x1b\\[H//g' | # drop gdUnit4's clear-screen codes
+  { if [ "$VERBOSE_EXIT" = "1" ]; then tee "$VERBOSE_RAW"; else cat; fi; } |
+  "${FILTER[@]}" |
   tee "$CONSOLE"
 status=${PIPESTATUS[0]}
 set -e

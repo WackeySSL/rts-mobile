@@ -37,6 +37,7 @@ jobs:
       contents: write # push to gh-pages
       pull-requests: write # read PR state, update the sticky comment
       pages: write # request a Pages build so the removal goes live
+      actions: read # see whether a Pages build is running before requesting one
     steps:
       # Only trusted code from the default branch runs here; no PR code is checked out.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

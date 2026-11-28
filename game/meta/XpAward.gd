@@ -7,3 +7,5 @@ extends RefCounted
 var id: StringName = &""
 var base_xp: int = 0
 var bonus_applied: bool = false
+## The trophies this award earned, in catalog order (ADR 0054 section 6). Empty for none.
+var trophies: Array[StringName] = []
