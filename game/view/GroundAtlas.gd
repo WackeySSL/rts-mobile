@@ -148,6 +148,8 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 			for mask: StringName in kit.masks.get(kind, PackedStringArray()):
 				var key: StringName = TerrainKitDef.key(id, kind, mask)
 				var image: Image = _kit_image(kit.path_of(id, kind, mask))
+				if image != null and kind == TerrainKit.BASE:
+					_solidify(image)
 				if image != null and kit.pieces.has(key):
 					images[key] = image
 		var whole: bool = kit.variants > 0
@@ -163,6 +165,48 @@ func _build_kit(kit: TerrainKitDef, ids: Array[StringName]) -> void:
 	var cell: Vector2i = RuntimeAtlas.cell_size(KIT_TILE_PX)
 	_kit_page = RuntimeAtlas.build_images(images, KIT_PAGE_WIDTH_PX)
 	_fill_tile_set(kit_tile_set, _kit_page, KIT_TILE_PX, images.keys(), cell, _kit_tiles)
+
+
+## Makes a base piece's anti-aliased rim opaque and grows the diamond one texel (the colour of the
+## rim texel inside it). Two base pieces that meet each cover the seam fully, so no hairline and no
+## dot at the four-way corners lets the clear colour through (the dark dashes of P656d1's shots).
+static func _solidify(image: Image) -> void:
+	var width: int = image.get_width()
+	var height: int = image.get_height()
+	var edits: Dictionary[Vector2i, Color] = {}
+	for line: int in height + width:
+		var along_x: bool = line < height
+		var count: int = width if along_x else height
+		var span: Array[int] = [0, count - 1]
+		for end: int in 2:
+			var step: int = 1 - 2 * end
+			var at: int = span[end]
+			while at >= 0 and at < count:
+				var cell: Vector2i = Vector2i(at, line) if along_x else Vector2i(line - height, at)
+				if image.get_pixelv(cell).a > 0.0:
+					break
+				at += step
+			if at < 0 or at >= count:
+				continue
+			for depth: int in 3:  # The rim texels, then the one beyond the edge.
+				var inner: int = at + step * depth
+				var cell: Vector2i = (
+					Vector2i(inner, line) if along_x else Vector2i(line - height, inner)
+				)
+				if inner < 0 or inner >= count:
+					break
+				var color: Color = image.get_pixelv(cell)
+				if color.a > 0.0 and color.a < 1.0:
+					edits[cell] = Color(color, 1.0)
+			var outer: int = at - step
+			if outer >= 0 and outer < count:
+				var out_cell: Vector2i = (
+					Vector2i(outer, line) if along_x else Vector2i(line - height, outer)
+				)
+				var edge: Vector2i = Vector2i(at, line) if along_x else Vector2i(line - height, at)
+				edits[out_cell] = Color(image.get_pixelv(edge), 1.0)
+	for cell: Vector2i in edits:
+		image.set_pixelv(cell, edits[cell])
 
 
 ## A piece's image cropped to its diamond at the foot, null when it is missing or not 128 wide.

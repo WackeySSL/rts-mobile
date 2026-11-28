@@ -154,6 +154,48 @@ func test_a_piece_taller_than_its_diamond_keeps_the_diamond_at_its_foot() -> voi
 	assert_bool(on_page.get_data() == cut.get_data()).is_true()
 
 
+func test_neighbouring_base_pieces_cover_their_seams_and_four_way_corners() -> void:
+	# The four cells around a corner composited on the CPU as the layer draws them (source over): every
+	# texel inside their union, away from its outer boundary, is fully opaque. A rim of partial alpha
+	# would let the clear colour through as a dark hairline, and as a dot where four pieces meet.
+	var art: GroundAtlas = _ground.atlas()
+	var places: Array[Vector2i] = [
+		Vector2i(64, 0), Vector2i(128, 32), Vector2i(0, 32), Vector2i(64, 64)
+	]
+	for id: String in ["grass", "sand", "scrub", "rock", "water", "ore"]:
+		for variant: int in 4:
+			var key: StringName = StringName("%s/base/%d" % [id, variant])
+			var piece: Image = art.kit_image().get_region(art.kit_region(key))
+			var canvas: Image = Image.create(256, 128, false, Image.FORMAT_RGBA8)
+			for place: Vector2i in places:
+				canvas.blend_rect(piece, Rect2i(Vector2i.ZERO, TILE), place)
+			var gaps: int = 0
+			for y: int in range(1, 127):
+				for x: int in range(1, 255):
+					if _in_union(places, x, y) and canvas.get_pixel(x, y).a < 0.999:
+						gaps += 1
+			(
+				assert_int(gaps)
+				. override_failure_message("%s: %d texels not opaque" % [key, gaps])
+				. is_equal(0)
+			)
+
+
+## Whether texel (`x`, `y`) and its four neighbours lie in a diamond of a piece placed at `places`.
+func _in_union(places: Array[Vector2i], x: int, y: int) -> bool:
+	for step: Vector2i in [
+		Vector2i(0, 0), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)
+	]:
+		var inside: bool = false
+		for place: Vector2i in places:
+			var dx: float = absf(x + step.x + 0.5 - place.x - 64.0) / 64.0
+			var dy: float = absf(y + step.y + 0.5 - place.y - 32.0) / 32.0
+			inside = inside or dx + dy <= 1.0
+		if not inside:
+			return false
+	return true
+
+
 func test_a_terrain_the_kit_lacks_keeps_its_svg_diamonds_and_the_map_stays_covered() -> void:
 	var kit: TerrainKitDef = (load(KIT) as TerrainKitDef).duplicate()
 	kit.pieces = kit.pieces.duplicate()
