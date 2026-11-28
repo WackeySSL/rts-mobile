@@ -20,7 +20,7 @@ const TABLE: Dictionary[String, int] = {
 	"GroundLayer": 0,
 	"DecalLayer": 1,
 	"FogLayer": 4,
-	"GhostMemoryLayer": 5,
+	"GhostMemoryLayer": 12,  # Over the walls of the sorted world (ADR 0053 A9).
 	"WorldSort": 10,
 	"AirLayer": 20,
 	"HealthBarLayer": 30,

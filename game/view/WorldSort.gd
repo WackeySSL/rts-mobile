@@ -64,6 +64,8 @@ var extra_sheets: Array[IsoSheetDef] = []
 ## what it was. `wall_shade` is the fog's explored alpha, which the dim copies are made with.
 var wall_loader: Callable = Callable()
 var wall_shade: int = 140
+## The silhouette look (`WallCover.LOOK_A`, `LOOK_B`): the shader's `look`, for the look gate.
+var silhouette_look: int = WallCover.LOOK_B
 var _sheets: Dictionary[StringName, IsoSheetDef] = {}  ## The baked art ids.
 var _silhouette: ShaderMaterial = null  ## The one material of every silhouette, made on demand.
 var _arts: Array[IsoPlayerArt] = []  ## Owner n is entry n - 1.
@@ -89,6 +91,13 @@ func silhouette_material() -> ShaderMaterial:
 		_silhouette.shader = load(SILHOUETTE_SHADER) as Shader
 		_silhouette.set_shader_parameter("half_w", float(IsoProjection.HALF_W))
 		_silhouette.set_shader_parameter("half_h", float(IsoProjection.HALF_H))
+		_silhouette.set_shader_parameter("look", silhouette_look)
+		_silhouette.set_shader_parameter("team_sat_min", WallCover.TEAM_SAT_MIN)
+		_silhouette.set_shader_parameter("body_colour", WallCover.BODY)
+		_silhouette.set_shader_parameter("silhouette_alpha", WallCover.ALPHA_A)
+		_silhouette.set_shader_parameter("veil_alpha", WallCover.ALPHA_B)
+		_silhouette.set_shader_parameter("hatch_alpha", WallCover.HATCH_ALPHA)
+		_silhouette.set_shader_parameter("hatch_period", WallCover.HATCH_PERIOD)
 	return _silhouette
 
 

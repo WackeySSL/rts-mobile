@@ -8,6 +8,15 @@ extends RefCounted
 ## (floor u + 1, floor v) if frac u > frac v else (floor u, floor v + 1), then
 ## (floor u + 1, floor v + 1). `raised` is a byte per cell, `cols` wide, as `WallLayer` holds it.
 
+const LOOK_A: int = 0
+const LOOK_B: int = 1
+const TEAM_SAT_MIN: float = 0.35
+const BODY: Color = Color(0.09, 0.10, 0.12)
+const ALPHA_A: float = 0.85
+const ALPHA_B: float = 0.55  ## Look B's veil over everything the wall covers.
+const HATCH_ALPHA: float = 0.25  ## And on every hatch line.
+const HATCH_PERIOD: float = 4.0  ## Screen diagonals between hatch lines.
+
 ## The cells whose rock can hide a unit that stands in cell (c, r), as offsets from the unit's cell:
 ## the three of its own sprite's lowest rows and the four a tall sprite reaches (A7).
 const NEAR: Array[Vector2i] = [
@@ -86,3 +95,17 @@ static func near_bytes(raised: PackedByteArray, cols: int) -> PackedByteArray:
 					near[row * cols + col] = 1
 					break
 	return near
+
+
+## The silhouette's colouring, the twin of `silhouette.gdshader`'s end: a team-colour texel
+## (saturation at least `TEAM_SAT_MIN`) keeps its hue, any other is `BODY`. Look A has one alpha;
+## look B a lower one, and on every `HATCH_PERIOD`-th screen diagonal (`frag` is FRAGCOORD, the
+## pixel's centre) a still lower one. `tex` is the atlas texel.
+static func silhouette_colour(tex: Color, look: int, frag: Vector2) -> Color:
+	var top: float = maxf(tex.r, maxf(tex.g, tex.b))
+	var sat: float = (top - minf(tex.r, minf(tex.g, tex.b))) / top if top > 0.0 else 0.0
+	var alpha: float = ALPHA_A
+	if look == LOOK_B:
+		alpha = HATCH_ALPHA if fposmod(frag.x + frag.y, HATCH_PERIOD) < 1.0 else ALPHA_B
+	var rgb: Color = tex if sat >= TEAM_SAT_MIN else BODY
+	return Color(rgb.r, rgb.g, rgb.b, tex.a * alpha)

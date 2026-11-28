@@ -143,3 +143,39 @@ func _raised() -> PackedByteArray:
 		for col: int in COLS:
 			raised[row * COLS + col] = 1 if MAP[row][col] == "#" else 0
 	return raised
+
+
+func test_look_b_keeps_the_team_hue_lowers_the_alpha_and_hatches_every_fourth_diagonal() -> void:
+	var team: Color = Color8(255, 148, 70)
+	var grey: Color = Color8(128, 128, 128)
+	var off_line: Vector2 = Vector2(10.5, 11.5)  # x + y = 22: not a hatch line.
+	var on_line: Vector2 = Vector2(10.5, 9.5)  # x + y = 20, a multiple of 4: a hatch line.
+	var a: Color = WallCover.silhouette_colour(team, WallCover.LOOK_A, off_line)
+	var b: Color = WallCover.silhouette_colour(team, WallCover.LOOK_B, off_line)
+	var hatched: Color = WallCover.silhouette_colour(team, WallCover.LOOK_B, on_line)
+	assert_float(b.h).is_equal_approx(team.h, 0.001)  # The hue of the team texel survives.
+	assert_float(b.s).is_equal_approx(team.s, 0.001)
+	assert_that(Vector3(b.r, b.g, b.b)).is_equal(Vector3(team.r, team.g, team.b))
+	assert_float(a.a).is_equal_approx(WallCover.ALPHA_A, 0.001)
+	assert_float(b.a).is_equal_approx(0.55, 0.001)
+	assert_float(b.a).is_less(a.a)
+	assert_float(hatched.a).is_equal_approx(0.25, 0.001)
+	# One line in four: the diagonals x + y = 20 .. 23 carry exactly one hatch line.
+	var lines: int = 0
+	for sum: int in range(20, 24):
+		var texel: Color = WallCover.silhouette_colour(team, WallCover.LOOK_B, Vector2(sum, 0.0))
+		lines += 1 if texel.a == WallCover.HATCH_ALPHA else 0
+	assert_int(lines).is_equal(1)
+	# Any other texel is the dark body colour at the same alphas; look A has no hatch.
+	var body: Color = WallCover.silhouette_colour(grey, WallCover.LOOK_B, off_line)
+	assert_that(Vector3(body.r, body.g, body.b)).is_equal(
+		Vector3(WallCover.BODY.r, WallCover.BODY.g, WallCover.BODY.b)
+	)
+	assert_float(body.a).is_equal_approx(0.55, 0.001)
+	assert_float(WallCover.silhouette_colour(team, WallCover.LOOK_A, on_line).a).is_equal_approx(
+		WallCover.ALPHA_A, 0.001
+	)
+	(
+		assert_float(WallCover.silhouette_colour(Color(1, 0, 0, 0.5), WallCover.LOOK_B, off_line).a)
+		. is_equal_approx(0.275, 0.001)
+	)

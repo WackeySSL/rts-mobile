@@ -5,7 +5,10 @@
 // that the ground segment from the texel's flat ground point (u, v) to (u + 1, v + 1) crosses is
 // raised and its centre y is larger than the unit's ground y. `WallCover` is the GDScript twin of
 // this test; change both together. Team colour texels keep their hue, every other texel is one flat
-// dark body colour, all at the silhouette alpha.
+// dark body colour. Two looks, chosen by `look`: 0 (A) draws all of it at one alpha; 1 (B) draws it
+// at the lower veil alpha with a screen-space diagonal hatch (every hatch_period-th diagonal of
+// FRAGCOORD) at the hatch alpha, so a covered unit reads as behind the wall, not parked on it.
+// `WallCover.silhouette_colour` is the twin of the colouring.
 shader_type canvas_item;
 
 uniform sampler2D wall_mask : filter_nearest, repeat_disable; // One byte per cell, 255 for a wall.
@@ -14,7 +17,11 @@ uniform float half_w = 32.0; // IsoProjection.HALF_W and HALF_H, set by WorldSor
 uniform float half_h = 16.0;
 uniform float team_sat_min : hint_range(0.0, 1.0) = 0.35;
 uniform vec4 body_colour : source_color = vec4(0.09, 0.10, 0.12, 1.0);
-uniform float silhouette_alpha : hint_range(0.0, 1.0) = 0.85;
+uniform int look : hint_range(0, 1) = 1; // 0 = A, 1 = B.
+uniform float silhouette_alpha : hint_range(0.0, 1.0) = 0.85; // Look A.
+uniform float veil_alpha : hint_range(0.0, 1.0) = 0.55; // Look B.
+uniform float hatch_alpha : hint_range(0.0, 1.0) = 0.25; // Look B, on the hatch lines.
+uniform float hatch_period : hint_range(2.0, 8.0) = 4.0;
 
 varying flat vec2 ground; // The unit's ground point, world px.
 varying vec2 world; // This texel's world px.
@@ -45,5 +52,9 @@ void fragment() {
 	vec4 tex = COLOR;
 	float top = max(tex.r, max(tex.g, tex.b));
 	float sat = top > 0.0 ? (top - min(tex.r, min(tex.g, tex.b))) / top : 0.0;
-	COLOR = vec4(sat >= team_sat_min ? tex.rgb : body_colour.rgb, tex.a * silhouette_alpha);
+	float alpha = silhouette_alpha;
+	if (look == 1) {
+		alpha = mod(FRAGCOORD.x + FRAGCOORD.y, hatch_period) < 1.0 ? hatch_alpha : veil_alpha;
+	}
+	COLOR = vec4(sat >= team_sat_min ? tex.rgb : body_colour.rgb, tex.a * alpha);
 }

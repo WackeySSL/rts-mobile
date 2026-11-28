@@ -191,8 +191,12 @@ func test_the_shader_compiles_and_has_the_uniforms_the_view_sets() -> void:
 	var names: Array[String] = []
 	for uniform: Dictionary in shader.get_shader_uniform_list():
 		names.append(String(uniform["name"]))
-	for want: String in ["wall_mask", "grid_size", "half_w", "half_h", "body_colour"]:
+	for want: String in [
+		"wall_mask", "grid_size", "half_w", "half_h", "body_colour", "look", "veil_alpha"
+	]:
 		assert_array(names).contains([want])
 	var material: ShaderMaterial = auto_free(WorldSort.new()).silhouette_material()
+	assert_int(material.get_shader_parameter("look")).is_equal(WallCover.LOOK_B)  # B by default.
+	assert_float(material.get_shader_parameter("veil_alpha")).is_equal(WallCover.ALPHA_B)
 	assert_float(material.get_shader_parameter("half_w")).is_equal(float(IsoProjection.HALF_W))
 	assert_float(material.get_shader_parameter("half_h")).is_equal(float(IsoProjection.HALF_H))

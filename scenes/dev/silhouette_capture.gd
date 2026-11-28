@@ -5,7 +5,8 @@ extends Node
 ## through it) and an own and an enemy tank in front of it. Not part of the game.
 ##   xvfb-run -a -s "-screen 0 1400x1400x24" godot --rendering-driver opengl3 --path . \
 ##     res://scenes/dev/silhouette_capture.tscn -- --out=<dir>
-## Writes `sil-<landscape|portrait>-<zoom>x.png` for zoom 0.75, 1.0 and 2.0.
+## Writes `sil-<landscape|portrait>-<zoom>x-<A|B>.png` (`--look=a` for A, B by default), at zoom
+## 0.75, 1.0 and 2.0.
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SCENARIO: String = "res://data/scenarios/skirmish_curlew_crags.tres"
@@ -18,6 +19,7 @@ const ZOOMS: Array[float] = [0.75, 1.0, 2.0]
 const SETTLE_FRAMES: int = 24
 
 var _out: String = ""
+var _look: int = WallCover.LOOK_B
 var _main: Node
 var _frames: int = 0
 var _step: int = 0
@@ -28,6 +30,8 @@ func _ready() -> void:
 	for arg: String in OS.get_cmdline_user_args():
 		if arg.begins_with(OUT_ARG):
 			_out = arg.trim_prefix(OUT_ARG)
+		elif arg == "--look=a":
+			_look = WallCover.LOOK_A
 	if _out.is_empty():
 		print("silhouette_capture: pass --out=<dir> after -- to save the shots")
 		set_process(false)
@@ -39,6 +43,7 @@ func _ready() -> void:
 	walls.fog = null  # Every wall lit: a look at the walls and the silhouettes, not at the fog.
 	walls.walls_enabled = true  # The one place the flag is forced on here.
 	(_main.get_node("UnitLayer") as UnitLayer).reveal_enemies = true
+	(_main.get_node("WorldSort") as WorldSort).silhouette_look = _look
 	add_child(_main)
 	(_main.get_node("FogLayer") as FogLayer).visible = false
 	runner.paused = true
@@ -67,7 +72,9 @@ func _process(_delta: float) -> void:
 	camera.centre_on(IsoProjection.cell_centre_px(_wall.x, _wall.y) + Vector2(0.0, -20.0))
 	if _frames < SETTLE_FRAMES:
 		return
-	var path: String = _out.path_join("sil-%s-%sx.png" % [size_name, str(zoom)])
+	var path: String = _out.path_join(
+		"sil-%s-%sx-%s.png" % [size_name, str(zoom), "A" if _look == WallCover.LOOK_A else "B"]
+	)
 	get_viewport().get_texture().get_image().save_png(path)
 	print("silhouette_capture: %s (wall %s)" % [path, _wall])
 	_step += 1

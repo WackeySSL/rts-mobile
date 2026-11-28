@@ -3,10 +3,10 @@ extends Node
 ## rock wall on the controls_test map, for the look gate. A 3 x 3 block of rock is made on the
 ## snapshot, an own and an enemy tank stand behind it (their silhouettes show through it, the enemy
 ## because the fog is off) and one of each in front. `--walls=off` is the same frame with the flag
-## off. Not part of the game.
+## off. `--look=a` is the first silhouette look (A), the default is B. Not part of the game.
 ##   xvfb-run -a godot --rendering-driver opengl3 --path . res://scenes/dev/silhouette_tanks.tscn \
 ##     -- --out=<dir> [--walls=off]
-## Writes `tanks-walls-on.png` or `tanks-walls-off.png`.
+## Writes `tanks-walls-A.png`, `tanks-walls-B.png` or `tanks-walls-off.png`.
 
 const MAIN_SCENE: String = "res://scenes/main.tscn"
 const SCENARIO: String = "res://data/scenarios/controls_test.tres"
@@ -23,6 +23,7 @@ const SETTLE_FRAMES: int = 30
 
 var _out: String = ""
 var _on: bool = true
+var _look: int = WallCover.LOOK_B
 var _main: Node
 var _frames: int = 0
 
@@ -33,6 +34,8 @@ func _ready() -> void:
 			_out = arg.trim_prefix("--out=")
 		elif arg == "--walls=off":
 			_on = false
+		elif arg == "--look=a":
+			_look = WallCover.LOOK_A
 	if _out.is_empty():
 		print("silhouette_tanks: pass --out=<dir> after -- to save the shot")
 		set_process(false)
@@ -43,6 +46,7 @@ func _ready() -> void:
 	walls.walls_enabled = _on
 	(_main.get_node("MatchRunner") as MatchRunner).scenario = load(SCENARIO)
 	(_main.get_node("UnitLayer") as UnitLayer).reveal_enemies = true
+	(_main.get_node("WorldSort") as WorldSort).silhouette_look = _look
 	add_child(_main)
 	(_main.get_node("FogLayer") as FogLayer).visible = false
 	(_main.get_node("MatchRunner") as MatchRunner).paused = true
@@ -59,7 +63,9 @@ func _process(_delta: float) -> void:
 	if _frames < SETTLE_FRAMES:
 		return
 	var image: Image = get_viewport().get_texture().get_image()
-	var path: String = _out.path_join("tanks-walls-%s.png" % ("on" if _on else "off"))
+	var path: String = _out.path_join(
+		"tanks-walls-%s.png" % (("A" if _look == WallCover.LOOK_A else "B") if _on else "off")
+	)
 	image.save_png(path)
 	print("silhouette_tanks: %s" % path)
 	get_tree().quit()
