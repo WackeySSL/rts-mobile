@@ -51,7 +51,10 @@ func _process(_delta: float) -> void:
 	if _wall.x < 0:
 		if walls.row_count() > 0:
 			_wall = _find_wall(runner.snapshot, walls)
-			_place(runner.snapshot)
+			if _wall.x >= 0:
+				_place(runner.snapshot)
+			else:
+				get_tree().quit(1)
 		return
 	var names: Array = SIZES.keys()
 	var size_name: String = names[_step / ZOOMS.size()]
@@ -73,9 +76,8 @@ func _process(_delta: float) -> void:
 		get_tree().quit()
 
 
-## A wall cell with open ground in its three front neighbours and a free cell behind, near the
-## middle of the map.
-@warning_ignore("integer_division")
+## A wall cell near the middle of the map with open ground behind it, at (-1, 0) and (0, -1), and at
+## least two open cells in front of it (`_front`).
 func _find_wall(snap: MatchSnapshot, walls: WallLayer) -> Vector2i:
 	var cols: int = snap.map_cols
 	var best: Vector2i = Vector2i(-1, -1)
@@ -91,26 +93,40 @@ func _find_wall(snap: MatchSnapshot, walls: WallLayer) -> Vector2i:
 			or not walls.is_wall(cell)
 		):
 			continue
-		var open: bool = true
-		for offset: Vector2i in [
-			Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(-1, 0), Vector2i(0, -1)
-		]:
-			open = open and not walls.is_wall(cell + offset.y * cols + offset.x)
+		var behind: bool = not walls.is_wall(cell - 1) and not walls.is_wall(cell - cols)
 		var gap: int = absi(col - cols / 2) + absi(row - snap.map_rows / 2)
-		if open and gap < best_gap:
+		if behind and gap < best_gap and _front(Vector2i(col, row), walls, cols).size() >= 2:
 			best_gap = gap
 			best = Vector2i(col, row)
+	print("silhouette_capture: wall %s" % best)
 	return best
+
+
+## Open cells in front of the wall (`at`), nearest first.
+func _front(at: Vector2i, walls: WallLayer, cols: int) -> Array[Vector2i]:
+	var found: Array[Vector2i] = []
+	for offset: Vector2i in [
+		Vector2i(0, 1),
+		Vector2i(1, 0),
+		Vector2i(1, 1),
+		Vector2i(2, 2),
+		Vector2i(0, 2),
+		Vector2i(2, 0)
+	]:
+		var cell: Vector2i = at + offset
+		if not walls.is_wall(cell.y * cols + cell.x):
+			found.append(cell)
+	return found
 
 
 ## Own tank 1 and enemy tank 1 behind the wall, one more of each in front, on the ground.
 func _place(snap: MatchSnapshot) -> void:
 	var player: int = FogLayer.local_player_of(_main.get_node("MatchRunner") as MatchRunner)
+	var front: Array[Vector2i] = _front(
+		_wall, _main.get_node("WallLayer") as WallLayer, snap.map_cols
+	)
 	var spots: Array[Vector2i] = [
-		Vector2i(_wall.x - 1, _wall.y),
-		Vector2i(_wall.x, _wall.y - 1),
-		Vector2i(_wall.x, _wall.y + 1),
-		Vector2i(_wall.x + 1, _wall.y),
+		Vector2i(_wall.x - 1, _wall.y), Vector2i(_wall.x, _wall.y - 1), front[0], front[1]
 	]
 	var own: Array[int] = []
 	var enemy: Array[int] = []
