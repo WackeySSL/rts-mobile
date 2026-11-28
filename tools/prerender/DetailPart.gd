@@ -6,7 +6,8 @@ extends Resource
 ##   box      `a` centre, `size`
 ##   bar      `a` to `b`, `size.y` across, `size.z` tall
 ##   cylinder `a` to `b`, `radius`, `radius2` (a cone when 0 or more), `segs`, `bevel` (chamfer)
-##   dome     `a` centre, `b` the way it faces, `radius`, `segs`
+##   dome     `a` centre, `b` the way it faces, `radius`, `segs`, `radius2` its height over its
+##            radius when above 0 (a stone; else the shallow default)
 ##   torus    `a` centre, `b` the axis, `radius` (ring), `radius2` (tube), `segs`, `sides`
 ##   solid    `planes` (nx, ny, nz, d) outward, `bevel`
 ##   cliff    a wall face: `a` to `b` the foot, `size.z` tall, `radius` the groove depth,
@@ -53,7 +54,7 @@ func top() -> float:
 		&"cylinder":
 			above = maxf(b.z - a.z, 0.0)
 		&"dome":
-			above = radius * BakeShapes.DOME_RISE
+			above = radius * (radius2 if radius2 > 0.0 else BakeShapes.DOME_RISE)
 		&"torus":
 			above = radius2
 		&"cliff":
@@ -74,7 +75,15 @@ func emit(m: BakeMesh, flip: bool) -> void:
 		&"cylinder":
 			BakeShapes.cylinder(m, material, a * s, b * s, radius, segs, bevel, radius2)
 		&"dome":
-			BakeShapes.dome(m, material, a * s, b * s, radius, segs)
+			BakeShapes.dome(
+				m,
+				material,
+				a * s,
+				b * s,
+				radius,
+				segs,
+				radius2 if radius2 > 0.0 else BakeShapes.DOME_RISE
+			)
 		&"torus":
 			BakeShapes.torus(m, material, a * s, b * s, radius, radius2, segs, sides)
 		&"quad":

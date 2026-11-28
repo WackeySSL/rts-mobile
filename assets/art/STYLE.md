@@ -3317,7 +3317,12 @@ ground layer draws it at scale 0.5 (ADR 0053 sections 3 and 7).
   is a flat sheet in the terrain's colour with a soft grain (three scales, whole periods per tile,
   amplitude about 5 % of the value): no stones, bushes, flecks or rings. Only one of the four grass
   variants (`base_2`) and one of the four rock variants (`base_3`) carry one boulder: three
-  overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide) on a soft contact patch. **P656d's cell hash
+  overlapping domes (rounded, lumpy, 0.26 to 0.33 tile wide, 0.8 as high as wide) of a light grey-beige
+  stone (value 0.8, lit on the top and left, its own shade on the right) with a soft three-step cast
+  shadow on the ground beside it, away from the light and inside the tile (Michael, 2026-11-28: "gør den
+  lysere med skygge"). The first boulder was a dark flat oval: its albedo (0.38) against the ground (0.59)
+  and the dark contact patch under it, with domes too shallow to show form. The baked contact shadow was
+  not the cause: it lies under the opaque ground. **P656d's cell hash
   should give the boulder variant one cell in eight** (the other three variants share the rest),
   as the proof sheets do; no other base piece has a stone, fleck or ring. Scrub is the grass tone a step
   darker with fourteen soft low tufts (under 2 texels tall). Rock is P653's light beige-grey, its walls the part above. Water is a calm blue sheet; a shore is a wet bank on the water cell's open side with a thin
@@ -3936,3 +3941,4 @@ Renaming a unit or a unit type is a data change, not a reskin.
 | 2026-11-27 | v1.61 (P656c, art-director, ADR 0053 sections 1, 5, 7 and 8; no rule change, nothing draws the kit yet): the Terrain kit section: 84 pre-rendered ground pieces (24 base, 24 blend, 12 rock lip, 12 water shore, 12 road) baked from seven `assets/art/models/terrain/*_detail.tres` models by `bash scripts/prerender.sh --kit`, `assets/art/terrain/kit.tres` (`TerrainKitDef`: terrain, kind and mask to file, the blend priority), their manifest lines and CREDITS row; the ground numbers of ADR 0053 section 8 measured, per terrain, against P653's terrain, and the look reworked after Michael's no to the first kit (calm grain, no stones, P653 colours, tall cliff columns); the twelve SVG diamonds and every other ground rule stay as they were |
 | 2026-11-28 | v1.62 (P643b, art-director, no rule change): the Facet Linecar, Seeder, Glint and Sunfall onto the gunmetal family of P658 (`graphite` to `gunmetal`, `titanium` to `gunsteel`, material words only; white, glass, mint and the team panels stay), so all 11 Facet detail-2 models wear it; the four ids' frames and cards are regenerated with hex strings only, no geometry, palette or atlas size changes (page pins unchanged: 0 on every page, the aircraft too); the mirror matrix is identical (maximum 0.76); the four silhouette rows and the Linecar, Seeder and aircraft paragraphs say gunmetal and gunsteel; the Seeder's hull canvas in the "Canvas" bullet and the art table is 152 x 118 (P643 left 152 x 106 there) |
 | 2026-11-28 | v1.63 (P656d4, art-director, ADR 0053 amendment A1 to A4, no rule change; nothing draws the walls yet): the Terrain kit's wall part, flat-topped (no kerb, Michael 2026-11-28): the 12 rock lips are gone, 11 wall pieces (`wall_top` 0 to 3, `wall_face` se, sw, s, `wall_rim` ne, nw, n, inner_n) on the 128 x 136 canvas with origin (64, 104), a raised cell 64 texels, baked by the P653 cliff method; the two water shore pieces that rose 1 and 2 texels are cut to their diamond |
+| 2026-11-28 | v1.64 (P656d4b, art-director, no rule change): the boulders of grass `base_2` and rock `base_3`, `wall_top_3` are raised stones (lighter, taller, a soft cast shadow beside them) instead of dark ovals |

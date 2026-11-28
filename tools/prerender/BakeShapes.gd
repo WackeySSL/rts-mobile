@@ -91,18 +91,29 @@ static func cylinder(
 			_cap(m, mat, rings[rings.size() - 1], [d0, d1], axis)
 
 
-## A shallow dome on the disc of `radius` at `centre`, facing `normal`.
+## A shallow dome on the disc of `radius` at `centre`, facing `normal`. `rise` is its height over
+## its radius (`DOME_RISE` by default): a taller one, a stone, is a sphere cap whose rim normal
+## follows the sphere.
 static func dome(
-	m: BakeMesh, mat: StringName, centre: Vector3, normal: Vector3, radius: float, segs: int = 6
+	m: BakeMesh,
+	mat: StringName,
+	centre: Vector3,
+	normal: Vector3,
+	radius: float,
+	segs: int = 6,
+	rise: float = DOME_RISE
 ) -> void:
 	var n: Vector3 = normal.normalized()
 	var frame: Array[Vector3] = _frame(n)
-	var top: Vector3 = centre + n * radius * DOME_RISE
+	var top: Vector3 = centre + n * radius * rise
+	var lean: Vector2 = Vector2(0.8, 0.6)  # the rim normal's share along the disc and the axis
+	if rise != DOME_RISE:
+		lean = Vector2(2.0 * rise, 1.0 - rise * rise) / (1.0 + rise * rise)
 	for s: int in segs:
 		var d0: Vector3 = _around(frame, s, segs)
 		var d1: Vector3 = _around(frame, s + 1, segs)
-		var n0: Vector3 = (d0 * 0.8 + n * 0.6).normalized()
-		var n1: Vector3 = (d1 * 0.8 + n * 0.6).normalized()
+		var n0: Vector3 = (d0 * lean.x + n * lean.y).normalized()
+		var n1: Vector3 = (d1 * lean.x + n * lean.y).normalized()
 		m.tri(
 			mat,
 			[centre + d0 * radius, centre + d1 * radius, top],

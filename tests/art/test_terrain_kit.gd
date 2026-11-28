@@ -301,3 +301,80 @@ func test_no_blend_or_shore_has_a_shadow_texel_at_the_diamond_edge() -> void:
 			. override_failure_message("%s: %d shadow texels at the edge" % [item[3], bad])
 			. is_zero()
 		)
+
+
+## A boulder is a raised stone, not a crater (Michael, 2026-11-28): the texels that differ from the
+## boulder-free sibling (the stone and its cast shadow) are lighter on the whole, the lit side is
+## well above the ground, and the darkest texels lie away from the light (the sun is up and to the
+## left, +gx is down and to the right on screen), beside the stone and not in a ring around it.
+func test_a_boulder_is_a_lit_stone_with_its_shadow_on_the_side_away_from_the_light() -> void:
+	var pairs: Array[Array] = [
+		[&"rock", &"wall_top", &"3", &"0", 40],
+		[&"rock", &"base", &"3", &"0", 32],
+		[&"grass", &"base", &"2", &"0", 32],
+	]
+	var kit: TerrainKitDef = _kit()
+	for pair: Array in pairs:
+		var image: Image = _image(kit.path_of(pair[0], pair[1], pair[2]))
+		var sibling: Image = _image(kit.path_of(pair[0], pair[1], pair[3]))
+		var name: String = "%s/%s/%s" % [pair[0], pair[1], pair[2]]
+		var changed: Array[Vector2i] = []
+		var lit: Array[Vector2i] = []
+		var sum_stone: float = 0.0
+		var sum_ground: float = 0.0
+		for y: int in image.get_height():
+			for x: int in image.get_width():
+				var c: Color = image.get_pixel(x, y)
+				var g: Color = sibling.get_pixel(x, y)
+				if c.a > 0.9 and absf(c.v - g.v) + absf(c.s - g.s) > 0.012:
+					changed.append(Vector2i(x, y))
+					sum_stone += c.v
+					sum_ground += g.v
+					if c.v - g.v > 0.05:
+						lit.append(Vector2i(x, y))
+					var rim: float = (
+						(1.0 - absf(x + 0.5 - 64.0) / 64.0 - absf(y + 0.5 - pair[4]) / 32.0) * 28.6
+					)
+					(
+						assert_float(rim)
+						. override_failure_message(
+							(
+								"%s: a stone or shadow texel at (%d, %d) reaches the diamond's edge"
+								% [name, x, y]
+							)
+						)
+						. is_greater(2.0)
+					)
+		assert_int(lit.size()).override_failure_message(name + ": no lit side").is_greater(60)
+		(
+			assert_float(sum_stone / changed.size() - sum_ground / changed.size())
+			. override_failure_message(
+				name + ": the stone is not lighter than the ground it sits on"
+			)
+			. is_greater(0.05)
+		)
+		# The darkest tenth of the changed texels against the centre of the lit side.
+		var values: Array[float] = []
+		for p: Vector2i in changed:
+			values.append(image.get_pixel(p.x, p.y).v)
+		values.sort()
+		var cut: float = values[changed.size() / 10]
+		var centre: Vector2 = Vector2.ZERO
+		for p: Vector2i in lit:
+			centre += Vector2(p)
+		centre /= lit.size()
+		var dark: Vector2 = Vector2.ZERO
+		var count: int = 0
+		for p: Vector2i in changed:
+			if image.get_pixel(p.x, p.y).v <= cut:
+				dark += Vector2(p)
+				count += 1
+		dark /= count
+		var away: float = (dark - centre).dot(Vector2(64.0, 32.0).normalized())
+		(
+			assert_float(away)
+			. override_failure_message(
+				name + ": the darkest texels are not on the side away from the light"
+			)
+			. is_greater(6.0)
+		)
