@@ -15,8 +15,9 @@ extends Node
 ## sprite of that cell (at most 3), a cell that is no wall costs one byte read, nothing runs per
 ## frame. The walls are rebuilt on a new match and when the set of rock cells changes.
 ## A look without wall pieces (the kit lacks any of them) draws no wall: rock stays flat.
-## `walls_enabled` is on in the main scene with P656d3's silhouettes, which show the units hidden
-## behind a wall (plan risk 18); `UnitLayer` and `PlayerController` read this layer.
+## `walls_enabled` is off in the main scene (rock stays flat on today's maps; P680 turns it on
+## per map) and on in the perf arena. With it on, P656d3's silhouettes show the units
+## hidden behind a wall (plan risk 18); `UnitLayer` and `PlayerController` read this layer.
 
 enum State { HIDDEN, DIM, LIT }
 

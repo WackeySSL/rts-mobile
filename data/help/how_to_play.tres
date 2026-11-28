@@ -452,7 +452,7 @@ entries = Array[ExtResource("3_ent")]([SubResource("e62"), SubResource("e63"), S
 script = ExtResource("3_ent")
 id = &"terrain-basics"
 title = "The ground"
-body = "The ground is grass, sand, scrub, rock, water or dark oil-stained earth. Past the edge of the map the screen is dark grey. Rock stands up as a wall and hides what is behind it: a unit behind a wall shows through it as a dark shape with its team colour, and a tap on that shape selects the unit."
+body = "The ground is grass, sand, scrub, rock, water or dark oil-stained earth. Past the edge of the map the screen is dark grey."
 
 [sub_resource type="Resource" id="e69"]
 script = ExtResource("3_ent")

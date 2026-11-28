@@ -157,13 +157,14 @@ z_as_relative = false
 script = ExtResource("11_markers")
 settings = ExtResource("6_settings")
 
-; The raised rock walls (ADR 0053 amendment, P656d2) with unit silhouettes (P656d3).
+; The raised rock walls (ADR 0053 amendment, P656d2) with unit silhouettes (P656d3). Off: rock stays
+; flat until a map opts in (P680, P691).
 [node name="WallLayer" type="Node" parent="." node_paths=PackedStringArray("runner", "world_sort", "fog")]
 script = ExtResource("96_walls")
 runner = NodePath("../MatchRunner")
 world_sort = NodePath("../WorldSort")
 fog = NodePath("../FogLayer")
-walls_enabled = true
+walls_enabled = false
 
 [node name="AirLayer" type="Node2D" parent="." node_paths=PackedStringArray("runner", "world_sort", "effects")]
 z_index = 20
