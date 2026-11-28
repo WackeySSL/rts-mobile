@@ -47,7 +47,9 @@ func test_a_piece_the_kit_lacks_has_no_path() -> void:
 
 
 func test_the_key_is_terrain_kind_mask() -> void:
-	assert_str(String(TerrainKitDef.key(&"rock", &"lip", &"outer_n"))).is_equal("rock/lip/outer_n")
+	assert_str(String(TerrainKitDef.key(&"rock", &"wall_face", &"se"))).is_equal(
+		"rock/wall_face/se"
+	)
 
 
 func test_the_committed_kit_loads_and_names_the_six_sim_terrains() -> void:

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bnq6x3rxrfck0"
-path="res://.godot/imported/rock_lip_side_ne.png-cc7231d4315a17b728c6ecdb036b08c1.ctex"
+uid="uid://bw1asypnpr0pg"
+path="res://.godot/imported/rock_wall_top_3.png-c654c788f6ace22f70aa3b7ddbae43aa.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/art/terrain/rock_lip_side_ne.png"
-dest_files=["res://.godot/imported/rock_lip_side_ne.png-cc7231d4315a17b728c6ecdb036b08c1.ctex"]
+source_file="res://assets/art/terrain/rock_wall_top_3.png"
+dest_files=["res://.godot/imported/rock_wall_top_3.png-c654c788f6ace22f70aa3b7ddbae43aa.ctex"]
 
 [params]
 

@@ -54,7 +54,7 @@ part = &"grass_nw_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p2"]
 script = ExtResource("2_part")
@@ -62,7 +62,7 @@ part = &"grass_nw_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p3"]
 script = ExtResource("2_part")
@@ -70,7 +70,7 @@ part = &"grass_nw_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p4"]
 script = ExtResource("2_part")
@@ -78,7 +78,7 @@ part = &"grass_nw_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p5"]
 script = ExtResource("2_part")
@@ -202,7 +202,7 @@ part = &"grass_ne_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p19"]
 script = ExtResource("2_part")
@@ -210,7 +210,7 @@ part = &"grass_ne_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p20"]
 script = ExtResource("2_part")
@@ -218,7 +218,7 @@ part = &"grass_ne_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p21"]
 script = ExtResource("2_part")
@@ -226,7 +226,7 @@ part = &"grass_ne_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p22"]
 script = ExtResource("2_part")
@@ -350,7 +350,7 @@ part = &"grass_nw_ne"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p36"]
 script = ExtResource("2_part")
@@ -358,7 +358,7 @@ part = &"grass_nw_ne"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p37"]
 script = ExtResource("2_part")
@@ -366,7 +366,7 @@ part = &"grass_nw_ne"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p38"]
 script = ExtResource("2_part")
@@ -374,7 +374,7 @@ part = &"grass_nw_ne"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p39"]
 script = ExtResource("2_part")
@@ -498,7 +498,7 @@ part = &"grass_ne_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p53"]
 script = ExtResource("2_part")
@@ -506,7 +506,7 @@ part = &"grass_ne_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p54"]
 script = ExtResource("2_part")
@@ -514,7 +514,7 @@ part = &"grass_ne_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p55"]
 script = ExtResource("2_part")
@@ -522,7 +522,7 @@ part = &"grass_ne_se"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p56"]
 script = ExtResource("2_part")
@@ -646,7 +646,7 @@ part = &"grass_se_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p70"]
 script = ExtResource("2_part")
@@ -654,7 +654,7 @@ part = &"grass_se_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p71"]
 script = ExtResource("2_part")
@@ -662,7 +662,7 @@ part = &"grass_se_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p72"]
 script = ExtResource("2_part")
@@ -670,7 +670,7 @@ part = &"grass_se_sw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p73"]
 script = ExtResource("2_part")
@@ -794,7 +794,7 @@ part = &"grass_sw_nw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p87"]
 script = ExtResource("2_part")
@@ -802,7 +802,7 @@ part = &"grass_sw_nw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p88"]
 script = ExtResource("2_part")
@@ -810,7 +810,7 @@ part = &"grass_sw_nw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p89"]
 script = ExtResource("2_part")
@@ -818,7 +818,7 @@ part = &"grass_sw_nw"
 shape = &"quad"
 material = &"ground"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p90"]
 script = ExtResource("2_part")
@@ -942,7 +942,7 @@ part = &"sand_nw_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p104"]
 script = ExtResource("2_part")
@@ -950,7 +950,7 @@ part = &"sand_nw_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p105"]
 script = ExtResource("2_part")
@@ -958,7 +958,7 @@ part = &"sand_nw_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p106"]
 script = ExtResource("2_part")
@@ -966,7 +966,7 @@ part = &"sand_nw_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p107"]
 script = ExtResource("2_part")
@@ -1090,7 +1090,7 @@ part = &"sand_ne_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p121"]
 script = ExtResource("2_part")
@@ -1098,7 +1098,7 @@ part = &"sand_ne_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p122"]
 script = ExtResource("2_part")
@@ -1106,7 +1106,7 @@ part = &"sand_ne_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p123"]
 script = ExtResource("2_part")
@@ -1114,7 +1114,7 @@ part = &"sand_ne_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p124"]
 script = ExtResource("2_part")
@@ -1238,7 +1238,7 @@ part = &"sand_nw_ne"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p138"]
 script = ExtResource("2_part")
@@ -1246,7 +1246,7 @@ part = &"sand_nw_ne"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p139"]
 script = ExtResource("2_part")
@@ -1254,7 +1254,7 @@ part = &"sand_nw_ne"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p140"]
 script = ExtResource("2_part")
@@ -1262,7 +1262,7 @@ part = &"sand_nw_ne"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p141"]
 script = ExtResource("2_part")
@@ -1386,7 +1386,7 @@ part = &"sand_ne_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p155"]
 script = ExtResource("2_part")
@@ -1394,7 +1394,7 @@ part = &"sand_ne_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p156"]
 script = ExtResource("2_part")
@@ -1402,7 +1402,7 @@ part = &"sand_ne_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p157"]
 script = ExtResource("2_part")
@@ -1410,7 +1410,7 @@ part = &"sand_ne_se"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p158"]
 script = ExtResource("2_part")
@@ -1534,7 +1534,7 @@ part = &"sand_se_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p172"]
 script = ExtResource("2_part")
@@ -1542,7 +1542,7 @@ part = &"sand_se_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p173"]
 script = ExtResource("2_part")
@@ -1550,7 +1550,7 @@ part = &"sand_se_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p174"]
 script = ExtResource("2_part")
@@ -1558,7 +1558,7 @@ part = &"sand_se_sw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p175"]
 script = ExtResource("2_part")
@@ -1682,7 +1682,7 @@ part = &"sand_sw_nw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(-0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p189"]
 script = ExtResource("2_part")
@@ -1690,7 +1690,7 @@ part = &"sand_sw_nw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, -0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p190"]
 script = ExtResource("2_part")
@@ -1698,7 +1698,7 @@ part = &"sand_sw_nw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0.51, 0, 0)
-size = Vector3(0.02, 0.96, 0)
+size = Vector3(0.02, 1.04, 0)
 
 [sub_resource type="Resource" id="p191"]
 script = ExtResource("2_part")
@@ -1706,7 +1706,7 @@ part = &"sand_sw_nw"
 shape = &"quad"
 material = &"ground_sand"
 a = Vector3(0, 0.51, 0)
-size = Vector3(0.96, 0.02, 0)
+size = Vector3(1.04, 0.02, 0)
 
 [sub_resource type="Resource" id="p192"]
 script = ExtResource("2_part")
