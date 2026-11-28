@@ -4,6 +4,12 @@ extends GdUnitTestSuite
 ## APK, a keystore value in the file leaks a secret. scripts/export-android.sh checks the APK in
 ## CI; this test catches the edit before that.
 
+## The pre-render bake inputs (ADR 0053 section 5): model data, the manifest and the bake tool.
+## Nothing loads them at runtime, and loading the terrain models during an export leaks at exit
+## (P656c).
+const BAKE_INPUTS: String = (
+	", assets/art/models/terrain/*" + ", assets/art/prerender/*" + ", tools/prerender/*"
+)
 const FileScan: GDScript = preload("res://tests/support/file_scan.gd")
 
 const SECTION: String = "preset.1"
@@ -73,7 +79,7 @@ func test_preset_identity() -> void:
 	# Test code, the test runner and the AdMob plugin never ship in this non-Gradle APK (ADR 0040 §1).
 	# Unlike the Web preset, never native/* (ADR 0013).
 	assert_str(config.get_value(SECTION, "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, addons/admob/*, assets/art/brand/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, assets/art/brand/*" + BAKE_INPUTS
 	)
 
 
@@ -83,7 +89,7 @@ func test_web_preset_excludes_tests_native_and_addons() -> void:
 	var config: ConfigFile = _config()
 	assert_str(config.get_value("preset.0", "name")).is_equal("Web")
 	assert_str(config.get_value("preset.0", "exclude_filter")).is_equal(
-		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*, assets/art/brand/*"
+		"tests/*, addons/gdUnit4/*, addons/admob/*, native/*, assets/art/brand/*" + BAKE_INPUTS
 	)
 
 
@@ -140,7 +146,7 @@ func test_android_internal_preset_is_the_gradle_aab_play_build() -> void:
 		"build/android/rts-mobile-internal.aab"
 	)
 	var exclude: String = config.get_value(INTERNAL, "exclude_filter")
-	assert_str(exclude).is_equal("tests/*, addons/gdUnit4/*, assets/art/brand/*")
+	assert_str(exclude).is_equal("tests/*, addons/gdUnit4/*, assets/art/brand/*" + BAKE_INPUTS)
 	assert_bool(_filter_matches(exclude, "res://addons/admob/admob.gd")).is_false()
 	assert_bool(_filter_matches(exclude, "res://native/sim_kernels.gdextension")).is_false()
 	assert_str(config.get_value(INTERNAL_OPTIONS, "package/unique_name")).is_equal("dk.appcode.rts")
@@ -309,3 +315,30 @@ func _source_size(path: String) -> Vector2i:
 		return Vector2i.ZERO
 	var image: Image = texture.get_image()
 	return Vector2i.ZERO if image == null else image.get_size()
+
+
+## P656c: no preset packs the pre-render bake inputs (ADR 0053 section 5); the game only loads the
+## baked PNGs and `assets/art/terrain/kit.tres`, which stay in.
+func test_no_preset_packs_the_bake_inputs() -> void:
+	var config: ConfigFile = _config()
+	var out: Array[String] = [
+		"res://assets/art/models/terrain/grass_detail.tres",
+		"res://assets/art/prerender/manifest.tres",
+		"res://tools/prerender/DetailModel.gd",
+	]
+	var kept: Array[String] = [
+		"res://assets/art/terrain/kit.tres",
+		"res://assets/art/terrain/grass_base_0.png",
+		"res://game/view/TerrainKitDef.gd",
+		"res://tools/artgen/ArtGen.gd",
+	]
+	for section: String in ALL_PRESETS:
+		var exclude: String = config.get_value(section, "exclude_filter", "")
+		for path: String in out:
+			assert_bool(FileAccess.file_exists(path)).override_failure_message(path).is_true()
+			var where: String = "%s packs %s" % [section, path]
+			assert_bool(_filter_matches(exclude, path)).override_failure_message(where).is_true()
+		for path: String in kept:
+			assert_bool(FileAccess.file_exists(path)).override_failure_message(path).is_true()
+			var where: String = "%s drops %s" % [section, path]
+			assert_bool(_filter_matches(exclude, path)).override_failure_message(where).is_false()

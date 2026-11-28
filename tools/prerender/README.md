@@ -3,7 +3,7 @@
 Renders our own 3D models to raw frames (ADR 0053, plan row P656a). Code here is MIT, like
 `tools/artgen`. The model data it reads, `assets/art/models/<faction>/<id>_detail.tres`, is
 (c) AppCode ApS, all rights reserved (ADR 0046). P656a shipped the core, P656b the post and the
-manifest. No building data and no terrain kit yet (P656c).
+manifest, P656c the terrain kit. No building data yet (P644b).
 
 ## What is here
 
@@ -16,6 +16,7 @@ manifest. No building data and no terrain kit yet (P656c).
 | `BakeRig.gd` | Orthographic camera at `IsoProjection`'s 2:1 view, sun along `ArtShadow`'s reach, fill, sky, SSAO. Every projection constant is read, not typed. |
 | `bake_model.gd` | The scene entry: one model, every part and direction of its sheet, raw PNG frames, the shadow frame and `bake_info.json`. |
 | `post.py` | The post: box filter to 1x, exposure gain, PNG write, the clipped-sentinel refusal. |
+| `bake_kit.gd` | The terrain kit's entry (below): one model, every part a ground piece, no sheet. |
 | `ArtManifest.gd`, `write_manifest.gd` | The manifest resource and its writer. |
 | `requirements.txt` | The Python pins, read by `prerender.sh`'s preflight. |
 
@@ -35,6 +36,23 @@ Frames are `<out>/<id>_<part>_dNN.png` at `--scale` texels per art px (default 8
 background. `--exposure G` (default 1.0) is the post's one gain; `--publish res://RES_DIR` copies
 the posted frames there and lists them in the manifest. `--composite` adds `<id>_both_dNN.png`, hull and turret
 together. The run prints the renderer line, for example `Vulkan 1.4.318 - Forward+ - llvmpipe`.
+
+## The terrain kit
+
+```
+bash scripts/prerender.sh --kit --out /tmp/prerender-kit --publish res://assets/art/terrain
+[--model res://assets/art/models/terrain/rock_detail.tres] [--exposure G]
+```
+
+`--kit` bakes every `assets/art/models/terrain/<id>_detail.tres` (or the one `--model`) with
+`bake_kit.gd`, one PNG per part, named `<id>_<part>.png`. There is no sheet: a piece is framed on
+its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries a 0.02 tile
+bleed past each edge, never past a corner). The empty rows above the highest pixel are cut, so a
+flat piece is 64 rows and a lip or shore is taller by what it rises, at most 36 texels; a piece that
+reaches the canvas top is refused. A piece's shadow (what reaches 0.02 tile high, flattened along
++gx by `ArtShadow.REACH` as `bake_model.gd` does) is laid under it at the shadow band's alpha, so a
+lip's shadow falls on the rock beside it; the lit render shades the pieces inside themselves. The
+manifest line of a piece lists its model file only. `--check` re-bakes kit entries the same way.
 
 ## The pinned image
 
