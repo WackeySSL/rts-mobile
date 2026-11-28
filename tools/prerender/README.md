@@ -46,9 +46,9 @@ bash scripts/prerender.sh --kit --out /tmp/prerender-kit --publish res://assets/
 
 `--kit` bakes every `assets/art/models/terrain/<id>_detail.tres` (or the one `--model`) with
 `bake_kit.gd`, one PNG per part, named `<id>_<part>.png`. There is no sheet: a piece is framed on
-its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries a 0.04 tile
-bleed past each edge and corner, so four tiles meeting at a vertex leave no pinhole). A ground piece
-is baked on a canvas with `GROUND_HEADROOM` (36) rows above the diamond and cut to the diamond; one
+its 128 x 64 ground diamond (`quad` parts are flat, sideless faces; the ground carries strips 0.02 tile
+wide just outside each edge, each 0.02 longer than the edge at both ends, so four tiles meeting at a
+vertex leave no pinhole). A ground piece is baked on a canvas with `GROUND_HEADROOM` (36) rows above the diamond and cut to the diamond; one
 that reaches more than `BLEED_MAX` (3) texels above it is refused. A part named `wall_*` is the whole
 128 x 136 canvas of a raised rock cell, origin (64, 104) (`TerrainKitDef.WALL_CANVAS`, `WALL_ORIGIN`),
 with no baked shadow, refused when it touches the canvas's top row; `cliff` (a face), `tongue` (the

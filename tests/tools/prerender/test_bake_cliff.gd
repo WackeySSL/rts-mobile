@@ -107,22 +107,36 @@ func test_the_crest_lies_on_the_foot_line_and_the_cap_under_the_lip_is_flush() -
 	assert_int(crest).is_greater(100)
 
 
-func test_the_tongue_follows_the_crest_line_of_the_face() -> void:
+## A model point (grid x, grid y, height) in the 2:1 view's texels, as `ArtRender` projects it.
+func _screen(gx: float, gy: float, z: float) -> Vector2:
+	return Vector2((gx - gy) * 64.0, (gx + gy) * 32.0 - z * ArtRender.Z_PX)
+
+
+func test_the_tongue_lies_on_the_faces_lip_line_in_screen_texels() -> void:
 	var noise: FastNoiseLite = FastNoiseLite.new()
 	noise.seed = 11
 	noise.frequency = 1.0
 	noise.fractal_type = FastNoiseLite.FRACTAL_NONE
 	var m: BakeMesh = BakeMesh.new(&"tongue_fixture")
 	BakeShapes.tongue(m, MAT, Vector3(0.5, -0.5, HEIGHT), Vector3(0.5, 0.5, HEIGHT), 11)
+	var points: Array[Vector2] = []
+	for v: Vector3 in m.batches[MAT].vertices:  # Godot frame: x, height, grid y
+		points.append(_screen(v.x, v.z, v.y))
 	var deepest: float = 0.0
-	for v: Vector3 in m.batches[MAT].vertices:
-		var out: float = v.x - 0.5
-		deepest = maxf(deepest, out)
-		if out > 0.0001:
-			assert_float(out).is_equal_approx(BakeShapes.crest_drop(noise, v.z + 0.5), 0.0001)
-		assert_float(v.y).is_equal_approx(HEIGHT, 0.0001)
+	for i: int in 65:
+		var u: float = float(i) / 64.0
+		var drop: float = BakeShapes.crest_drop(noise, u)
+		deepest = maxf(deepest, drop)
+		# Where the face's flush cap ends: on the face's plane, `drop` of its height below the crest.
+		var cap: Vector2 = _screen(0.5, -0.5 + u, HEIGHT * (1.0 - drop))
+		var nearest: float = 1000.0
+		for p: Vector2 in points:
+			nearest = minf(nearest, p.distance_to(cap))
+		(
+			assert_float(nearest)
+			. override_failure_message(
+				"u %.3f: the tongue is %.2f texels off the lip line" % [u, nearest]
+			)
+			. is_less(0.05)
+		)
 	assert_float(deepest).is_between(0.03, BakeShapes.CREST_MAX + 0.0001)
-	for end: float in [-0.5, 0.5]:  # pinned: no lip at either tile edge
-		for v: Vector3 in m.batches[MAT].vertices:
-			if absf(v.z - end) < 0.0001:
-				assert_float(v.x).is_less_equal(0.5001)

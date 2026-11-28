@@ -5,7 +5,7 @@ extends RefCounted
 ## away from their axis, so a facet never shows as a flat patch.
 
 const DOME_RISE: float = 0.55  ## A dome rises this share of its radius.
-const CREST_MAX: float = 0.12  ## The deepest the plateau's lip hangs over a face, tiles.
+const CREST_MAX: float = 0.12  ## The deepest the plateau's lip hangs over a face, share of height.
 
 
 ## An oriented box: `xf` places its centre and axes, `size` is its extent along each axis.
@@ -187,13 +187,15 @@ static func _cap(
 	)
 
 
-## How far the plateau's lip hangs over the face along its foot, `u` of the way from `a` to `b`, in
-## tiles: 0 at both ends (so that neighbours meet), up to `CREST_MAX` between, ragged. The face's
-## cap and the top piece's tongue both read it, so the two lines are one.
+## How far the plateau's lip hangs over the face along its foot, `u` of the way from `a` to `b`, as
+## a share of the face's height: 0 at both ends (so that neighbours meet) and kept under `1 - u`
+## (so the tongue's shear stays inside the tile), up to `CREST_MAX` between, ragged. The face's cap
+## and the top piece's tongue both read it; on screen the lip line lies `64 x drop` texels below
+## the crest.
 static func crest_drop(noise: FastNoiseLite, u: float) -> float:
 	var pin: float = smoothstep(0.0, 0.1, minf(u, 1.0 - u))
 	var n: float = 0.8 * noise.get_noise_2d(u * 11.0, 2.2) + 0.5 * noise.get_noise_2d(u * 39.0, 8.8)
-	return pin * CREST_MAX * clampf(0.5 + 0.9 * n, 0.05, 1.0)
+	return minf(pin * CREST_MAX * clampf(0.5 + 0.9 * n, 0.05, 1.0), 1.0 - u)
 
 
 static func _noise(seed_value: int) -> FastNoiseLite:
@@ -271,20 +273,25 @@ static func cliff(
 			_tris(m, mat, q, out, e)
 
 
-## The top piece's tongue on one front edge: the plateau's surface carried on past the edge `a` to
-## `b` by `crest_drop` (the same line as the face's cap, same seed), a ragged lip over the face. It
-## lies within the prism and `CREST_MAX` x 64 texels below the edge.
+## The top piece's tongue on one front edge `a` to `b` at the top's height: the plateau's surface
+## carried on over the face, a ragged lip whose edge lies exactly where the face's cap ends on
+## screen. A point of the cap (on the face's plane, `drop` of the height below the crest) and a
+## point of the top's plane `drop` tiles out and `drop` tiles along `a` to `b` project to the same
+## texel in the 2:1 view, so the rim is the edge plus `(out + along) x drop`, by the wall's height
+## in diamond heights (the wall is one, 64 texels). It stays inside the prism (it lies on the
+## face's area) and ends at the tile edge.
 static func tongue(m: BakeMesh, mat: StringName, a: Vector3, b: Vector3, seed_value: int) -> void:
 	const NU: int = 64
 	var along: Vector3 = (b - a).normalized()
 	var out: Vector3 = _away(Vector3(-along.y, along.x, 0.0), (a + b) * 0.5)
 	var noise: FastNoiseLite = _noise(seed_value)
+	var reach: float = a.z * ArtRender.Z_PX / 64.0  # tiles of overhang per share of height
 	var inner: PackedVector3Array = PackedVector3Array()
 	var rim: PackedVector3Array = PackedVector3Array()
 	for i: int in NU + 1:
 		var u: float = float(i) / NU
 		inner.append(a.lerp(b, u) - out * 0.01)
-		rim.append(a.lerp(b, u) + out * crest_drop(noise, u))
+		rim.append(a.lerp(b, u) + (out + along) * (crest_drop(noise, u) * reach))
 	for i: int in NU:
 		_tris(m, mat, [inner[i], inner[i + 1], rim[i + 1], rim[i]], Vector3.BACK)
 

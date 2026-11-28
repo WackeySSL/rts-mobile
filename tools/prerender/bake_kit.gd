@@ -1,10 +1,10 @@
 extends "res://tools/prerender/bake_model.gd"
 ## The terrain kit's bake entry (ADR 0053 sections 5 and 7, plan row P656c): renders every part of
 ## one `assets/art/models/terrain/<id>_detail.tres` as one piece, with the rig of `bake_model.gd`,
-## into `<out>/<id>_<part>.png`. A ground piece is its 128 x 64 diamond, whatever rises above it is
-## cut. A wall piece (a part named `wall_*`, amendment A3) is the whole 128 x 136 canvas whose
-## ground centre, the model's origin, is at (64, 104): the cell's prism, a cell raised `RISE_MAX`
-## texels, and at most `RIM_MAX` rows over it. A wall casts no baked shadow.
+## into `<out>/<id>_<part>.png`. A ground piece is its 128 x 64 diamond (more than `BLEED_MAX`
+## above it is refused). A wall piece (a part named `wall_*`, amendment A3) is the whole 128 x 136
+## canvas whose ground centre, the model's origin, is at (64, 104): the cell's prism, a cell raised
+## `RISE_MAX` texels, and at most `RIM_MAX` rows over it. A wall casts no baked shadow.
 ##   --model res://assets/art/models/terrain/<id>_detail.tres  --out DIR  [--scale 8] [--no-ssao]
 ## Exit 0 done, 1 a model or a piece failed, 2 usage.
 
