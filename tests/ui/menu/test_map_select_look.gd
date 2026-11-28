@@ -135,8 +135,8 @@ func test_the_header_and_the_cards_carry_the_copy_and_the_emblems() -> void:
 		var card: Control = _screen._side_cards[id]
 		var emblem: TextureRect = card.find_children("*", "TextureRect", true, false)[0]
 		assert_object(emblem.texture).is_not_null()
-	# No plate named for the map, and the old ">" mark is gone.
-	assert_object(_screen.find_child("MapPreviewSlot", true, false)).is_null()
+	# The map has its picture, and the old ">" mark is gone.
+	assert_object(_screen.find_child("MapPreviewSlot", true, false)).is_not_null()
 	for word: String in words:
 		assert_bool(word.begins_with("> ")).override_failure_message(word).is_false()
 	assert_str(_screen._start.text).is_equal("START BATTLE")

@@ -11,8 +11,11 @@ extends MenuScreen
 ## `MenuFlow.start_match`; a second tap while it runs does nothing, and a refused start
 ## (ERR_BUSY or another error) is reported with `push_warning` and leaves the button live. The
 ## computer plays the other side. The banner band is the slot's; the offer slot holds Phase 6's
-## `StartCreditsOffer` (P433), which owns every ad call; none lives here. The map's picture
-## (P666b) will come back above the map rows. It is a menu: no Command, no sim.
+## `StartCreditsOffer` (P433), which owns every ad call; none lives here. Above the map
+## rows the chosen map's picture (P666b, `MapPreview`: its terrain in the minimap's colours and each
+## side's start in its team colour, built from the scenario's data and kept per file), in a
+## frame that hugs it; a map above the player's rank is dimmed by a theme token. It is a menu: no
+## Command, no sim.
 
 const ProgressionScript: GDScript = preload("res://game/meta/progression_service.gd")
 const FlowScript: GDScript = preload("res://game/ui/menu/menu_flow_service.gd")
@@ -25,6 +28,7 @@ const LOCK_ART: Texture2D = preload("res://assets/art/svg/icons/glyph_lock.svg")
 const LOCK_DP: float = 16.0
 const HOLD_FRAMES: int = 4  ## Frames a turn keeps the scroll position.
 const START_DP: Vector2 = Vector2(0.0, 64.0)
+const PREVIEW_DP: float = 168.0  ## The preview's height.
 const OPPONENT_PATH: String = "res://data/ai/opponent_%s.tres"
 const LEVEL_PATH: String = "res://data/ai/difficulty/%s.tres"
 const KIND_MAP: StringName = &"map"
@@ -72,6 +76,8 @@ var _names: Dictionary[StringName, Label] = {}  ## The word of each map and leve
 var _notes: Dictionary[StringName, Control] = {}  ## Its lock row (glyph and RANK n), shown locked.
 var _choice_labels: Dictionary[StringName, Label] = {}  ## A step header's current choice.
 var _summary: Label
+var _preview: TextureRect
+var _preview_dim: Panel
 var _seen_scroll: int = 0  ## The scroll at the end of the last frame (a turn clamps it first).
 var _step_words: Array[Label] = []  ## The numbers and titles of the step headers.
 var _tags: Dictionary[StringName, Label] = {}
@@ -104,6 +110,7 @@ func _ready() -> void:
 	for id: StringName in SIDES:
 		_sides[id] = _side_card(id, cards)
 	_map_step = _step(2, MapSelectText.STEP_MAP, &"map")
+	_build_preview(_map_step)
 	var maps: VBoxContainer = _spaced_box(VBoxContainer.new()) as VBoxContainer
 	_map_step.add_child(maps)
 	for id: StringName in catalog.map_ids():
@@ -309,6 +316,44 @@ func _step(number: int, title: StringName, key: StringName) -> VBoxContainer:
 	return box
 
 
+## The map's picture: a framed panel holding the image, a dimming layer (shown for a locked map).
+## The frame is as wide as the picture, centred. It takes no touch.
+func _build_preview(parent: Control) -> void:
+	var slot: PanelContainer = PanelContainer.new()
+	slot.name = &"MapPreviewSlot"
+	slot.theme_type_variation = &"MenuMapPreview"
+	slot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.size_flags_horizontal = Control.SIZE_SHRINK_CENTER  # The frame hugs the picture.
+	parent.add_child(slot)
+	_preview = TextureRect.new()
+	_preview.name = &"MapPreview"
+	_preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_preview.custom_minimum_size.y = UiScale.dp(PREVIEW_DP)
+	slot.add_child(_preview)
+	_preview_dim = Panel.new()
+	_preview_dim.theme_type_variation = &"MenuMapPreviewDim"
+	_preview_dim.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	slot.add_child(_preview_dim)
+
+
+## Shows the picture of the chosen map for the chosen side (the team colours follow the side).
+func _show_preview() -> void:
+	if _preview == null:
+		return
+	var opponent_side: StringName = RENEW if side == FOSSIL else FOSSIL
+	var path: String = catalog.scenario_path(map_id, side, opponent_side)
+	var texture: ImageTexture = MapPreview.texture_for(path) if not path.is_empty() else null
+	_preview.texture = texture
+	var aspect: float = (
+		1.0 if texture == null else float(texture.get_width()) / texture.get_height()
+	)
+	_preview.custom_minimum_size.x = UiScale.dp(PREVIEW_DP) * aspect
+	_preview_dim.visible = map_id != &"" and not is_open(KIND_MAP, map_id)
+
+
 ## A faction card: the flat button that takes the touch, under the emblem, the tag, the name and
 ## the pitch (the content ignores touches). The chosen card is the amber one.
 func _side_card(id: StringName, cards: HBoxContainer) -> Button:
@@ -421,6 +466,7 @@ func _refresh() -> void:
 	_choice_labels[&"side"].text = side_word
 	_choice_labels[&"map"].text = map_word
 	_choice_labels[&"level"].text = level_word
+	_show_preview()
 	_summary.text = tr(MapSelectText.SUMMARY) % [side_word, map_word, level_word]
 	_start.disabled = _starting or not _can_start()
 	UiWait.hold(_start, _starting)
