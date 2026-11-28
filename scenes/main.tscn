@@ -54,6 +54,7 @@
 [ext_resource type="Script" path="res://game/input/CarryAim.gd" id="93_carry_aim"]
 [ext_resource type="Script" path="res://game/view/CarryMarkLayer.gd" id="94_carry_marks"]
 [ext_resource type="Script" path="res://game/ui/CarryControls.gd" id="95_carry_controls"]
+[ext_resource type="Resource" path="res://assets/art/terrain/kit.tres" id="96_kit"]
 
 [node name="Main" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "camera", "ui_sounds", "attack_cues", "build_button", "economy_pill")]
 script = ExtResource("4_main")
@@ -78,6 +79,7 @@ ground = NodePath("../GroundLayer")
 
 [node name="GroundLayer" type="TileMapLayer" parent="." node_paths=PackedStringArray("runner")]
 script = ExtResource("23_ground")
+kit = ExtResource("96_kit")
 runner = NodePath("../MatchRunner")
 
 [node name="DecalLayer" type="Node2D" parent="."]

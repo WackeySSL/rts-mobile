@@ -25,6 +25,7 @@
 [ext_resource type="Script" path="res://game/view/DecalLayer.gd" id="30_decals"]
 [ext_resource type="Script" path="res://game/view/BuildingLayer.gd" id="31_buildings"]
 [ext_resource type="Script" path="res://game/view/GhostMemoryLayer.gd" id="32_ghosts"]
+[ext_resource type="Resource" path="res://assets/art/terrain/kit.tres" id="33_kit"]
 
 [node name="PerfArena" type="Node2D" node_paths=PackedStringArray("runner", "map_view", "world_sort", "unit_layer", "air_layer", "building_layer", "bar_layer", "projectile_layer", "effects_layer", "fog_layer", "camera", "hud", "back_button", "layers_button", "layout", "bar")]
 script = ExtResource("1_arena")
@@ -59,6 +60,7 @@ ground = NodePath("../GroundLayer")
 
 [node name="GroundLayer" type="TileMapLayer" parent="." node_paths=PackedStringArray("runner")]
 script = ExtResource("20_ground")
+kit = ExtResource("33_kit")
 runner = NodePath("../MatchRunner")
 
 [node name="DecalLayer" type="Node2D" parent="."]
