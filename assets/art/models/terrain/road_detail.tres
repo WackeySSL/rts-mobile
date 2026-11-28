@@ -1,0 +1,1825 @@
+[gd_resource type="Resource" script_class="DetailModel" format=3]
+
+[ext_resource type="Script" path="res://tools/prerender/DetailMaterial.gd" id="1_mat"]
+[ext_resource type="Script" path="res://tools/prerender/DetailPart.gd" id="2_part"]
+[ext_resource type="Script" path="res://tools/prerender/DetailModel.gd" id="3_model"]
+
+[sub_resource type="Resource" id="m_ground"]
+script = ExtResource("1_mat")
+id = &"ground"
+base = Color(0.6659, 0.6442, 0.4771, 1)
+roughness = 0.92
+kind = 6
+patch = Color(0.88, 0.93, 0.88, 1)
+
+[sub_resource type="Resource" id="m_ground_sand"]
+script = ExtResource("1_mat")
+id = &"ground_sand"
+base = Color(0.8207, 0.7408, 0.5716, 1)
+roughness = 0.92
+kind = 6
+
+[sub_resource type="Resource" id="m_road"]
+script = ExtResource("1_mat")
+id = &"road"
+base = Color(0.3871, 0.3953, 0.4118, 1)
+roughness = 0.9
+kind = 6
+
+[sub_resource type="Resource" id="m_road_edge"]
+script = ExtResource("1_mat")
+id = &"road_edge"
+base = Color(0.5024, 0.4612, 0.3624, 1)
+roughness = 0.95
+kind = 6
+
+[sub_resource type="Resource" id="m_road_line"]
+script = ExtResource("1_mat")
+id = &"road_line"
+base = Color(0.7247, 0.6341, 0.2965, 1)
+roughness = 0.8
+kind = 6
+
+[sub_resource type="Resource" id="p0"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p1"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p2"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p3"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p4"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p5"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p6"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p7"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p8"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p9"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p10"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p11"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p12"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p13"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p14"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p15"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p16"]
+script = ExtResource("2_part")
+part = &"grass_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p17"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p18"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p19"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p20"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p21"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p22"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p23"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p24"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p25"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p26"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p27"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p28"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p29"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p30"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p31"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p32"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p33"]
+script = ExtResource("2_part")
+part = &"grass_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p34"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p35"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p36"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p37"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p38"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p39"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p40"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p41"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p42"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p43"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p44"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p45"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p46"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p47"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p48"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p49"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p50"]
+script = ExtResource("2_part")
+part = &"grass_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p51"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p52"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p53"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p54"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p55"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p56"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p57"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p58"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p59"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p60"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p61"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p62"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p63"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p64"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p65"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p66"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p67"]
+script = ExtResource("2_part")
+part = &"grass_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p68"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p69"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p70"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p71"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p72"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p73"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p74"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p75"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p76"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p77"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p78"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p79"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p80"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p81"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p82"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p83"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p84"]
+script = ExtResource("2_part")
+part = &"grass_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p85"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p86"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p87"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p88"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p89"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"ground"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p90"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p91"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p92"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p93"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p94"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p95"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p96"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p97"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p98"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p99"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p100"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p101"]
+script = ExtResource("2_part")
+part = &"grass_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p102"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p103"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p104"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p105"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p106"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p107"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p108"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p109"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p110"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p111"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p112"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p113"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p114"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p115"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p116"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p117"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p118"]
+script = ExtResource("2_part")
+part = &"sand_nw_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p119"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p120"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p121"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p122"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p123"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p124"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p125"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p126"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p127"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p128"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p129"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p130"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p131"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p132"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p133"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p134"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p135"]
+script = ExtResource("2_part")
+part = &"sand_ne_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p136"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p137"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p138"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p139"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p140"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p141"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p142"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p143"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p144"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p145"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p146"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p147"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p148"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p149"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p150"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p151"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p152"]
+script = ExtResource("2_part")
+part = &"sand_nw_ne"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p153"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p154"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p155"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p156"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p157"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p158"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, -0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p159"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p160"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p161"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, -0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p162"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p163"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p164"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.1, 0.006)
+b = Vector3(0, -0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p165"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.26, 0.006)
+b = Vector3(0, -0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p166"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, -0.42, 0.006)
+b = Vector3(0, -0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p167"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p168"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p169"]
+script = ExtResource("2_part")
+part = &"sand_ne_se"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p170"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p171"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p172"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p173"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p174"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p175"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p176"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p177"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p178"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p179"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p180"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p181"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.1, 0, 0.006)
+b = Vector3(0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p182"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.26, 0, 0.006)
+b = Vector3(0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p183"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0.42, 0, 0.006)
+b = Vector3(0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p184"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p185"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p186"]
+script = ExtResource("2_part")
+part = &"sand_se_sw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p187"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0, 0)
+size = Vector3(1, 1, 0)
+
+[sub_resource type="Resource" id="p188"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(-0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p189"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, -0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p190"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0.51, 0, 0)
+size = Vector3(0.02, 0.96, 0)
+
+[sub_resource type="Resource" id="p191"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"ground_sand"
+a = Vector3(0, 0.51, 0)
+size = Vector3(0.96, 0.02, 0)
+
+[sub_resource type="Resource" id="p192"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0.26, 0.002)
+size = Vector3(0.46, 0.52, 0)
+
+[sub_resource type="Resource" id="p193"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(-0.26, 0, 0.002)
+size = Vector3(0.52, 0.46, 0)
+
+[sub_resource type="Resource" id="p194"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road_edge"
+a = Vector3(0, 0, 0.002)
+size = Vector3(0.46, 0.46, 0)
+
+[sub_resource type="Resource" id="p195"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0.26, 0.004)
+size = Vector3(0.36, 0.52, 0)
+
+[sub_resource type="Resource" id="p196"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(-0.26, 0, 0.004)
+size = Vector3(0.52, 0.36, 0)
+
+[sub_resource type="Resource" id="p197"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"quad"
+material = &"road"
+a = Vector3(0, 0, 0.004)
+size = Vector3(0.36, 0.36, 0)
+
+[sub_resource type="Resource" id="p198"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.1, 0.006)
+b = Vector3(0, 0.19, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p199"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.26, 0.006)
+b = Vector3(0, 0.35, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p200"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(0, 0.42, 0.006)
+b = Vector3(0, 0.51, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p201"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.1, 0, 0.006)
+b = Vector3(-0.19, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p202"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.26, 0, 0.006)
+b = Vector3(-0.35, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[sub_resource type="Resource" id="p203"]
+script = ExtResource("2_part")
+part = &"sand_sw_nw"
+shape = &"bar"
+material = &"road_line"
+a = Vector3(-0.42, 0, 0.006)
+b = Vector3(-0.51, 0, 0.006)
+size = Vector3(0, 0.018, 0.003)
+bevel = 0
+
+[resource]
+script = ExtResource("3_model")
+art_id = &"road"
+faction = &"terrain"
+variation_seed = 656
+materials = Array[ExtResource("1_mat")]([SubResource("m_ground"), SubResource("m_ground_sand"), SubResource("m_road"), SubResource("m_road_edge"), SubResource("m_road_line")])
+parts = Array[ExtResource("2_part")]([SubResource("p0"), SubResource("p1"), SubResource("p2"), SubResource("p3"), SubResource("p4"), SubResource("p5"), SubResource("p6"), SubResource("p7"), SubResource("p8"), SubResource("p9"), SubResource("p10"), SubResource("p11"), SubResource("p12"), SubResource("p13"), SubResource("p14"), SubResource("p15"), SubResource("p16"), SubResource("p17"), SubResource("p18"), SubResource("p19"), SubResource("p20"), SubResource("p21"), SubResource("p22"), SubResource("p23"), SubResource("p24"), SubResource("p25"), SubResource("p26"), SubResource("p27"), SubResource("p28"), SubResource("p29"), SubResource("p30"), SubResource("p31"), SubResource("p32"), SubResource("p33"), SubResource("p34"), SubResource("p35"), SubResource("p36"), SubResource("p37"), SubResource("p38"), SubResource("p39"), SubResource("p40"), SubResource("p41"), SubResource("p42"), SubResource("p43"), SubResource("p44"), SubResource("p45"), SubResource("p46"), SubResource("p47"), SubResource("p48"), SubResource("p49"), SubResource("p50"), SubResource("p51"), SubResource("p52"), SubResource("p53"), SubResource("p54"), SubResource("p55"), SubResource("p56"), SubResource("p57"), SubResource("p58"), SubResource("p59"), SubResource("p60"), SubResource("p61"), SubResource("p62"), SubResource("p63"), SubResource("p64"), SubResource("p65"), SubResource("p66"), SubResource("p67"), SubResource("p68"), SubResource("p69"), SubResource("p70"), SubResource("p71"), SubResource("p72"), SubResource("p73"), SubResource("p74"), SubResource("p75"), SubResource("p76"), SubResource("p77"), SubResource("p78"), SubResource("p79"), SubResource("p80"), SubResource("p81"), SubResource("p82"), SubResource("p83"), SubResource("p84"), SubResource("p85"), SubResource("p86"), SubResource("p87"), SubResource("p88"), SubResource("p89"), SubResource("p90"), SubResource("p91"), SubResource("p92"), SubResource("p93"), SubResource("p94"), SubResource("p95"), SubResource("p96"), SubResource("p97"), SubResource("p98"), SubResource("p99"), SubResource("p100"), SubResource("p101"), SubResource("p102"), SubResource("p103"), SubResource("p104"), SubResource("p105"), SubResource("p106"), SubResource("p107"), SubResource("p108"), SubResource("p109"), SubResource("p110"), SubResource("p111"), SubResource("p112"), SubResource("p113"), SubResource("p114"), SubResource("p115"), SubResource("p116"), SubResource("p117"), SubResource("p118"), SubResource("p119"), SubResource("p120"), SubResource("p121"), SubResource("p122"), SubResource("p123"), SubResource("p124"), SubResource("p125"), SubResource("p126"), SubResource("p127"), SubResource("p128"), SubResource("p129"), SubResource("p130"), SubResource("p131"), SubResource("p132"), SubResource("p133"), SubResource("p134"), SubResource("p135"), SubResource("p136"), SubResource("p137"), SubResource("p138"), SubResource("p139"), SubResource("p140"), SubResource("p141"), SubResource("p142"), SubResource("p143"), SubResource("p144"), SubResource("p145"), SubResource("p146"), SubResource("p147"), SubResource("p148"), SubResource("p149"), SubResource("p150"), SubResource("p151"), SubResource("p152"), SubResource("p153"), SubResource("p154"), SubResource("p155"), SubResource("p156"), SubResource("p157"), SubResource("p158"), SubResource("p159"), SubResource("p160"), SubResource("p161"), SubResource("p162"), SubResource("p163"), SubResource("p164"), SubResource("p165"), SubResource("p166"), SubResource("p167"), SubResource("p168"), SubResource("p169"), SubResource("p170"), SubResource("p171"), SubResource("p172"), SubResource("p173"), SubResource("p174"), SubResource("p175"), SubResource("p176"), SubResource("p177"), SubResource("p178"), SubResource("p179"), SubResource("p180"), SubResource("p181"), SubResource("p182"), SubResource("p183"), SubResource("p184"), SubResource("p185"), SubResource("p186"), SubResource("p187"), SubResource("p188"), SubResource("p189"), SubResource("p190"), SubResource("p191"), SubResource("p192"), SubResource("p193"), SubResource("p194"), SubResource("p195"), SubResource("p196"), SubResource("p197"), SubResource("p198"), SubResource("p199"), SubResource("p200"), SubResource("p201"), SubResource("p202"), SubResource("p203")])

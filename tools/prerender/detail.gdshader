@@ -6,7 +6,8 @@ render_mode diffuse_burley, specular_schlick_ggx;
 uniform vec3 base : source_color = vec3(0.2);
 uniform float metal = 0.4;
 uniform float rough = 0.5;
-uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas
+uniform int kind = 0; // 0 body, 1 team paint, 2 running gear, 3 glass, 4 lamp, 5 canvas, 6 ground
+uniform vec3 patch : source_color = vec3(1.0); // ground: the tint of the darker low-frequency patches
 uniform float wear_amount = 1.0;
 uniform float dirt_amount = 1.5;
 uniform sampler2D nz : repeat_enable, filter_linear_mipmap;
@@ -46,7 +47,28 @@ void fragment() {
 	vec3 col = base * (0.86 + 0.28 * n2) * (0.88 + 0.24 * n1) * (1.0 + plate * (kind == 1 ? 0.10 : 0.34));
 	float met = metal;
 	float rgh = rough;
-	if (kind == 3 || kind == 4) {
+	if (kind == 6) {
+		// Ground (the terrain kit), after P653's grain: a soft mottle and two finer scales, each a
+		// whole number of periods per tile, the same for every piece, so that they run on across every
+		// seam (variants differ only by what stands on them). Water (low roughness) is calmer. No dust, mud, streaks or wear.
+		float amp = mix(0.4, 1.0, smoothstep(0.1, 0.5, rough));
+		float soft = tri(mp, mn, 1.0) - 0.5;
+		float mid = tri(mp, mn, 2.0) - 0.5;
+		float fine = tri(mp, mn, 4.0) - 0.5;
+		ALBEDO = base * (1.0 + amp * (0.75 * soft + 0.6 * mid + 0.4 * fine));
+		ALBEDO *= mix(vec3(1.0), patch, smoothstep(0.4, 0.58, soft + 0.5));
+		METALLIC = metal;
+		ROUGHNESS = rough;
+	} else if (kind == 7) {
+		// A cliff face: the ground's tone with streaks that run top to bottom (noise fast along the
+		// wall, slow up it), crevices darker but not black. Tops take the plain ground grain.
+		float along = mp.z * abs(mn.x) + mp.x * abs(mn.z);
+		float streak = texture(nz, vec2(along * 11.0, mp.y * 0.55)).r + 0.5 * texture(nz, vec2(along * 29.0, mp.y * 0.3 + 0.4)).r - 0.75;
+		float face = clamp(1.0 - abs(mn.y), 0.0, 1.0);
+		ALBEDO = base * mix(1.0 + 0.4 * (tri(mp, mn, 2.0) - 0.5), 0.58 + 1.1 * streak, face);
+		METALLIC = metal;
+		ROUGHNESS = rough;
+	} else if (kind == 3 || kind == 4) {
 		ALBEDO = col;
 		METALLIC = met;
 		ROUGHNESS = rgh;
