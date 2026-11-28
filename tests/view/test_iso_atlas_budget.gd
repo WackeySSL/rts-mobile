@@ -134,7 +134,9 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## add 0 (measured before the merge with the old aircraft models in place). Page 1 has left 828 rows
 ## on the cross-faction page, 887 on the Derrick League mirror and 975 on the Lumen Accord mirror;
 ## page 2 has left 982, 2106 and 2104.
-## P643: 2749 + 7; P658: 2748 + 1;
+## P643b (the same four moved onto the gunmetal and gunsteel materials: colour only, no
+## geometry) left every page where it was, the aircraft's two slots too (0 on all six pages).
+## P643b: 2756 + 0; P643: 2749 + 7; P658: 2748 + 1;
 ## P641: 2744 + 4; P640: 2725 + 19; P639: 2731 - 6; P638: 2730 + 1; P280: 2628 + 102; P279: 2582
 ## + 46;
 ## P292: 2472 + 110; P291: 2367 +
@@ -142,7 +144,7 @@ const BUDGET_PX: int = 3584  ## 7/8 of the 4096 px page.
 ## P249: 2314 + 53
 ## (P245b: 2252 + 62; P239b: 2167 + 85; P306: -685).
 const TODAY_CROSS: int = 2756
-## P643: 2697 + 0; P658: 2697 + 0;
+## P643b: 2697 + 0; P643: 2697 + 0; P658: 2697 + 0;
 ## P652: 2615 + 82; P641: 2615 + 0; P640: 2582 + 33; P639: 2582 + 0; P638: 2657 - 75;
 ## P280: 2552 + 105; P279: 2526 + 26;
 ## P292: 2407 + 119; P291: 2279
@@ -150,7 +152,7 @@ const TODAY_CROSS: int = 2756
 ## P249: 2258 + 21
 ## (P245b: 2172 + 86; P239b: 2127 + 45).
 const TODAY_MIRROR_DERRICK: int = 2697
-## P643: 2598 + 11; P658: 2596 + 2;
+## P643b: 2609 + 0; P643: 2598 + 11; P658: 2596 + 2;
 ## P652: 2536 + 60; P641: 2525 + 11; P640: 2525 + 0; P639: 2598 - 73; P280: 2502 + 96;
 ## P279: 2435 + 67; P292: 2341 + 94;
 ## P291: 2266 + 75; P249: 2238 +
